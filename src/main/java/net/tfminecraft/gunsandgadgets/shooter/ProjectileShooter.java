@@ -441,7 +441,7 @@ public class ProjectileShooter {
                 Location impact = ImpactVfx.onBlockSurface(current, direction, block);
                 ImpactVfx.spawn(
                         impact,
-                        Particle.EXPLOSION,
+                        Particle.POOF,
                         2,
                         0.2, 0.2, 0.2,
                         0,
