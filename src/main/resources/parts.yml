@@ -8,7 +8,7 @@ smoothbore_barrel_long:
   tier: 1
   type:
     - rifle
-  item: modeled.(type=gray_dye;model=15)
+  item: modeled.(type=gunpowder;model=2)
   sounds:
     - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
   stats:
@@ -31,7 +31,7 @@ rifled_barrel_long:
   tier: 2
   type:
     - rifle
-  item: modeled.(type=gray_dye;model=16)
+  item: modeled.(type=gunpowder;model=3)
   sounds:
     - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
   stats:
@@ -56,7 +56,7 @@ smoothbore_barrel_short:
   tier: 1
   type:
     - pistol
-  item: modeled.(type=gray_dye;model=17)
+  item: modeled.(type=gunpowder;model=4)
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
   stats:
@@ -79,7 +79,7 @@ rifled_barrel_short:
   tier: 2
   type:
     - pistol
-  item: modeled.(type=gray_dye;model=18)
+  item: modeled.(type=gunpowder;model=5)
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
   stats:
@@ -104,7 +104,7 @@ spread_barrel:
   tier: 2
   type:
     - shotgun
-  item: modeled.(type=gray_dye;model=19)
+  item: modeled.(type=gunpowder;model=6)
   sounds:
     - shoot minecraft:guns.musket_1
   stats:
@@ -129,7 +129,7 @@ launcher_barrel:
   tier: 3
   type:
     - launcher
-  item: modeled.(type=gray_dye;model=35)
+  item: modeled.(type=gunpowder;model=22)
   sounds:
     - shoot gunsandgadgets:launcher_shoot
     - shoot minecraft:entity.generic.explode
@@ -160,7 +160,7 @@ muzzle_loader:
     - pistol
     - shotgun
     - launcher
-  item: modeled.(type=gray_dye;model=20)
+  item: modeled.(type=gunpowder;model=7)
   sounds:
     - reload gunsandgadgets:muzzle_reload
   stats:
@@ -183,7 +183,7 @@ breech_loader:
     - rifle
     - shotgun
     - launcher
-  item: modeled.(type=gray_dye;model=21)
+  item: modeled.(type=gunpowder;model=8)
   sounds:
     - reload vehicleframework:gun_reload
   stats:
@@ -207,7 +207,7 @@ single_shot:
     - rifle
     - pistol
     - shotgun
-  item: modeled.(type=gray_dye;model=22)
+  item: modeled.(type=gunpowder;model=9)
   stats:
     - capacity 1
     - reload 2
@@ -225,7 +225,7 @@ single_shot_launcher:
   tier: 3
   type:
     - launcher
-  item: modeled.(type=gray_dye;model=37)
+  item: modeled.(type=gunpowder;model=24)
   stats:
     - capacity 1
     - reload 4
@@ -243,7 +243,7 @@ quad_shot:
   tier: 4
   type:
     - launcher
-  item: modeled.(type=gray_dye;model=38)
+  item: modeled.(type=gunpowder;model=25)
   stats:
     - capacity 4
     - reload -10
@@ -263,7 +263,7 @@ revolver:
   type:
     - rifle
     - pistol
-  item: modeled.(type=gray_dye;model=23)
+  item: modeled.(type=gunpowder;model=10)
   stats:
     - capacity 6
     - fire_rate 4
@@ -288,7 +288,7 @@ steamlock:
   type:
     - rifle
     - pistol
-  item: modeled.(type=gray_dye;model=24)
+  item: modeled.(type=gunpowder;model=11)
   sound-overrides:
     - shoot gunsandgadgets:steamlock_shoot
   caliber-override:
@@ -316,7 +316,7 @@ matchlock:
     - rifle
     - pistol
     - shotgun
-  item: modeled.(type=gray_dye;model=25)
+  item: modeled.(type=gunpowder;model=12)
   stats:
     - fire_rate 1
     - accuracy 1
@@ -341,7 +341,7 @@ flintlock:
     - rifle
     - pistol
     - shotgun
-  item: modeled.(type=gray_dye;model=26)
+  item: modeled.(type=gunpowder;model=13)
   sounds:
     - shoot minecraft:item.flintandsteel.use
   stats:
@@ -366,7 +366,7 @@ rocketlock:
   tier: 3
   type:
     - launcher
-  item: modeled.(type=gray_dye;model=36)
+  item: modeled.(type=gunpowder;model=23)
   stats:
     - fire_rate -10
     - accuracy 3
@@ -386,7 +386,7 @@ arclock:
   tier: 4
   type:
     - rifle
-  item: modeled.(type=gray_dye;model=27)
+  item: modeled.(type=gunpowder;model=14)
   sounds:
     - reload gunsandgadgets:arclock_reload
     - reload minecraft:block.beacon.activate
@@ -423,7 +423,7 @@ oak_stock:
   type:
     - rifle
     - shotgun
-  item: modeled.(type=gray_dye;model=28)
+  item: modeled.(type=gunpowder;model=15)
   stats:
     - accuracy 3
   cost:
@@ -440,7 +440,7 @@ maplewood_stock:
   type:
     - rifle
     - shotgun
-  item: modeled.(type=gray_dye;model=29)
+  item: modeled.(type=gunpowder;model=16)
   stats:
     - accuracy 4
   cost:
@@ -457,7 +457,7 @@ elderwood_stock:
   type:
     - rifle
     - shotgun
-  item: modeled.(type=gray_dye;model=30)
+  item: modeled.(type=gunpowder;model=17)
   stats:
     - accuracy 5
   cost:
@@ -474,7 +474,7 @@ demonwood_stock:
   type:
     - rifle
     - shotgun
-  item: modeled.(type=gray_dye;model=30)
+  item: modeled.(type=gunpowder;model=17)
   stats:
     - accuracy 6
   cost:

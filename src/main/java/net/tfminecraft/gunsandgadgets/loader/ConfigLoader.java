@@ -17,6 +17,7 @@ import net.tfminecraft.gunsandgadgets.guns.GunType;
 
 public class ConfigLoader {
     public void loadConfig(File configFile) {
+		Cache.clear();
 		FileConfiguration config = new YamlConfiguration();
         try {
         	config.load(configFile);

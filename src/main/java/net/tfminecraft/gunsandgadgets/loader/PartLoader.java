@@ -21,6 +21,7 @@ public class PartLoader implements LoaderInterface{
 	private static List<GunPart> ordered = new ArrayList<>();
 	public static void clear() {
 		oList.clear();
+		ordered.clear();
 	}
 	public static List<GunPart> getOrdered() {
 		return ordered;

@@ -24,4 +24,11 @@ public class Cache {
     public static List<AttributeData> attributes = new ArrayList<>();
 
     public static List<String> creators = Arrays.asList("drefvelin");
+
+    /** Drop YAML-backed registries so a reload does not append. */
+    public static void clear() {
+        outputItems.clear();
+        requiredParts.clear();
+        attributes.clear();
+    }
 }
