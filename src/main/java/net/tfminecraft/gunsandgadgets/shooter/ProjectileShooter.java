@@ -504,7 +504,7 @@ public class ProjectileShooter {
 
         // --- Step 3: Apply remaining damage via MythicLib/MMOCore ---
         if (normalDamage > 0) {
-            DamageMetadata dmgMeta = new DamageMetadata(normalDamage, DamageType.PROJECTILE);
+            DamageMetadata dmgMeta = new DamageMetadata(normalDamage, java.util.Arrays.asList(DamageType.PROJECTILE));
             AttackMetadata attackMeta = new AttackMetadata(dmgMeta, target, StatProvider.get(attacker, EquipmentSlot.MAIN_HAND, true));
             MythicLib.inst().getDamage().registerAttack(attackMeta, false, true);
         }
