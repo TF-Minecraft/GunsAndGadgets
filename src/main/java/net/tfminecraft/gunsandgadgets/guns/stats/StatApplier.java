@@ -22,6 +22,8 @@ public class StatApplier {
     /**
      * Apply stats to the item from the given parts.
      */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public static ItemStack apply(ItemStack item, Collection<GunPart> parts, boolean gui) {
         Map<Stats, Integer> totals = combineStats(parts);
 
