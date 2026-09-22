@@ -1,9 +1,9 @@
 package net.tfminecraft.gunsandgadgets.shooter;
 
-import net.tfminecraft.VehicleFramework.VehicleFramework;
-import net.tfminecraft.VehicleFramework.Util.LightEffect;
-import net.tfminecraft.VehicleFramework.Vehicles.ActiveVehicle;
-import net.tfminecraft.VehicleFramework.Vehicles.Vehicle;
+import net.tfminecraft.vehicleframework.VehicleFramework;
+import net.tfminecraft.vehicleframework.util.LightEffect;
+import net.tfminecraft.vehicleframework.vehicles.ActiveVehicle;
+import net.tfminecraft.vehicleframework.vehicles.Vehicle;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.attributes.AttributeReader;
 import net.tfminecraft.gunsandgadgets.cache.Cache;

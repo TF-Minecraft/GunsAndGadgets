@@ -7,8 +7,8 @@ import java.util.TreeSet;
 
 import org.bukkit.inventory.ItemStack;
 
-import me.Plugins.TLibs.TLibs;
-import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
+import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 
 public class CostFormatter {
     public static List<String> getCostsFormatted(Map<String, Integer> map) {

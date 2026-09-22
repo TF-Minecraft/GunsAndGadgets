@@ -26,9 +26,9 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import io.lumine.mythic.lib.api.item.NBTItem;
-import me.Plugins.TLibs.TLibs;
-import me.Plugins.TLibs.Objects.API.SubAPI.ItemSkinPreserver;
-import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
+import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver;
+import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 import net.Indyuce.mmoitems.ItemStats;
 import net.Indyuce.mmoitems.api.item.mmoitem.LiveMMOItem;
 import net.Indyuce.mmoitems.stat.data.BooleanData;

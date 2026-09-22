@@ -16,7 +16,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-import me.Plugins.TLibs.TLibs;
+import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
