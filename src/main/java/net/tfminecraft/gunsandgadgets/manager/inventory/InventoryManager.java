@@ -61,6 +61,8 @@ import net.tfminecraft.gunsandgadgets.utils.TierLore;
 public class InventoryManager implements Listener {
 
     // ---------- OPEN ASSEMBLY (uses per-player selections if valid, else first) ----------
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public void openCraftingInventory(Player player) {
         Inventory inv = Bukkit.createInventory(new AssemblyHolder(), 27, "§6Gun Assembly");
 
@@ -104,6 +106,8 @@ public class InventoryManager implements Listener {
     }
 
     // ---------- OPEN TYPE SELECTION (unchanged) ----------
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public void openTypeSelection(Player player) {
         Inventory typeInv = Bukkit.createInventory(new TypeSelectionHolder(), 9, "§6Select Gun Type");
         int slot = 0;
@@ -121,6 +125,8 @@ public class InventoryManager implements Listener {
     }
 
     // ---------- NEW: OPEN PART SELECTION FOR A CATEGORY ----------
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public void openPartSelection(Player player, String partCategoryId) {
         GunType chosen = TypeSelectionManager.getSelectedType(player);
 
@@ -209,6 +215,8 @@ public class InventoryManager implements Listener {
     }
 
     // ---------- ITEM BUILDERS (unchanged except already in your class) ----------
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     private ItemStack createWeaponTypeButton(GunType type) {
         ItemStack item = new ItemStack(Material.NETHER_STAR); // placeholder icon
         ItemMeta meta = item.getItemMeta();
@@ -341,6 +349,8 @@ public class InventoryManager implements Listener {
         return createOutputItem(type, parts, false, existing);
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons. This path mutates the existing ItemStack; replacing it would change aliases held by callers.
+    @SuppressWarnings("deprecation")
     public ItemStack createOutputItem(GunType type, Collection<GunPart> parts, boolean gui, ItemStack preserveRuntime) {
         for (GunPart part : parts) {
             if (part.isDisabled()) {
@@ -625,6 +635,8 @@ public class InventoryManager implements Listener {
 
 
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     private ItemStack createPartItem(GunPart part) {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
 
@@ -697,6 +709,8 @@ public class InventoryManager implements Listener {
     }
 
     // ---------- CLICK HANDLER ----------
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;

@@ -28,6 +28,8 @@ public final class GunBrokenMarker {
         return broken != null && broken;
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public static void markBroken(ItemStack item, List<String> missingIds) {
         if (item == null || missingIds == null || missingIds.isEmpty()) {
             return;

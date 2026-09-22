@@ -80,6 +80,8 @@ public class GunManager implements Listener {
         if(e.getWeapon().getNBTItem().getType().equalsIgnoreCase("MUSKETS")) e.setCancelled(true);
     }
 
+    // Preserve the material interaction classification used to decide whether a gun click is consumed; the replacement BlockType query is also deprecated.
+    @SuppressWarnings({"deprecation"})
     @EventHandler
     public void onRightClick(PlayerInteractEvent event) {
         if (!(event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
@@ -263,6 +265,8 @@ public class GunManager implements Listener {
             int tick = 0;
             Location lastLoc = player.getLocation().clone();
 
+            // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+            @SuppressWarnings("deprecation")
             @Override
             public void run() {
                 ItemStack current = player.getInventory().getItemInMainHand();
@@ -493,6 +497,8 @@ public class GunManager implements Listener {
 
     
 
+    // This path mutates the existing ItemStack; replacing it would change aliases held by callers.
+    @SuppressWarnings("deprecation")
     public ItemStack applyModel(ItemStack i, SkinData data, SkinState state) {
         ItemStack skin = data.parseModel(state);
         if (skin == null || skin.getType().isAir()) {
@@ -511,6 +517,8 @@ public class GunManager implements Listener {
     }
 
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     private void chargeCrossbow(ItemStack crossbow, String ammoId, int amount) {
         if (crossbow == null || crossbow.getType() != Material.CROSSBOW) return;
         Ammunition ammo = AmmunitionLoader.getByString(ammoId);

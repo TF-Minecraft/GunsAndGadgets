@@ -21,6 +21,8 @@ public final class TierLore {
         return StringFormatter.formatHex("§e[#ebd05bTier " + toRoman(tier) + "§e]");
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public static void applyTo(ItemStack item, int tier) {
         if (item == null || !item.hasItemMeta() || tier <= 0) {
             return;
