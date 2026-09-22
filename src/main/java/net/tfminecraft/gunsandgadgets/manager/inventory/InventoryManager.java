@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets.manager.inventory;
 
+import net.tfminecraft.gunsandgadgets.util.LegacyModelData;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -147,11 +149,6 @@ public class InventoryManager implements Listener {
         } else {
             for (GunPart part : options) {
                 ItemStack option = createPartItem(part);
-                ItemMeta meta = option.getItemMeta();
-                if (meta != null) {
-                    meta.setLocalizedName(part.getId());
-                    option.setItemMeta(meta);
-                }
                 inv.addItem(option);
             }
         }
@@ -300,7 +297,7 @@ public class InventoryManager implements Listener {
 
             // Convert back to list for MMOItems data
             BooleanData data = new BooleanData(true);
-            StatHistory hist = StatHistory.from(mmo, ItemStats.TWO_HANDED);
+            StatHistory hist = mmo.computeStatHistory(ItemStats.TWO_HANDED);
             if (hist != null) {
                 hist.setOriginalData(data);
                 mmo.setStatHistory(ItemStats.TWO_HANDED, hist);
@@ -322,7 +319,7 @@ public class InventoryManager implements Listener {
             // Convert back to list for MMOItems data
             StringListData data = new StringListData(new ArrayList<>(classes));
 
-            StatHistory hist = StatHistory.from(mmo, ItemStats.REQUIRED_CLASS);
+            StatHistory hist = mmo.computeStatHistory(ItemStats.REQUIRED_CLASS);
             if (hist != null) {
                 StringListData og = (StringListData) hist.getOriginalData();
                 og.getList().clear();
@@ -399,8 +396,8 @@ public class InventoryManager implements Listener {
         if (meta != null) {
             if (!ItemSkinPreserver.hasSkinData(skinItem)
                     && skinItem.getItemMeta() != null
-                    && skinItem.getItemMeta().hasCustomModelData()) {
-                meta.setCustomModelData(skinItem.getItemMeta().getCustomModelData());
+                    && LegacyModelData.has(skinItem.getItemMeta())) {
+                LegacyModelData.set(meta, LegacyModelData.get(skinItem.getItemMeta()));
             }
             meta.setDisplayName(buildName(parts));
 

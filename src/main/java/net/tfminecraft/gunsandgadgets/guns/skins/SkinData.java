@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets.guns.skins;
 
+import net.tfminecraft.gunsandgadgets.util.LegacyModelData;
+
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.ItemStack;
@@ -102,7 +104,7 @@ public class SkinData {
                 int data = Integer.parseInt(split[1]);
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null) {
-                    meta.setCustomModelData(data);
+                    LegacyModelData.set(meta, data);
                     item.setItemMeta(meta);
                 }
             } catch (NumberFormatException ignored) {

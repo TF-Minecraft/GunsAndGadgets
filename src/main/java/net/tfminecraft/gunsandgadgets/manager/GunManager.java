@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets.manager;
 
+import net.tfminecraft.gunsandgadgets.util.LegacyModelData;
+
 import net.Indyuce.mmocore.api.player.PlayerData;
 import net.Indyuce.mmoitems.ItemStats;
 import net.Indyuce.mmoitems.api.event.item.UntargetedWeaponUseEvent;
@@ -500,8 +502,8 @@ public class GunManager implements Listener {
             return ItemSkinPreserver.applyAppearanceFromSkin(skin, i);
         }
         ItemMeta m = i.getItemMeta();
-        if (m != null && skin.getItemMeta() != null && skin.getItemMeta().hasCustomModelData()) {
-            m.setCustomModelData(skin.getItemMeta().getCustomModelData());
+        if (m != null && skin.getItemMeta() != null && LegacyModelData.has(skin.getItemMeta())) {
+            LegacyModelData.set(m, LegacyModelData.get(skin.getItemMeta()));
             i.setItemMeta(m);
         }
         i.setType(skin.getType());
