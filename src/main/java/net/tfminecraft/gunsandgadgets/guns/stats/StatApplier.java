@@ -13,7 +13,7 @@ import org.bukkit.persistence.PersistentDataType;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
-import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
+import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.util.CostFormatter;

@@ -3,7 +3,7 @@ package net.tfminecraft.gunsandgadgets.guns.parts;
 import java.util.*;
 import org.bukkit.configuration.ConfigurationSection;
 
-import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
+import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.SoundType;
 import net.tfminecraft.gunsandgadgets.guns.stats.Stats;

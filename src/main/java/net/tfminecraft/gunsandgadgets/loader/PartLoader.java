@@ -11,7 +11,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import me.Plugins.TLibs.Interface.LoaderInterface;
+import net.tfminecraft.tlibs.interfaces.LoaderInterface;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.utils.RevisionTracker;
