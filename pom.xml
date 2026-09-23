@@ -12,7 +12,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.proc>full</maven.compiler.proc>
-        <mythiclib.jar>MythicLib-dist-1.7.1-20260819.194904-107.jar</mythiclib.jar>
+        <mythiclib.jar>MythicLib-1.7.1-SNAPSHOT.jar</mythiclib.jar>
         <tlibs.version>2.0.0</tlibs.version>
         <vehicleframework.version>2.0.1</vehicleframework.version>
     </properties>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10.1</version>
+            <version>2.14.0</version>
         </dependency>
         <dependency>
             <groupId>io.papermc.paper</groupId>
@@ -51,25 +51,25 @@
         <dependency>
             <groupId>local</groupId>
             <artifactId>ItemsAdder</artifactId>
-            <version>3.5.0-tfmc-0116d714822b</version>
+            <version>4.0.18-tfmc-5a01b37bd744</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MMOCore</artifactId>
-            <version>1.13.1-tfmc-14850d745437</version>
+            <version>1.13.1-SNAPSHOT-tfmc-81d511d08309</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MMOItems</artifactId>
-            <version>6.10-tfmc-c84700df5942</version>
+            <version>6.10.1-SNAPSHOT-tfmc-a37f7789fcdc</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MythicLib</artifactId>
-            <version>1.7.1-tfmc-e89a612e566e</version>
+            <version>1.7.1-SNAPSHOT-tfmc-225aa7f75d4e</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
