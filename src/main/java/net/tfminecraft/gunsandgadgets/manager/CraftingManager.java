@@ -84,12 +84,18 @@ public class CraftingManager implements Listener {
                 return;
             }
 
-            if(!player.hasPermission("gg.bypass_crafting_cost")) takeInputs(player, parts);
+            boolean staffBypass = player.hasPermission("gg.bypass_crafting_cost");
+            if (!staffBypass) {
+                takeInputs(player, parts);
+            }
 
             // Give to player
             player.getInventory().addItem(crafted);
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1f, 1f);
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.2f);
+            if (staffBypass) {
+                player.sendMessage("§eMaterials were bypassed due to staff.");
+            }
 
             // Optionally close GUI
             player.closeInventory();
