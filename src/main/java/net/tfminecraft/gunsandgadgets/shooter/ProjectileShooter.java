@@ -9,7 +9,12 @@ import net.tfminecraft.gunsandgadgets.attributes.AttributeReader;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition.AmmoOption;
+import net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart;
+import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
+import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
+import net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
+import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.util.ImpactVfx;
 import net.tfminecraft.gunsandgadgets.util.SoundPlayer;
 
@@ -62,11 +67,11 @@ public class ProjectileShooter {
         Vector forward = start.getDirection().normalize();
         start.add(forward.multiply(1.0));
 
-        // 💨 Muzzle smoke if not smokeless
-        if (!ammo.hasOption(AmmoOption.SMOKELESS)) {
+        // Airguns (steamlock) and smokeless shots skip muzzle smoke and flash.
+        if (!suppressesMuzzle(gun, ammo, AmmoOption.SMOKELESS, PartOption.SMOKELESS)) {
             spawnMuzzleSmoke(start, forward);
         }
-        if (!ammo.hasOption(AmmoOption.NO_LIGHT)) {
+        if (!suppressesMuzzle(gun, ammo, AmmoOption.NO_LIGHT, PartOption.NO_LIGHT)) {
             (new LightEffect()).createTemporaryLight(start, 10);
             new BukkitRunnable() {
                 @Override
@@ -83,6 +88,23 @@ public class ProjectileShooter {
         }
 
         shootBullet(player, gun, ammo);
+    }
+
+    private static boolean suppressesMuzzle(ItemStack gun, Ammunition ammo, AmmoOption ammoOption, PartOption partOption) {
+        if (ammo.hasOption(ammoOption)) {
+            return true;
+        }
+        GunCraftProvenance provenance = GunCraftProvenance.readFrom(gun);
+        if (provenance == null) {
+            return false;
+        }
+        for (GGCraftPart stamped : provenance.getParts()) {
+            GunPart part = PartLoader.getByString(stamped.getId());
+            if (part != null && part.hasOption(partOption)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void spawnMuzzleSmoke(Location start, Vector forward) {
