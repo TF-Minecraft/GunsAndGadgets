@@ -19,6 +19,7 @@ public class GunPart {
     private final Map<Stats, Integer> stats;
     private final List<String> calibers;
     private List<String> caliberOverrides;
+    private final EnumSet<PartOption> options = EnumSet.noneOf(PartOption.class);
     private List<String> lore = new ArrayList<>();
     private final boolean isTwoHanded;
 
@@ -100,6 +101,14 @@ public class GunPart {
         this.calibers = config.getStringList("caliber");
         if (config.contains("caliber-override")) {
             this.caliberOverrides = config.getStringList("caliber-override");
+        }
+
+        for (String opt : config.getStringList("options")) {
+            try {
+                options.add(PartOption.valueOf(opt.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid part option for " + id + ": " + opt);
+            }
         }
 
         for (String s : config.getStringList("lore")) {
@@ -191,6 +200,7 @@ public class GunPart {
     public List<String> getCalibers() { return calibers; }
     public boolean hasCaliberOverrides() { return caliberOverrides != null; }
     public List<String> getCaliberOverrides() { return caliberOverrides; }
+    public boolean hasOption(PartOption option) { return options.contains(option); }
     public List<String> getLore() { return lore; }
     public Set<GunType> getGunTypes() { return gunTypes; }
     public Map<String, Integer> getCost() { return cost; }
@@ -251,6 +261,11 @@ public class GunPart {
             List<String> overrideCopy = new ArrayList<>(caliberOverrides);
             Collections.sort(overrideCopy, String.CASE_INSENSITIVE_ORDER);
             sb.append("caliber-override=").append(String.join(",", overrideCopy)).append(';');
+        }
+
+        if (!options.isEmpty()) {
+            List<String> optionNames = options.stream().map(Enum::name).sorted().toList();
+            sb.append("options=").append(String.join(",", optionNames)).append(';');
         }
 
         List<String> classCopy = new ArrayList<>(classRequirements);
@@ -326,6 +341,14 @@ public class GunPart {
 
         public String getSkinId() { return skinId; }
         public int getWeight() { return weight; }
+    }
+
+    /**
+     * Firing presentation owned by the part. Steamlocks are airguns, so muzzle
+     * smoke and flash live here rather than on a shot type.
+     */
+    public enum PartOption {
+        SMOKELESS, NO_LIGHT
     }
 
     public static class PartSound {

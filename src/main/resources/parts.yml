@@ -291,6 +291,10 @@ steamlock:
   item: modeled.(type=gunpowder;model=11)
   sound-overrides:
     - shoot gunsandgadgets:steamlock_shoot
+  # Airgun: no muzzle smoke or flash, whichever shot it fires.
+  options:
+    - smokeless
+    - no_light
   caliber-override:
     - pebbleshot
   stats:

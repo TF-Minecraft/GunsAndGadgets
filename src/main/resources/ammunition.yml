@@ -1,8 +1,5 @@
 pebbleshot:
   input: m.utils.pebbleshot
-  options:
-    - smokeless
-    - no_light
   stats:
     - damage 8
     - accuracy -2
