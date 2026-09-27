@@ -94,17 +94,35 @@ public class ProjectileShooter {
         if (ammo.hasOption(ammoOption)) {
             return true;
         }
-        GunCraftProvenance provenance = GunCraftProvenance.readFrom(gun);
-        if (provenance == null) {
+        GunCraftProvenance provenance;
+        try {
+            provenance = GunCraftProvenance.readFrom(gun);
+        } catch (RuntimeException ex) {
             return false;
         }
+        if (provenance == null) {
+            return isLegacySteamlock(gun);
+        }
         for (GGCraftPart stamped : provenance.getParts()) {
+            if (stamped == null) {
+                continue;
+            }
             GunPart part = PartLoader.getByString(stamped.getId());
             if (part != null && part.hasOption(partOption)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static boolean isLegacySteamlock(ItemStack gun) {
+        if (gun == null || !gun.hasItemMeta()) {
+            return false;
+        }
+        String skinId = gun.getItemMeta().getPersistentDataContainer().get(
+                new NamespacedKey(GunsAndGadgets.getInstance(), "skin_id"),
+                PersistentDataType.STRING);
+        return "rifle_steamlock".equals(skinId) || "pistol_steamlock".equals(skinId);
     }
 
     private static void spawnMuzzleSmoke(Location start, Vector forward) {
