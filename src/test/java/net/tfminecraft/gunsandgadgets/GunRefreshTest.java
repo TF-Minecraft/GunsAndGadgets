@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
@@ -97,6 +98,7 @@ class GunRefreshTest extends GunsTestSupport {
   void outdatedRefreshRebuildsSynchronizesProvenanceAndPreservesStackCount() {
     GunPart live = livePart(2);
     ItemStack managed = gun("RIFLE", "id", true);
+    GunCraftInputs.applyTo(managed, Map.of("m.materials.steel", 4));
     ItemStack rebuilt = gun("RIFLE", "id", false);
     Cache.statRefreshDebug = true;
     try (var inventories =
@@ -112,6 +114,8 @@ class GunRefreshTest extends GunsTestSupport {
       assertEquals(1, result.getOutdatedParts().size());
       assertEquals("barrel", result.getOutdatedParts().getFirst().getId());
       assertEquals(2, GunCraftProvenance.readFrom(result.getItem()).getPartsRevision());
+      assertEquals(Map.of("m.materials.steel", 4), GunCraftInputs.readFrom(result.getItem()));
+      assertNull(GunCraftInputs.readFrom(rebuilt));
       verify(inventories.constructed().getFirst())
           .rebuildFromParts(managed, GunType.RIFLE, List.of(live));
       assertTrue(GunStatRefresher.refresh(gun("RIFLE", null, true), true).isChanged());
@@ -274,5 +278,18 @@ class GunRefreshTest extends GunsTestSupport {
         assertEquals(baseline, original);
       }
     }
+  }
+
+  @Test
+  void craftInputsReadNothingFromUnstampedOrUnreadableGuns() {
+    assertNull(GunCraftInputs.readFrom(null));
+    assertNull(GunCraftInputs.readFrom(new ItemStack(Material.AIR)));
+    assertNull(GunCraftInputs.readFrom(gun("RIFLE", "id", true)));
+    ItemStack broken = gun("RIFLE", "id", true);
+    var meta = broken.getItemMeta();
+    meta.getPersistentDataContainer()
+        .set(GGCraftKeys.craftInputs(), PersistentDataType.STRING, "{not json");
+    broken.setItemMeta(meta);
+    assertNull(GunCraftInputs.readFrom(broken));
   }
 }

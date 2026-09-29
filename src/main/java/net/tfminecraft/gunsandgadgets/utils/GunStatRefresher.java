@@ -15,6 +15,7 @@ import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart;
+import net.tfminecraft.gunsandgadgets.guns.data.GunCraftInputs;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 
@@ -71,6 +72,7 @@ public final class GunStatRefresher {
         rebuilt.setAmount(item.getAmount());
         provenance.syncRevisions();
         provenance.applyTo(rebuilt);
+        GunCraftInputs.copy(item, rebuilt);
 
         return RefreshResult.updated(rebuilt, outdatedBefore);
     }

@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
+import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
+import net.tfminecraft.gunsandgadgets.guns.data.GunCraftInputs;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.manager.inventory.*;
@@ -27,6 +29,7 @@ class CraftingManagerTest {
   GunPart part;
   ItemStack material, crafted;
   MockedStatic<TLibs> libs;
+  MockedStatic<GunsAndGadgets> plugins;
   boolean oldRequire;
   int oldSlot;
 
@@ -68,11 +71,16 @@ class CraftingManagerTest {
         .thenAnswer(i -> ((ItemStack) i.getArgument(0)).getType() == Material.IRON_INGOT);
     libs = mockStatic(TLibs.class);
     libs.when(TLibs::getItemAPI).thenReturn(api);
+    GunsAndGadgets plugin = mock(GunsAndGadgets.class);
+    when(plugin.namespace()).thenReturn("gunsandgadgets");
+    plugins = mockStatic(GunsAndGadgets.class);
+    plugins.when(GunsAndGadgets::getInstance).thenReturn(plugin);
   }
 
   @AfterEach
   void cleanup() {
     if (libs != null) libs.close();
+    if (plugins != null) plugins.close();
     Cache.requireInput = oldRequire;
     Cache.outputSlot = oldSlot;
     MockBukkit.unmock();
@@ -83,6 +91,7 @@ class CraftingManagerTest {
     Cache.requireInput = false;
     manager.onCraft(click);
     assertEquals(5, material.getAmount(), "Free crafting must preserve available ingredients");
+    assertEquals(Map.of(), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
   }
 
@@ -90,6 +99,7 @@ class CraftingManagerTest {
   void paidCraftConsumesExactCostsAndDeliversWeapon() {
     manager.onCraft(click);
     assertEquals(2, material.getAmount());
+    assertEquals(Map.of("iron", 3), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
     verify(player).closeInventory();
   }
@@ -125,6 +135,7 @@ class CraftingManagerTest {
     when(player.hasPermission("gg.bypass_crafting_cost")).thenReturn(true);
     manager.onCraft(click);
     assertEquals(5, material.getAmount());
+    assertEquals(Map.of(), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
   }
 
@@ -179,6 +190,7 @@ class CraftingManagerTest {
     manager.onCraft(click);
     assertEquals(0, material.getAmount());
     assertEquals(2, other.getAmount());
+    assertEquals(Map.of("iron", 7), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
   }
 

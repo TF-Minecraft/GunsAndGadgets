@@ -19,6 +19,7 @@ import org.bukkit.inventory.ItemStack;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
+import net.tfminecraft.gunsandgadgets.guns.data.GunCraftInputs;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.PartData;
 import net.tfminecraft.gunsandgadgets.manager.inventory.AssemblyHolder;
@@ -90,9 +91,11 @@ public class CraftingManager implements Listener {
             }
 
             boolean staffBypass = player.hasPermission("gg.bypass_crafting_cost");
+            Map<String, Integer> used = Map.of();
             if (!staffBypass && Cache.requireInput) {
-                takeInputs(player, parts);
+                used = takeInputs(player, parts);
             }
+            GunCraftInputs.applyTo(crafted, used);
 
             // Give to player
             for (ItemStack leftover : player.getInventory().addItem(crafted).values()) {
@@ -138,7 +141,7 @@ public class CraftingManager implements Listener {
         return costs.values().stream().allMatch(v -> v <= 0);
     }
 
-    private void takeInputs(Player p, Collection<GunPart> parts) {
+    private Map<String, Integer> takeInputs(Player p, Collection<GunPart> parts) {
         Map<String, Integer> costs = new HashMap<>();
 
         // Collect total costs for all parts
@@ -150,6 +153,7 @@ public class CraftingManager implements Listener {
         }
 
         // Remove items from inventory
+        Map<String, Integer> taken = new HashMap<>();
         for (Map.Entry<String, Integer> entry : costs.entrySet()) {
             int toRemove = entry.getValue();
 
@@ -164,9 +168,11 @@ public class CraftingManager implements Listener {
                     if (toRemove <= 0) break;
                 }
             }
+            taken.put(entry.getKey(), entry.getValue() - toRemove);
         }
 
         p.updateInventory();
+        return taken;
     }
 
     private boolean hasDisabledPart(Collection<GunPart> parts) {
