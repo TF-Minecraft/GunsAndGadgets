@@ -41,7 +41,7 @@ public final class GunBrokenMarker {
         meta.getPersistentDataContainer().set(GGCraftKeys.broken(), GGCraftKeys.BOOLEAN, true);
         meta.setDisplayName("§c§lBROKEN");
         List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-        lore.removeIf(line -> line != null && line.contains("Missing parts:"));
+        lore.removeIf(line -> line.contains("Missing parts:"));
         lore.add("§7Missing parts: " + String.join(", ", missingIds));
         meta.setLore(lore);
         item.setItemMeta(meta);

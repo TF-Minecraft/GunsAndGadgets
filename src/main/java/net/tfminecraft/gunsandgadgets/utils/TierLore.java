@@ -64,9 +64,6 @@ public final class TierLore {
     }
 
     private static boolean isBlankLoreLine(String line) {
-        if (line == null) {
-            return true;
-        }
         return line.replaceAll("§.", "").trim().isEmpty();
     }
 

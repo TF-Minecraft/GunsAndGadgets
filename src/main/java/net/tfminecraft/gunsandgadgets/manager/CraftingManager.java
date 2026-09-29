@@ -77,6 +77,11 @@ public class CraftingManager implements Listener {
             }
             // Rebuild the final item (no GUI lines)
             ItemStack crafted = inv.createOutputItem(chosenType, parts, false);
+            if (crafted == null || crafted.getType().isAir() || crafted.getType() == Material.BARRIER) {
+                player.sendMessage("§cThis weapon could not be created. Your materials were preserved.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
 
             if(!hasInputs(player, parts)) {
                 player.sendMessage("§cLacking inputs");
@@ -85,12 +90,14 @@ public class CraftingManager implements Listener {
             }
 
             boolean staffBypass = player.hasPermission("gg.bypass_crafting_cost");
-            if (!staffBypass) {
+            if (!staffBypass && Cache.requireInput) {
                 takeInputs(player, parts);
             }
 
             // Give to player
-            player.getInventory().addItem(crafted);
+            for (ItemStack leftover : player.getInventory().addItem(crafted).values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1f, 1f);
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.2f);
             if (staffBypass) {

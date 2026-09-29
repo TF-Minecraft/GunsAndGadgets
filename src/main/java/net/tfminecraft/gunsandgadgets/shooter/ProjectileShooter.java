@@ -54,7 +54,6 @@ public class ProjectileShooter {
         public static void shoot(Player player, ItemStack gun, Ammunition ammo) {
         if (gun == null || !gun.hasItemMeta()) return;
         ItemMeta meta = gun.getItemMeta();
-        if (meta == null) return;
 
         String shootSounds = meta.getPersistentDataContainer().get(
             new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_sounds"),
@@ -116,9 +115,6 @@ public class ProjectileShooter {
     }
 
     private static boolean isLegacySteamlock(ItemStack gun) {
-        if (gun == null || !gun.hasItemMeta()) {
-            return false;
-        }
         String skinId = gun.getItemMeta().getPersistentDataContainer().get(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "skin_id"),
                 PersistentDataType.STRING);
@@ -162,7 +158,6 @@ public class ProjectileShooter {
         if (gun == null || !gun.hasItemMeta()) return;
 
         ItemMeta meta = gun.getItemMeta();
-        if (meta == null) return;
 
 
         Location start = player.getEyeLocation().clone();
@@ -209,7 +204,7 @@ public class ProjectileShooter {
 
             int pierceStat = ammo.getStats().getOrDefault("pierce", 0);
 
-            startProjectileTask(player, ammo, start.clone(), velocity, spreadDegrees, maxDistance, totalDamage, pierceStat);
+            startProjectileTask(player, ammo, start.clone(), velocity, spreadDegrees, maxDistance, totalDamage, pierceStat, Math::random);
         }
     }
 
@@ -286,7 +281,7 @@ public class ProjectileShooter {
         v.setZ(z);
     }
 
-    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double damage, int pierceStat) {
+    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double damage, int pierceStat, java.util.function.DoubleSupplier random) {
         new BukkitRunnable() {
             Location loc = start.clone();
             Vector vel = velocity.clone();
@@ -361,9 +356,9 @@ public class ProjectileShooter {
 
             private Vector randomOffset() {
                 return new Vector(
-                    (Math.random() - 0.5) * spreadDegrees/3,
-                    (Math.random() - 0.5) * spreadDegrees/3,
-                    (Math.random() - 0.5) * spreadDegrees/3
+                    (random.getAsDouble() - 0.5) * spreadDegrees/3,
+                    (random.getAsDouble() - 0.5) * spreadDegrees/3,
+                    (random.getAsDouble() - 0.5) * spreadDegrees/3
                 );
             }
         }.runTaskTimer(GunsAndGadgets.getInstance(), 0L, 1L);
@@ -391,60 +386,21 @@ public class ProjectileShooter {
             direction,               // direction vector (should be normalized)
             distance,                // how far to check
             0.4,                     // radius (the "thickness" of the ray)
-            entity -> entity instanceof LivingEntity && !((LivingEntity) entity).isDead()
+            entity -> (entity instanceof LivingEntity living && !living.isDead())
+                    || vehicleFor(entity) != null
         );
 
 
-        if (result != null && result.getHitEntity() instanceof LivingEntity target) {
-            if(target instanceof Player) {
-                if(((Player) target).equals(player)) return false;
-            }
-            Location hitPoint = result.getHitPosition().toLocation(from.getWorld());
-            if(ammo.hasOption(AmmoOption.ROCKET)) {
-                explode(player, hitPoint, damage, pierceStat, ticks);
-                return true;
-            }
-
-            double finalDamage = damage;
-            if (isHeadshot(target, hitPoint)) {
-                finalDamage *= 1.5; // 🔥 1.5x multiplier for headshots
-            }
-            applyDamage(player, target, finalDamage, pierceStat);
-            if((target instanceof Player) && !ammo.hasOption(AmmoOption.ROCKET)) {
-                if(target.isDead()) {
-                    new BukkitRunnable() {
-                        float pitch = 1.2f;
-                        int count = 0;
-                        @Override
-                        public void run() {
-                            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, pitch);
-                            pitch += 0.3f;
-                            count++;
-                            if(count >= 4) cancel();
-                        }
-                    }.runTaskTimer(GunsAndGadgets.getInstance(), 0L, 2L);
-                } else {
-                    player.playSound(player.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1f);
-                }
-            }
-            return true; // ✅ stop projectile
-        } else if (result != null) {
-            Entity hit = result.getHitEntity();
-            ActiveVehicle v = VehicleFramework.getVehicleManager().get(hit);
-            if(v != null) {
-                if(ammo.hasOption(AmmoOption.ROCKET)) v.damage("ROCKET", damage);
-                else v.damage("PROJECTILE", damage);
-            }
-        }
-
         World world = from.getWorld();
+        // Never apply an entity hit through a nearer solid collision.
+        double collisionDistance = result == null ? distance
+                : Math.min(distance, from.toVector().distance(result.getHitPosition()));
         double step = 0.3; // smaller = more accurate, larger = faster
-        Vector stepVector = direction.clone().multiply(step);
 
         Location current = from.clone();
 
-        for (double traveled = 0; traveled < distance; traveled += step) {
-            current.add(stepVector);
+        for (double traveled = 0; traveled < collisionDistance; traveled += step) {
+            current.add(direction.clone().multiply(Math.min(step, collisionDistance - traveled)));
 
             Block block = current.getBlock();
             if (block.getType().isAir()) continue;
@@ -493,7 +449,60 @@ public class ProjectileShooter {
             return true;
         }
 
+        if (result != null) {
+            ActiveVehicle vehicle = vehicleFor(result.getHitEntity());
+            if (vehicle != null) {
+                vehicle.damage(ammo.hasOption(AmmoOption.ROCKET) ? "ROCKET" : "PROJECTILE", damage);
+                return true;
+            }
+        }
+
+        if (result != null) {
+            // The ray predicate accepts only living entities or registered vehicles,
+            // and every vehicle hit returned above.
+            LivingEntity target = (LivingEntity) result.getHitEntity();
+            if(target instanceof Player) {
+                if(((Player) target).equals(player)) return false;
+            }
+            Location hitPoint = result.getHitPosition().toLocation(from.getWorld());
+            if(ammo.hasOption(AmmoOption.ROCKET)) {
+                explode(player, hitPoint, damage, pierceStat, ticks);
+                return true;
+            }
+
+            double finalDamage = damage;
+            if (isHeadshot(target, hitPoint)) {
+                finalDamage *= 1.5; // 🔥 1.5x multiplier for headshots
+            }
+            applyDamage(player, target, finalDamage, pierceStat);
+            if(target instanceof Player) {
+                if(target.isDead()) {
+                    new BukkitRunnable() {
+                        float pitch = 1.2f;
+                        int count = 0;
+                        @Override
+                        public void run() {
+                            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, pitch);
+                            pitch += 0.3f;
+                            count++;
+                            if(count >= 4) cancel();
+                        }
+                    }.runTaskTimer(GunsAndGadgets.getInstance(), 0L, 2L);
+                } else {
+                    player.playSound(player.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1f, 1f);
+                }
+            }
+            return true; // ✅ stop projectile
+        }
+
         return false;
+    }
+
+    private static ActiveVehicle vehicleFor(Entity entity) {
+        if (!Bukkit.getPluginManager().isPluginEnabled("VehicleFramework")) {
+            return null;
+        }
+        return VehicleFramework.getVehicleManager().get(entity);
     }
 
     private static boolean isBulletPassable(Block block) {

@@ -43,7 +43,7 @@ public class StatApplier {
         }
 
         // Append a "Stats:" header if not already present
-        if (lore.stream().anyMatch(l -> l.contains("Stats:"))) {
+        if (lore.stream().noneMatch(l -> l.contains("Stats:"))) {
             lore.add("");
             lore.add(StringFormatter.formatHex("#b38e88§lStats:"));
         }

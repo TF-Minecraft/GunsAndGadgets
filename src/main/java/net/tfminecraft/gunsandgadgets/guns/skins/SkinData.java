@@ -65,21 +65,12 @@ public class SkinData {
     }
 
     public ItemStack parseModel(SkinState state) {
-        String path = null;
-        switch (state) {
-            case AIM:
-                path = aim;
-                break;
-            case CARRY:
-                path = carry;
-                break;
-            case RELOAD:
-                path = reload;
-                break;
-            default:
-                break;
-        }
-        if (path == null || path.isEmpty()) {
+        String path = switch (state) {
+            case AIM -> aim;
+            case CARRY -> carry;
+            case RELOAD -> reload;
+        };
+        if (path.isEmpty()) {
             return new ItemStack(Material.BARRIER);
         }
 

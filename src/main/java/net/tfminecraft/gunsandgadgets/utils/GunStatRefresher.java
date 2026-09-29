@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -64,6 +65,9 @@ public final class GunStatRefresher {
         }
 
         ItemStack rebuilt = new InventoryManager().rebuildFromParts(item, type, resolved.live());
+        if (rebuilt == null || rebuilt.getType().isAir() || rebuilt.getType() == Material.BARRIER) {
+            return RefreshResult.failed("gun rebuild produced no usable item; check skin and item configuration");
+        }
         rebuilt.setAmount(item.getAmount());
         provenance.syncRevisions();
         provenance.applyTo(rebuilt);
@@ -76,7 +80,8 @@ public final class GunStatRefresher {
             return RefreshResult.unchanged();
         }
         GunCraftProvenance provenance = GunCraftProvenance.readFrom(item);
-        if (provenance == null || !provenance.isOutdated()) {
+        // isManaged already read valid provenance from this unchanged item.
+        if (!provenance.isOutdated()) {
             return RefreshResult.unchanged();
         }
         return refresh(item, false);
@@ -95,18 +100,14 @@ public final class GunStatRefresher {
     }
 
     private static String readGunId(ItemStack item) {
-        if (!item.hasItemMeta()) {
-            return null;
-        }
+        // Called only after refresh has successfully read item provenance.
         return item.getItemMeta().getPersistentDataContainer().get(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "gun_id"),
                 PersistentDataType.STRING);
     }
 
     private static GunType readGunType(ItemStack item) {
-        if (!item.hasItemMeta()) {
-            return null;
-        }
+        // Called only after refresh has successfully read item provenance.
         ItemMeta meta = item.getItemMeta();
         NamespacedKey typeKey = new NamespacedKey(GunsAndGadgets.getInstance(), "gun_type");
         String typeStr = meta.getPersistentDataContainer().get(typeKey, PersistentDataType.STRING);
