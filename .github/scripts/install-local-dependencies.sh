@@ -16,3 +16,11 @@ mvn -B --no-transfer-progress org.apache.maven.plugins:maven-install-plugin:3.1.
 mvn -B --no-transfer-progress org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
     -Dfile="libs/MythicLib-1.7.1-SNAPSHOT.jar" -DgroupId="local" -DartifactId="MythicLib" \
     -Dversion="1.7.1-SNAPSHOT-tfmc-225aa7f75d4e" -Dpackaging=jar -DgeneratePom=true "$@"
+
+mvn -B --no-transfer-progress org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+    -Dfile="libs/NBTAPI-2.16.1.jar" -DgroupId="local" -DartifactId="item-nbt-api-plugin" \
+    -Dversion="2.16.1-tfmc-c571502e7686" -Dpackaging=jar -DgeneratePom=true "$@"
+
+mvn -B --no-transfer-progress org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+    -Dfile="libs/ModelEngine-R4.1.1.jar" -DgroupId="local" -DartifactId="ModelEngine" \
+    -Dversion="R4.1.1-tfmc-44ee292392dd" -Dpackaging=jar -DgeneratePom=true "$@"

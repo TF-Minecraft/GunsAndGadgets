@@ -67,8 +67,11 @@ public class GunPart {
             if (split.length == 2) {
                 Stats stat = Stats.fromKey(split[0]);
                 if (stat != null) {
-                    int value = Integer.parseInt(split[1]);
-                    stats.put(stat, value); // now stats map is <Stats, Integer>
+                    try {
+                        stats.put(stat, Integer.parseInt(split[1]));
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid stat value for part " + id + ": " + s);
+                    }
                 }
             }
 

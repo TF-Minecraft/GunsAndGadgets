@@ -30,7 +30,7 @@ public final class ImpactVfx {
 		World world = inside.getWorld();
 		Location start = inside.clone().subtract(dir.clone().multiply(1.5));
 		RayTraceResult result = world.rayTraceBlocks(start, dir, 3.0, FluidCollisionMode.NEVER, true);
-		if (result != null && result.getHitPosition() != null) {
+		if (result != null) {
 			Location hit = result.getHitPosition().toLocation(world);
 			Vector outward = surfaceOffset(dir, result.getHitBlockFace() == null
 					? null

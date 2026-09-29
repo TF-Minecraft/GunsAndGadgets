@@ -34,9 +34,9 @@ public class SkinResolver {
             String bestId = votes.entrySet().stream()
                     .max(Comparator.comparingInt(Map.Entry::getValue))
                     .map(Map.Entry::getKey)
-                    .orElse(null);
+                    .orElseThrow();
 
-            if (bestId != null && skins.containsKey(bestId)) {
+            if (skins.containsKey(bestId)) {
                 return skins.get(bestId);
             }
         }

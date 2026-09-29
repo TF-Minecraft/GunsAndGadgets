@@ -69,7 +69,7 @@ public class InventoryManager implements Listener {
         // background
         ItemStack filler = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = filler.getItemMeta();
-        if (meta != null) { meta.setDisplayName("§o"); filler.setItemMeta(meta); }
+        meta.setDisplayName("§o"); filler.setItemMeta(meta);
         for (int i = 0; i < inv.getSize(); i++) inv.setItem(i, filler);
 
         // type button
@@ -91,10 +91,8 @@ public class InventoryManager implements Listener {
                 // ❌ No valid part (permission or none exist) → barrier
                 ItemStack barrier = new ItemStack(Material.BARRIER);
                 ItemMeta bm = barrier.getItemMeta();
-                if (bm != null) {
-                    bm.setDisplayName("§cNo Part");
-                    barrier.setItemMeta(bm);
-                }
+                bm.setDisplayName("§cNo Part");
+                barrier.setItemMeta(bm);
                 inv.setItem(slot, barrier);
             }
 
@@ -114,11 +112,9 @@ public class InventoryManager implements Listener {
         for (GunType type : GunType.values()) {
             ItemStack item = new ItemStack(Material.PAPER);
             ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName("§e" + type.getDisplayName());
-                meta.setLore(List.of("§7Click to choose this type"));
-                item.setItemMeta(meta);
-            }
+            meta.setDisplayName("§e" + type.getDisplayName());
+            meta.setLore(List.of("§7Click to choose this type"));
+            item.setItemMeta(meta);
             typeInv.setItem(slot++, item);
         }
         player.openInventory(typeInv);
@@ -147,10 +143,8 @@ public class InventoryManager implements Listener {
             // ❌ No available parts → show barrier
             ItemStack barrier = new ItemStack(Material.BARRIER);
             ItemMeta bm = barrier.getItemMeta();
-            if (bm != null) {
-                bm.setDisplayName("§cNo Part");
-                barrier.setItemMeta(bm);
-            }
+            bm.setDisplayName("§cNo Part");
+            barrier.setItemMeta(bm);
             inv.setItem(size / 2, barrier);
         } else {
             for (GunPart part : options) {
@@ -162,7 +156,7 @@ public class InventoryManager implements Listener {
         // optional: back button
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta bm = back.getItemMeta();
-        if (bm != null) { bm.setDisplayName("§eBack"); back.setItemMeta(bm); }
+        bm.setDisplayName("§eBack"); back.setItemMeta(bm);
         inv.setItem(size - 1, back);
 
         player.openInventory(inv);
@@ -220,13 +214,11 @@ public class InventoryManager implements Listener {
     private ItemStack createWeaponTypeButton(GunType type) {
         ItemStack item = new ItemStack(Material.NETHER_STAR); // placeholder icon
         ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName("§6Select Type: §e" + type.getDisplayName());
-            List<String> lore = new ArrayList<>();
-            lore.add("§7Click to change weapon type");
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-        }
+        meta.setDisplayName("§6Select Type: §e" + type.getDisplayName());
+        List<String> lore = new ArrayList<>();
+        lore.add("§7Click to change weapon type");
+        meta.setLore(lore);
+        item.setItemMeta(meta);
         return item;
     }
 
@@ -270,7 +262,7 @@ public class InventoryManager implements Listener {
         Set<String> intersection = null;
         for (GunPart part : parts) {
             List<String> reqs = part.getClassRequirements();
-            if (reqs == null || reqs.isEmpty()) continue;
+            if (reqs.isEmpty()) continue;
             if (intersection == null) {
                 intersection = new HashSet<>(reqs);
             } else {
@@ -292,7 +284,7 @@ public class InventoryManager implements Listener {
         player.sendMessage("§cClass conflict! These parts have incompatible class requirements:");
         for (GunPart part : parts) {
             List<String> reqs = part.getClassRequirements();
-            if (reqs != null && !reqs.isEmpty()) {
+            if (!reqs.isEmpty()) {
                 player.sendMessage("§7  " + part.getName() + "§c: §7" + String.join("§c, §7", reqs));
             }
         }
@@ -321,7 +313,7 @@ public class InventoryManager implements Listener {
         // null = conflict (no valid class intersection) → skip applying class
         if (classes == null || classes.isEmpty()) return item;
 
-        if (NBTItem.get(item).hasType() && !classes.isEmpty()) {
+        if (NBTItem.get(item).hasType()) {
             LiveMMOItem mmo = new LiveMMOItem(NBTItem.get(item));
 
             // Convert back to list for MMOItems data
@@ -356,10 +348,8 @@ public class InventoryManager implements Listener {
             if (part.isDisabled()) {
                 ItemStack barrier = new ItemStack(Material.BARRIER);
                 ItemMeta bm = barrier.getItemMeta();
-                if (bm != null) {
-                    bm.setDisplayName("§cPart no longer available");
-                    barrier.setItemMeta(bm);
-                }
+                bm.setDisplayName("§cPart no longer available");
+                barrier.setItemMeta(bm);
                 return barrier;
             }
         }
@@ -377,10 +367,8 @@ public class InventoryManager implements Listener {
                     // ❌ Missing at least one part → return barrier
                     ItemStack barrier = new ItemStack(Material.BARRIER);
                     ItemMeta bm = barrier.getItemMeta();
-                    if (bm != null) {
-                        bm.setDisplayName("§cNot enough parts");
-                        barrier.setItemMeta(bm);
-                    }
+                    bm.setDisplayName("§cNot enough parts");
+                    barrier.setItemMeta(bm);
                     return barrier;
                 }
             }
@@ -388,6 +376,13 @@ public class InventoryManager implements Listener {
         // Resolve skin
         SkinResolver resolver = new SkinResolver(SkinLoader.get());
         SkinData skin = resolver.resolve(type, parts);
+        if (skin == null) {
+            ItemStack unavailable = new ItemStack(Material.BARRIER);
+            ItemMeta unavailableMeta = unavailable.getItemMeta();
+            unavailableMeta.setDisplayName("§cNo compatible skin");
+            unavailable.setItemMeta(unavailableMeta);
+            return unavailable;
+        }
 
         // Base item
         ItemStack base = TLibs.getItemAPI().getCreator().getItemFromPath(Cache.outputItems.getOrDefault(type, "v.stick"));
@@ -405,7 +400,6 @@ public class InventoryManager implements Listener {
         ItemMeta meta = base.getItemMeta();
         if (meta != null) {
             if (!ItemSkinPreserver.hasSkinData(skinItem)
-                    && skinItem.getItemMeta() != null
                     && LegacyModelData.has(skinItem.getItemMeta())) {
                 LegacyModelData.set(meta, LegacyModelData.get(skinItem.getItemMeta()));
             }
@@ -499,7 +493,7 @@ public class InventoryManager implements Listener {
     }
 
     private void copyRuntimeAmmoPdc(ItemStack from, ItemStack to) {
-        if (from == null || to == null || !from.hasItemMeta() || !to.hasItemMeta()) {
+        if (to == null || !from.hasItemMeta() || !to.hasItemMeta()) {
             return;
         }
         ItemMeta fromMeta = from.getItemMeta();
@@ -608,7 +602,7 @@ public class InventoryManager implements Listener {
         for (GunPart part : parts) {
             if (part.getCaliberOverrides() != null && !part.getCaliberOverrides().isEmpty()) {
                 overrides.addAll(part.getCaliberOverrides());
-            } else if (part.getCalibers() != null && !part.getCalibers().isEmpty()) {
+            } else if (!part.getCalibers().isEmpty()) {
                 normal.addAll(part.getCalibers());
             }
         }
@@ -653,19 +647,19 @@ public class InventoryManager implements Listener {
 
         if (part.hasTier()) {
             lore.add(TierLore.formatComponentLine(part.getTier()));
-            if (part.getLore() != null && !part.getLore().isEmpty()) {
+            if (!part.getLore().isEmpty()) {
                 lore.add("");
             }
         }
 
-        if (part.getLore() != null && !part.getLore().isEmpty()) {
+        if (!part.getLore().isEmpty()) {
             for (String line : part.getLore()) {
                 lore.add(StringFormatter.formatHex(line));
             }
         }
 
         // Add stats
-        if (part.getStats() != null && !part.getStats().isEmpty()) {
+        if (!part.getStats().isEmpty()) {
             lore.add(""); // spacer line
             lore.add(StringFormatter.formatHex("#b38e88§lStats:"));
 
@@ -747,13 +741,13 @@ public class InventoryManager implements Listener {
             if (clicked == null || !clicked.hasItemMeta()) return;
 
             String name = clicked.getItemMeta().getDisplayName();
-            if (name != null && name.equals("§eBack")) {
+            if (name.equals("§eBack")) {
                 openCraftingInventory(player);
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
                 return;
             }
 
-            String clean = name == null ? "" : name.replace("§e", "").trim();
+            String clean = name.replace("§e", "").trim();
             for (GunType type : GunType.values()) {
                 if (type.getDisplayName().equalsIgnoreCase(clean)) {
                     TypeSelectionManager.setSelectedType(player, type);
@@ -794,7 +788,7 @@ public class InventoryManager implements Listener {
 
     private boolean hasPermissionForPart(Player player, GunPart part) {
         if(!Cache.requireInput) return true; //tutorial setup
-        if (part.getPermissions() == null || part.getPermissions().isEmpty()) return true;
+        if (part.getPermissions().isEmpty()) return true;
         for (String perm : part.getPermissions()) {
             if (player.hasPermission(perm)) return true;
         }
