@@ -152,10 +152,23 @@ sound-overrides: ['shoot override(pistol)']
     assertEquals(10, StatCalculator.calculateReloadTicks(100));
     assertEquals(40, StatCalculator.calculateAccuracy(-100));
     assertEquals(25, StatCalculator.calculateAccuracy(0));
-    assertEquals(4.5, StatCalculator.calculateAccuracy(1));
+    assertEquals(20.5, StatCalculator.calculateAccuracy(1));
     assertEquals(2.5, StatCalculator.calculateAccuracy(5));
     assertEquals(1.2, StatCalculator.calculateAccuracy(20));
     assertEquals(.07, StatCalculator.calculateAccuracy(30), 1e-9);
+    assertEquals(40, StatCalculator.calculateAccuracy(-10));
+    assertEquals(40, StatCalculator.calculateAccuracy(Integer.MIN_VALUE));
+    assertEquals(.07, StatCalculator.calculateAccuracy(31), 1e-9);
+    assertEquals(.07, StatCalculator.calculateAccuracy(Integer.MAX_VALUE), 1e-9);
+    for (int accuracy = 0; accuracy <= 5; accuracy++) {
+      assertEquals(25 - 4.5 * accuracy, StatCalculator.calculateAccuracy(accuracy), 1e-9);
+    }
+    double previousSpread = 40;
+    for (int accuracy = -10; accuracy <= 100; accuracy++) {
+      double spread = StatCalculator.calculateAccuracy(accuracy);
+      assertTrue(spread >= .07 - 1e-9 && spread <= previousSpread + 1e-9);
+      previousSpread = spread;
+    }
     assertEquals(4, StatCalculator.calculateFireRate(-30));
     assertEquals(1, StatCalculator.calculateFireRate(0));
     assertEquals(.5, StatCalculator.calculateFireRate(10));

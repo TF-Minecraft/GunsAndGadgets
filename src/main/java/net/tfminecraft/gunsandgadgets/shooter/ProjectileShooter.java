@@ -234,7 +234,7 @@ public class ProjectileShooter {
                 double scale = Math.max(0, 1 - (dist / radius)); // closer = more damage
                 double finalDamage = damage * 2 * scale * timeScale;
                 if(le instanceof Player) {
-                    if(((Player) le).equals(shooter)) finalDamage *= damage * 2 * scale; // shooter takes full damage (no time reduction) to encourage smart use of cover and timing with rockets
+                    if(((Player) le).equals(shooter)) finalDamage = damage * 2 * scale; // shooter takes full damage (no time reduction) to encourage smart use of cover and timing with rockets
                 }
                 applyDamage(shooter, le, finalDamage, pierceStat);
             }
@@ -541,13 +541,12 @@ public class ProjectileShooter {
 
     public static void applyDamage(Player attacker, LivingEntity target, double baseDamage, int pierceStat) {
         // --- Step 1: Calculate piercing portion ---
-        double piercePercent = Math.min(1.0, pierceStat / 20.0); // 0 → 0%, 20 → 100%
+        double piercePercent = Math.max(0.0, Math.min(1.0, pierceStat / 20.0)); // 0 → 0%, 20 → 100%
         double pierceDamage = baseDamage * piercePercent;
         double normalDamage = baseDamage - pierceDamage;
 
         // --- Step 2: Apply pierce directly (ignores reduction) ---
         if (pierceDamage > 0) {
-            if(pierceDamage > target.getHealth()) pierceDamage = target.getHealth()-0.1;
             target.damage(pierceDamage); // vanilla direct damage
         }
 

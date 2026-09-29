@@ -16,19 +16,19 @@ public class StatCalculator {
         if (accuracyStat <= 0) {
             // Bad accuracy → exponential penalty
             double maxSpread = 25.0;
-            double penaltyFactor = Math.pow(1.1, -accuracyStat); // grows fast as negative
+            double penaltyFactor = Math.pow(1.1, -(double) accuracyStat); // grows fast as negative
             return Math.min(maxSpread * penaltyFactor, 40.0);    // hard cap
         }
 
         if (accuracyStat <= 5) {
-            // 0 → 5° down to 5 → 2.5°
-            return lerp(accuracyStat, 0, 5, 5.0, 2.5);
+            // Continue smoothly from 0 → 25° down to 5 → 2.5°
+            return lerp(accuracyStat, 0, 5, 25.0, 2.5);
         } else if (accuracyStat <= 20) {
             // 5 → 2.5° down to 20 → 1.2°
             return lerp(accuracyStat, 5, 20, 2.5, 1.2);
         } else {
             // 20 → 1.2° down to 30 → 0.07°
-            return lerp(accuracyStat, 20, 30, 1.2, 0.07);
+            return lerp(Math.min(30, accuracyStat), 20, 30, 1.2, 0.07);
         }
     }
 

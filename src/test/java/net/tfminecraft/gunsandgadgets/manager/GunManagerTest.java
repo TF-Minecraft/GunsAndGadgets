@@ -229,6 +229,7 @@ class GunManagerTest {
     player.getInventory().setItemInMainHand(held);
     server.getScheduler().performTicks(12);
     assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
   }
 
   @Test
@@ -374,7 +375,7 @@ class GunManagerTest {
       use();
       shooter.verifyNoInteractions();
     }
-    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(1, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
   }
 
   @Test
@@ -644,25 +645,28 @@ class GunManagerTest {
     use();
     player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
     server.getScheduler().performTicks(12);
-    assertEquals(Material.AIR, player.getInventory().getItemInMainHand().getType());
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
   }
 
   @Test
-  void slotChangeWithDeletedReloadSkinDoesNotCrash() {
+  void slotChangeWithDeletedReloadSkinRefundsReservedAmmo() {
     use();
     SkinLoader.clear();
     manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2));
     server.getScheduler().performTicks(12);
     assertEquals(0, readInt(player.getInventory().getItem(0), "bullets_loaded"));
+    assertEquals(0, readInt(player.getInventory().getItem(0), "reload_amount"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
   }
 
   @Test
-  void slotChangeWithDeletedAmmoStillClearsPendingReservation() {
+  void slotChangeWithDeletedAmmoRefundsOriginalItemsAndClearsReservation() {
     use();
     AmmunitionLoader.clear();
     manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2));
     server.getScheduler().performTicks(12);
     assertEquals(0, readInt(player.getInventory().getItem(0), "reload_amount"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
   }
 
   @Test
@@ -672,12 +676,14 @@ class GunManagerTest {
       var m = other.getItemMeta();
       m.getPersistentDataContainer().set(key("gun_id"), PersistentDataType.STRING, "other-" + slot);
       m.getPersistentDataContainer().set(key("bullets_loaded"), PersistentDataType.INTEGER, 2);
+      m.getPersistentDataContainer().set(key("ammo_loaded"), PersistentDataType.STRING, "shot");
       if (slot == 2) m.getPersistentDataContainer().remove(key("skin_id"));
       else if (slot == 3)
         m.getPersistentDataContainer().set(key("skin_id"), PersistentDataType.STRING, "deleted");
       else if (slot == 4)
         m.getPersistentDataContainer()
             .set(key("ammo_loaded"), PersistentDataType.STRING, "deleted");
+      else if (slot == 5) m.getPersistentDataContainer().remove(key("ammo_loaded"));
       other.setItemMeta(m);
       player.getInventory().setItem(slot, other);
     }
@@ -688,7 +694,74 @@ class GunManagerTest {
       use();
     }
     for (int slot = 2; slot <= 5; slot++)
-      assertEquals(0, readInt(player.getInventory().getItem(slot), "bullets_loaded"));
+      assertEquals(
+          slot <= 3 ? 0 : 2, readInt(player.getInventory().getItem(slot), "bullets_loaded"));
+    assertEquals(9, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void obsoleteTaskCannotCancelANewReload() {
+    use();
+    server.getScheduler().performTicks(5);
+    manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2));
+    gun = player.getInventory().getItemInMainHand().clone();
+    set("gun_id", "new-reload");
+    player.getInventory().setItemInMainHand(gun);
+    use();
+    server.getScheduler().performTicks(12);
+    assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+    // Successful completion discards reservation snapshots; a later slot change cannot refund
+    // again.
+    manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2));
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void unavailableRefundItemLeavesOtherGunLoaded() {
+    var other = gun.clone();
+    var meta = other.getItemMeta();
+    meta.getPersistentDataContainer().set(key("gun_id"), PersistentDataType.STRING, "other");
+    meta.getPersistentDataContainer().set(key("bullets_loaded"), PersistentDataType.INTEGER, 2);
+    meta.getPersistentDataContainer().set(key("ammo_loaded"), PersistentDataType.STRING, "shot");
+    other.setItemMeta(meta);
+    player.getInventory().setItem(2, other);
+    ItemAPI api = TLibs.getItemAPI();
+    try (var shooter = mockStatic(ProjectileShooter.class)) {
+      for (ItemStack invalid : Arrays.asList(null, new ItemStack(Material.AIR))) {
+        when(api.getCreator().getItemFromPath(anyString())).thenReturn(invalid);
+        setInt("bullets_loaded", 2);
+        set("ammo_loaded", "shot");
+        player.getInventory().setItemInMainHand(gun);
+        use();
+        assertEquals(2, readInt(player.getInventory().getItem(2), "bullets_loaded"));
+        assertEquals(5, player.getInventory().getItem(1).getAmount());
+      }
+    }
+  }
+
+  @Test
+  void cancellationPreservesExactReservedItemsAndDropsOverflowOnlyOnce() {
+    var ammo = new ItemStack(Material.IRON_NUGGET, 5);
+    var meta = ammo.getItemMeta();
+    meta.displayName(net.kyori.adventure.text.Component.text("Special ammunition"));
+    ammo.setItemMeta(meta);
+    player.getInventory().setItem(1, ammo);
+    use();
+    for (int slot = 1; slot < player.getInventory().getSize(); slot++)
+      player.getInventory().setItem(slot, new ItemStack(Material.DIRT, 64));
+    SkinLoader.clear();
+    AmmunitionLoader.clear();
+    var change = new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2);
+    manager.onSlotChange(change);
+    manager.onSlotChange(change);
+    server.getScheduler().performTicks(12);
+    var drops = player.getWorld().getEntitiesByClass(org.bukkit.entity.Item.class);
+    assertEquals(1, drops.size());
+    ItemStack refund = drops.iterator().next().getItemStack();
+    assertEquals(3, refund.getAmount());
+    assertTrue(ammo.isSimilar(refund));
+    assertEquals(0, readInt(player.getInventory().getItem(0), "reload_amount"));
   }
 
   @Test
@@ -743,14 +816,41 @@ class GunManagerTest {
   }
 
   @Test
-  void crossbowWithUnknownLoadedAmmoStillMaintainsChargeDisplay() {
+  void crossbowReloadKeepsConsumedAmmoWhenDefinitionDisappearsBeforeCompletion() {
+    gun.setType(Material.CROSSBOW);
+    player.getInventory().setItemInMainHand(gun);
+    use();
+    AmmunitionLoader.clear();
+    server.getScheduler().performTicks(12);
+    var loaded = player.getInventory().getItemInMainHand();
+    assertEquals(3, readInt(loaded, "bullets_loaded"));
+    assertEquals(
+        "shot",
+        loaded
+            .getItemMeta()
+            .getPersistentDataContainer()
+            .get(key("ammo_loaded"), PersistentDataType.STRING));
+    assertEquals(
+        1,
+        ((org.bukkit.inventory.meta.CrossbowMeta) loaded.getItemMeta())
+            .getChargedProjectiles()
+            .size());
+    use();
+    assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(player, 0, 2));
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void crossbowWithUnknownLoadedAmmoPreservesLoadedState() {
     gun.setType(Material.CROSSBOW);
     setInt("bullets_loaded", 2);
     set("ammo_loaded", "removed");
     player.getInventory().setItemInMainHand(gun);
     use();
+    assertEquals(2, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
     assertEquals(
-        1,
+        0,
         ((org.bukkit.inventory.meta.CrossbowMeta)
                 player.getInventory().getItemInMainHand().getItemMeta())
             .getChargedProjectiles()
@@ -786,7 +886,7 @@ class GunManagerTest {
     method.setAccessible(true);
     method.invoke(manager, p, gun);
     verify(inventory, never()).addItem(any(ItemStack.class));
-    assertEquals(0, readInt(other, "bullets_loaded"));
+    assertEquals(-1, readInt(other, "bullets_loaded"));
   }
 
   @Test
@@ -827,7 +927,7 @@ class GunManagerTest {
       when(inventory.getItem(2)).thenReturn(mock(ItemStack.class));
       manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(p, 0, 2));
       server.getScheduler().performTicks(1);
-      verify(inventory, never()).addItem(any(ItemStack.class));
+      verify(inventory).addItem(new ItemStack(Material.IRON_NUGGET, 3));
       server.getScheduler().cancelTasks(plugin);
     }
   }

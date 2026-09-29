@@ -450,21 +450,23 @@ class ProjectileShooterTest {
       ProjectileShooter.applyDamage(player, target, 10, 0);
       ProjectileShooter.applyDamage(player, target, 10, 10);
       ProjectileShooter.applyDamage(player, target, 10, 20);
-      assertEquals(List.of(10.0, 5.0), normalAmounts);
+      ProjectileShooter.applyDamage(player, target, 10, -20);
+      ProjectileShooter.applyDamage(player, target, 10, 40);
+      assertEquals(List.of(10.0, 5.0, 10.0), normalAmounts);
       verify(target).damage(5);
-      verify(target).damage(10);
-      verify(mythic.getDamage(), times(2)).registerAttack(any(), eq(false), eq(true));
+      verify(target, times(2)).damage(10);
+      verify(mythic.getDamage(), times(3)).registerAttack(any(), eq(false), eq(true));
     } finally {
       io.lumine.mythic.lib.MythicLib.plugin = previous;
     }
   }
 
   @Test
-  void overkillPiercingCurrentlyPreservesOneTenthHealth() {
+  void overkillPiercingCanBeLethal() {
     var target = mock(LivingEntity.class);
     when(target.getHealth()).thenReturn(5.0);
     ProjectileShooter.applyDamage(player, target, 10, 20);
-    verify(target).damage(4.9);
+    verify(target).damage(10);
   }
 
   @Test
@@ -492,7 +494,34 @@ class ProjectileShooterTest {
     verify(near).damage(7.5);
     verify(far, never()).damage(anyDouble());
     verify(otherPlayer).damage(5);
-    verify(player).damage(200);
+    verify(player).damage(20);
+  }
+
+  @Test
+  void rocketSelfDamageIsLinearAndIgnoresArmingTime() throws Exception {
+    when(player.getLocation()).thenReturn(new Location(world, 0, 0, 4));
+    when(world.getNearbyEntities(any(Location.class), anyDouble(), anyDouble(), anyDouble()))
+        .thenReturn(List.of(player));
+    for (int ticks : new int[] {0, 10, 30}) {
+      call(
+          "explode",
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+          player,
+          new Location(world, 0, 0, 0),
+          10.0,
+          20,
+          ticks);
+    }
+    verify(player, times(3)).damage(10.0);
+    call(
+        "explode",
+        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+        player,
+        new Location(world, 0, 0, 0),
+        20.0,
+        20,
+        10);
+    verify(player).damage(20.0);
   }
 
   @Test
