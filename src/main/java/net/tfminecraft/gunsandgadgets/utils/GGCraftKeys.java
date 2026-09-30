@@ -16,6 +16,10 @@ public final class GGCraftKeys {
         return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_craft_parts");
     }
 
+    public static NamespacedKey craftInputs() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_craft_inputs");
+    }
+
     public static NamespacedKey partsRevision() {
         return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_parts_revision");
     }
