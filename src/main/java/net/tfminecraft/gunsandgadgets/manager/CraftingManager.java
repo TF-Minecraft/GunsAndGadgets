@@ -168,7 +168,10 @@ public class CraftingManager implements Listener {
                     if (toRemove <= 0) break;
                 }
             }
-            taken.put(entry.getKey(), entry.getValue() - toRemove);
+            int consumed = entry.getValue() - toRemove;
+            if (consumed > 0) {
+                taken.put(entry.getKey(), consumed);
+            }
         }
 
         p.updateInventory();

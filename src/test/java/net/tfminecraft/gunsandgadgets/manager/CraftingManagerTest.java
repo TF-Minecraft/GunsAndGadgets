@@ -236,6 +236,7 @@ class CraftingManagerTest {
     when(part.getCost()).thenReturn(Map.of("absent", 0));
     manager.onCraft(click);
     assertEquals(5, material.getAmount());
+    assertEquals(Map.of(), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
   }
 }
