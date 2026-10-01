@@ -145,7 +145,7 @@ class CraftingManagerTest {
     manager.onCraft(click);
     assertEquals(2, material.getAmount());
     verify(inventory, never()).addItem(any(ItemStack.class));
-    verify(player).sendMessage("§cLacking inputs");
+    verify(player).sendMessage("§cYou lack the materials for this weapon.");
   }
 
   @Test

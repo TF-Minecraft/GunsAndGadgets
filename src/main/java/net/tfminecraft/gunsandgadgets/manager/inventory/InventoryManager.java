@@ -281,7 +281,7 @@ public class InventoryManager implements Listener {
         Set<String> resolved = resolveClasses(parts);
         if (resolved != null) return false; // no conflict
 
-        player.sendMessage("§cClass conflict! These parts have incompatible class requirements:");
+        player.sendMessage("§cThese parts cannot go together. They are made for different callings:");
         for (GunPart part : parts) {
             List<String> reqs = part.getClassRequirements();
             if (!reqs.isEmpty()) {
@@ -379,7 +379,7 @@ public class InventoryManager implements Listener {
         if (skin == null) {
             ItemStack unavailable = new ItemStack(Material.BARRIER);
             ItemMeta unavailableMeta = unavailable.getItemMeta();
-            unavailableMeta.setDisplayName("§cNo compatible skin");
+            unavailableMeta.setDisplayName("§cNo known design fits these parts");
             unavailable.setItemMeta(unavailableMeta);
             return unavailable;
         }

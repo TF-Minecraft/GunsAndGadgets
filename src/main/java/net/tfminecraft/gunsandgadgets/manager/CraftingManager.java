@@ -85,7 +85,7 @@ public class CraftingManager implements Listener {
             }
 
             if(!hasInputs(player, parts)) {
-                player.sendMessage("§cLacking inputs");
+                player.sendMessage("§cYou lack the materials for this weapon.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
