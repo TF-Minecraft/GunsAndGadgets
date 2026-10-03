@@ -12,10 +12,10 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.proc>full</maven.compiler.proc>
+        <coreprotect.version>25.0.0</coreprotect.version>
         <mythiclib.jar>MythicLib-1.7.1-SNAPSHOT.jar</mythiclib.jar>
         <tlibs.version>2.0.0</tlibs.version>
         <vehicleframework.version>2.0.1</vehicleframework.version>
-        <coreprotect.version>25.0.0</coreprotect.version>
     </properties>
 
     <dependencies>
