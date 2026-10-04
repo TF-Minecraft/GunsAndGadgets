@@ -1,3 +1,6 @@
+# Permission required to spawn completed weapons; blank disables the command.
+give-permission: gunsandgadgets.give
+
 output-slot: 16
 
 outputs:

@@ -24,6 +24,7 @@ public class ConfigLoader {
         } catch (IOException | InvalidConfigurationException e) {
             e.printStackTrace();
         }
+        Cache.givePermission = config.getString("give-permission", "gunsandgadgets.give").trim();
         Cache.outputSlot = config.getInt("output-slot", 15);
         ConfigurationSection section = config.getConfigurationSection("outputs");
         if (section != null) {

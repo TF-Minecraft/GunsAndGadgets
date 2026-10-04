@@ -10,6 +10,8 @@ import net.tfminecraft.gunsandgadgets.attributes.AttributeData;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 
 public class Cache {
+    public static String givePermission = "gunsandgadgets.give";
+
     public static int outputSlot;
     public static HashMap<GunType, String> outputItems = new HashMap<>();
     public static String station;

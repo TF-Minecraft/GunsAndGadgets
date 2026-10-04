@@ -9,11 +9,12 @@ depend: [TLibs, MythicLib, MMOItems, MMOCore]
 commands:
   gg:
     description: GunsAndGadgets admin commands
-    usage: /<command> reload|refresh
-    permission: gunsandgadgets.reload
-    permission-message: You do not have permission to use GunsAndGadgets admin commands.
+    usage: /<command> reload|refresh|give
 
 permissions:
   gunsandgadgets.reload:
     description: Reload GunsAndGadgets configs (skins, parts, ammunition, config)
+    default: op
+  gunsandgadgets.give:
+    description: Give completed weapons (default give-permission)
     default: op
