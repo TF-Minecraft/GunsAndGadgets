@@ -22,8 +22,11 @@ public final class GgCommand implements CommandExecutor, TabCompleter {
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		if (args.length == 0) {
-			sender.sendMessage("§eUsage: /gg reload | /gg refresh");
+			sender.sendMessage("§eUsage: /gg reload | /gg refresh | /gg give <player> <type> <part> [part...]");
 			return true;
+		}
+		if ("give".equalsIgnoreCase(args[0])) {
+			return GunGiveCommand.execute(sender, args);
 		}
 		String sub = args[0].toLowerCase();
 		if (sub.equals("reload")) {
@@ -62,7 +65,7 @@ public final class GgCommand implements CommandExecutor, TabCompleter {
 			player.sendMessage("§aGun stats refreshed.");
 			return true;
 		}
-		sender.sendMessage("§eUsage: /gg reload | /gg refresh");
+		sender.sendMessage("§eUsage: /gg reload | /gg refresh | /gg give <player> <type> <part> [part...]");
 		return true;
 	}
 
@@ -73,13 +76,19 @@ public final class GgCommand implements CommandExecutor, TabCompleter {
 		String alias,
 		String[] args
 	) {
-		if (args.length == 1 && sender.hasPermission("gunsandgadgets.reload")) {
+		if (args.length > 0 && "give".equalsIgnoreCase(args[0])) {
+			return GunGiveCommand.complete(sender, args);
+		}
+		if (args.length == 1) {
 			String prefix = args[0].toLowerCase();
 			List<String> out = new ArrayList<>();
-			if ("reload".startsWith(prefix)) {
+			if (GunGiveCommand.allowed(sender) && "give".startsWith(prefix)) {
+				out.add("give");
+			}
+			if (sender.hasPermission("gunsandgadgets.reload") && "reload".startsWith(prefix)) {
 				out.add("reload");
 			}
-			if ("refresh".startsWith(prefix)) {
+			if (sender.hasPermission("gunsandgadgets.reload") && "refresh".startsWith(prefix)) {
 				out.add("refresh");
 			}
 			return out;

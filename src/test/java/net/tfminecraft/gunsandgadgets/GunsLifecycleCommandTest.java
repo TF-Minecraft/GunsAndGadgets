@@ -81,7 +81,7 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
     CommandSender sender = mock(CommandSender.class);
     execute(sender);
     execute(sender, "unknown");
-    verify(sender, times(2)).sendMessage("§eUsage: /gg reload | /gg refresh");
+    verify(sender, times(2)).sendMessage("§eUsage: /gg reload | /gg refresh | /gg give <player> <type> <part> [part...]");
     execute(sender, "reload");
     verify(plugin, never()).reload();
     verify(sender).sendMessage(contains("do not have permission to reload"));

@@ -17,6 +17,22 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 
 The assembly interface lets players inspect available components and the resulting weapon before completing a craft. Those choices continue to matter in combat through the gun's statistics, ammunition, and handling, making gunsmithing part of how a character prepares their equipment.
 
+## Staff gun commands
+
+`/gg give <player> <rifle|pistol|shotgun|launcher> <part> [part...]`
+
+Gives one completed, unloaded gun to an online player. Use part IDs from `parts.yml`
+and supply exactly one enabled, compatible part for every category in `required-parts`.
+The normal assembly builder applies stats, skins and provenance. Conflicting class
+requirements and invalid designs are rejected. No crafting materials are charged or
+recorded, and the recipient needs an empty inventory slot. Load ammunition normally.
+
+`give-permission` in `config.yml` defaults to `gunsandgadgets.give` (operators).
+Set it to your staff permission; a blank value disables giving. This permission is
+independent of `gunsandgadgets.reload`, which still gates reload and refresh.
+Reload configuration with `/gg reload`. Tab completion suggests recipients, types
+and configured part IDs.
+
 ## Documentation
 
 [Project documentation](https://github.com/TF-Minecraft/Docs/blob/main/projects/GunsAndGadgets/README.md)
