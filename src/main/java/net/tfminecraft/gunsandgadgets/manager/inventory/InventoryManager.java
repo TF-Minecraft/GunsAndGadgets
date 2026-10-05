@@ -454,6 +454,9 @@ public class InventoryManager implements Listener {
                         lore.add("§7• " + ammoKey);
                     }
                 }
+                if (calibers.size() > 1) {
+                    lore.add("§8Crouch and right-click to change shot");
+                }
 
                 // ✅ Save calibers in PDC
                 NamespacedKey calibersKey = new NamespacedKey(GunsAndGadgets.getInstance(), "calibers");
@@ -506,6 +509,7 @@ public class InventoryManager implements Listener {
         NamespacedKey reloadAmmoKey = new NamespacedKey(GunsAndGadgets.getInstance(), "reload_ammo");
         NamespacedKey reloadAmountKey = new NamespacedKey(GunsAndGadgets.getInstance(), "reload_amount");
         NamespacedKey lastFireKey = new NamespacedKey(GunsAndGadgets.getInstance(), "last_fire");
+        NamespacedKey selectedAmmoKey = new NamespacedKey(GunsAndGadgets.getInstance(), "ammo_selected");
 
         if (fromPdc.has(bulletsKey, PersistentDataType.INTEGER)) {
             toPdc.set(bulletsKey, PersistentDataType.INTEGER,
@@ -540,6 +544,13 @@ public class InventoryManager implements Listener {
                     fromPdc.getOrDefault(lastFireKey, PersistentDataType.LONG, 0L));
         } else {
             toPdc.remove(lastFireKey);
+        }
+
+        String selectedAmmo = fromPdc.get(selectedAmmoKey, PersistentDataType.STRING);
+        if (selectedAmmo != null) {
+            toPdc.set(selectedAmmoKey, PersistentDataType.STRING, selectedAmmo);
+        } else {
+            toPdc.remove(selectedAmmoKey);
         }
 
         to.setItemMeta(toMeta);
@@ -593,23 +604,23 @@ public class InventoryManager implements Listener {
 
     /**
      * Finds the calibers for the selected parts.
-     * If an override is present, uses the last override only.
+     * If an override is present, the last part with one supplies every caliber.
      */
     private List<String> resolveCalibers(Collection<GunPart> parts) {
-        List<String> overrides = new ArrayList<>();
+        List<String> override = null;
         List<String> normal = new ArrayList<>();
 
         for (GunPart part : parts) {
             if (part.getCaliberOverrides() != null && !part.getCaliberOverrides().isEmpty()) {
-                overrides.addAll(part.getCaliberOverrides());
+                override = part.getCaliberOverrides();
             } else if (!part.getCalibers().isEmpty()) {
                 normal.addAll(part.getCalibers());
             }
         }
 
-        if (!overrides.isEmpty()) {
-            // ✅ Only the last override matters
-            return List.of(overrides.get(overrides.size() - 1));
+        if (override != null) {
+            // ✅ Only the last override matters, with all of its calibers
+            return List.copyOf(override);
         }
         return normal;
     }

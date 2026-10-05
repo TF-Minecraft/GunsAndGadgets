@@ -25,6 +25,7 @@ import net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -52,6 +53,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import io.lumine.mythic.lib.api.item.NBTItem;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver;
 import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
@@ -72,10 +74,14 @@ public class GunManager implements Listener {
     private final NamespacedKey reloadAmmoKey = new NamespacedKey(GunsAndGadgets.getInstance(), "reload_ammo");
     private final NamespacedKey reloadAmountKey = new NamespacedKey(GunsAndGadgets.getInstance(), "reload_amount");
     private final NamespacedKey loadedAmmoKey = new NamespacedKey(GunsAndGadgets.getInstance(), "ammo_loaded");
+    // Ammunition the player picked for the next reload; absent means the first carried caliber.
+    private final NamespacedKey selectedAmmoKey = new NamespacedKey(GunsAndGadgets.getInstance(), "ammo_selected");
 
     private final Map<UUID, Boolean> reloading = new HashMap<>();
     // Preserve the exact inputs through config reloads, including their item metadata.
     private final Map<UUID, Collection<ItemStack>> reloadRefunds = new HashMap<>();
+    // Clicking a block fires the interact event for each hand; switch ammo once per click.
+    private final Map<UUID, Integer> lastAmmoSwitchTick = new HashMap<>();
 
     @EventHandler
     public void preventOldMuskets(UntargetedWeaponUseEvent e) {
@@ -157,6 +163,13 @@ public class GunManager implements Listener {
         if (reloading.getOrDefault(id, false)) {
             return;
         }
+        if (player.isSneaking()) {
+            Integer tick = Bukkit.getCurrentTick();
+            if (!tick.equals(lastAmmoSwitchTick.put(id, tick))) {
+                cycleAmmo(player, item);
+            }
+            return;
+        }
         reloading.put(id, true);
 
         SkinData skin = SkinLoader.get().get(skinId);
@@ -227,10 +240,15 @@ public class GunManager implements Listener {
         .getOrDefault(capacityKey, PersistentDataType.INTEGER, 1);
 
         // 🔫 Try to consume ammo before reload
-        Collection<Ammunition> calibers = Caliber.get(item); // your helper from before
-        String taken = takeAmmo(player, capacity, calibers);
+        List<Ammunition> calibers = Caliber.get(item); // your helper from before
+        Ammunition selected = getSelectedAmmo(meta, calibers);
+        String taken = takeAmmo(player, capacity, selected == null ? calibers : List.of(selected));
 
         if (taken.equals("none")) {
+            if (selected != null) {
+                sendActionBar(player, "§cYou have no " + getAmmoName(selected)
+                        + "§c left. Crouch and right-click to choose another.");
+            }
             reloading.remove(id);
             return;
         }
@@ -239,6 +257,9 @@ public class GunManager implements Listener {
         String[] split = taken.split("\\.");
         String ammoId = split[0];
         int takenAmount = Integer.parseInt(split[1]);
+        if (calibers.size() > 1) {
+            sendActionBar(player, "§7Loading " + getAmmoName(AmmunitionLoader.getByString(ammoId)));
+        }
 
         // Save ammo info in PDC (for refund or finalize)
         meta.getPersistentDataContainer().set(reloadAmmoKey, PersistentDataType.STRING, ammoId);
@@ -585,17 +606,8 @@ public class GunManager implements Listener {
     private String takeAmmo(Player p, int amount, Collection<Ammunition> calibers) {
         if (amount <= 0) return "none";
         for (Ammunition ammo : calibers) {
-            int totalFound = 0;
-            java.util.List<ItemStack> matchingStacks = new ArrayList<>();
-
-            // Count how many of this ammo we have
-            for (ItemStack item : p.getInventory().getContents()) {
-                if (item == null) continue;
-                if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, ammo.getInput())) {
-                    totalFound += item.getAmount();
-                    matchingStacks.add(item);
-                }
-            }
+            java.util.List<ItemStack> matchingStacks = findAmmo(p, ammo);
+            int totalFound = countStacks(matchingStacks);
 
             if (totalFound > 0) {
                 // Take min(capacity, found)
@@ -607,6 +619,76 @@ public class GunManager implements Listener {
 
         // ❌ No ammo found in any caliber
         return "none";
+    }
+
+    /** Stacks of this ammunition in the player's inventory, in slot order. */
+    private java.util.List<ItemStack> findAmmo(Player p, Ammunition ammo) {
+        java.util.List<ItemStack> matchingStacks = new ArrayList<>();
+        for (ItemStack item : p.getInventory().getContents()) {
+            if (item == null) continue;
+            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, ammo.getInput())) {
+                matchingStacks.add(item);
+            }
+        }
+        return matchingStacks;
+    }
+
+    private int countStacks(java.util.List<ItemStack> stacks) {
+        int total = 0;
+        for (ItemStack item : stacks) total += item.getAmount();
+        return total;
+    }
+
+    /** The player's pick for the next reload, or null when unset or no longer a caliber of this gun. */
+    private Ammunition getSelectedAmmo(ItemMeta meta, List<Ammunition> calibers) {
+        String selectedId = meta.getPersistentDataContainer().get(selectedAmmoKey, PersistentDataType.STRING);
+        for (Ammunition ammo : calibers) {
+            if (ammo.getKey().equals(selectedId)) return ammo;
+        }
+        return null;
+    }
+
+    /**
+     * Crouch + right-click: pick the next caliber the player carries for the next reload.
+     * Bullets already loaded stay loaded.
+     */
+    private void cycleAmmo(Player player, ItemStack item) {
+        List<Ammunition> calibers = Caliber.get(item);
+        List<Ammunition> carried = new ArrayList<>();
+        for (Ammunition ammo : calibers) {
+            if (countStacks(findAmmo(player, ammo)) > 0) carried.add(ammo);
+        }
+        if (carried.isEmpty()) {
+            sendActionBar(player, "§cYou carry no shot this weapon can fire.");
+            return;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        Ammunition current = getSelectedAmmo(meta, calibers);
+        // Without a pick, reloads use the first carried caliber, so step past that one.
+        int index = calibers.indexOf(current != null ? current : carried.get(0));
+        Ammunition next;
+        do {
+            index = (index + 1) % calibers.size();
+            next = calibers.get(index);
+        } while (!carried.contains(next));
+
+        meta.getPersistentDataContainer().set(selectedAmmoKey, PersistentDataType.STRING, next.getKey());
+        item.setItemMeta(meta);
+        player.getInventory().setItemInMainHand(item);
+        sendActionBar(player, "§7Next load: " + getAmmoName(next)
+                + " §8(" + countStacks(findAmmo(player, next)) + " carried)");
+        player.playSound(player.getLocation(), Sound.BLOCK_LEVER_CLICK, 1f, 1.5f);
+    }
+
+    // Keep the existing legacy text representation of ammunition item names.
+    @SuppressWarnings("deprecation")
+    private String getAmmoName(Ammunition ammo) {
+        return StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(ammo.getInput()));
+    }
+
+    private void sendActionBar(Player player, String legacyText) {
+        player.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(legacyText));
     }
 
 

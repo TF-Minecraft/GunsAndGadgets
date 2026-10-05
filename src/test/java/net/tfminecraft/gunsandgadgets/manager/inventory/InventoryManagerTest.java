@@ -228,6 +228,7 @@ class InventoryManagerTest {
     p.set(key("reload_ammo"), PersistentDataType.STRING, "shot");
     p.set(key("reload_amount"), PersistentDataType.INTEGER, 2);
     p.set(key("last_fire"), PersistentDataType.LONG, 123L);
+    p.set(key("ammo_selected"), PersistentDataType.STRING, "steel");
     previous.setItemMeta(m);
     var rebuilt = manager.rebuildFromParts(previous, GunType.RIFLE, List.of(action));
     assertEquals(string(previous, "gun_id"), string(rebuilt, "gun_id"));
@@ -243,6 +244,7 @@ class InventoryManagerTest {
               .get(key(key), PersistentDataType.INTEGER));
     assertEquals("shot", string(rebuilt, "ammo_loaded"));
     assertEquals("shot", string(rebuilt, "reload_ammo"));
+    assertEquals("steel", string(rebuilt, "ammo_selected"));
     assertEquals(
         123L,
         rebuilt
@@ -258,11 +260,12 @@ class InventoryManagerTest {
     assertNotNull(string(rebuilt, "gun_id"));
     assertNull(string(rebuilt, "ammo_loaded"));
     assertNull(string(rebuilt, "reload_ammo"));
+    assertNull(string(rebuilt, "ammo_selected"));
     assertFalse(rebuilt.getItemMeta().getPersistentDataContainer().has(key("bullets_loaded")));
   }
 
   @Test
-  void calibersCombineUnlessLastOverridePresent() {
+  void calibersCombineUnlessLastPartOverridesThemAll() {
     var barrel = part("long", "barrel", 2);
     when(action.getCalibers()).thenReturn(List.of("known", "unknown"));
     var config = new YamlConfiguration();
@@ -270,9 +273,16 @@ class InventoryManagerTest {
         .put(
             "known",
             new net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition("known", config));
-    assertEquals("known;unknown", string(output(action), "calibers"));
+    var multi = output(action);
+    assertEquals("known;unknown", string(multi, "calibers"));
+    assertTrue(multi.getItemMeta().getLore().contains("§8Crouch and right-click to change shot"));
     when(barrel.getCaliberOverrides()).thenReturn(List.of("override1", "override2"));
-    assertEquals("override2", string(output(action, barrel), "calibers"));
+    assertEquals("override1;override2", string(output(action, barrel), "calibers"));
+    when(action.getCaliberOverrides()).thenReturn(List.of("first"));
+    assertEquals("override1;override2", string(output(action, barrel), "calibers"));
+    var single = output(barrel, action);
+    assertEquals("first", string(single, "calibers"));
+    assertFalse(single.getItemMeta().getLore().stream().anyMatch(l -> l.contains("Crouch")));
     when(action.getCalibers()).thenReturn(List.of());
     when(action.getCaliberOverrides()).thenReturn(null);
     assertNull(string(output(action), "calibers"));

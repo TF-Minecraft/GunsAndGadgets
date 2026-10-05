@@ -8,7 +8,7 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 
 - **Modular assembly** — select a weapon type and combine barrels, loaders, chambers, actions, and stocks where the design requires them.
 - **Meaningful parts** — components contribute to accuracy, damage, range, capacity, reload speed, fire rate, spread, and piercing.
-- **Ammunition compatibility** — weapons accept their supported calibres and consume ammunition as they are loaded and fired.
+- **Ammunition compatibility** — weapons accept their supported calibres and consume ammunition as they are loaded and fired. Crouch and right-click to choose which carried calibre the next reload uses; the choice is saved on the gun.
 - **Reloading and handling** — timed reloads, progress feedback, character attribute effects, and loaded or unloaded appearances communicate weapon state.
 - **Projectile combat** — shot trajectories, impacts, sounds, and visual effects support firearm and launcher attacks.
 - **Weapon appearances** — skin support keeps custom gun designs connected to their firing and reload states.

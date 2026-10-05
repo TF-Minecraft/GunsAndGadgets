@@ -950,4 +950,142 @@ class GunManagerTest {
     manager.onInventoryClick(e);
     verify(e, never()).setCancelled(true);
   }
+
+  // Three calibers told apart by item type: iron nuggets, gold nuggets (steel), copper (bronze).
+  void threeCalibers() {
+    for (String[] entry :
+        new String[][] {{"iron", "iron_nugget"}, {"steel", "gold_nugget"}, {"bronze", "copper_ingot"}}) {
+      var config = new YamlConfiguration();
+      config.set("input", "v." + entry[1]);
+      AmmunitionLoader.get().put(entry[0], new Ammunition(entry[0], config));
+    }
+    var checker = TLibs.getItemAPI().getChecker();
+    var creator = TLibs.getItemAPI().getCreator();
+    doAnswer(
+            i ->
+                ((ItemStack) i.getArgument(0))
+                    .getType()
+                    .getKey()
+                    .getKey()
+                    .equals(((String) i.getArgument(1)).substring(2)))
+        .when(checker)
+        .checkItemWithPath(any(), anyString());
+    doAnswer(i -> new ItemStack(Material.matchMaterial(((String) i.getArgument(0)).substring(2))))
+        .when(creator)
+        .getItemFromPath(anyString());
+    set("calibers", "iron;steel;bronze");
+    player.getInventory().setItemInMainHand(gun);
+  }
+
+  String actionBar() {
+    var bar = player.nextActionBar();
+    return bar == null
+        ? null
+        : net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+            .serialize(bar);
+  }
+
+  String selected() {
+    return player
+        .getInventory()
+        .getItemInMainHand()
+        .getItemMeta()
+        .getPersistentDataContainer()
+        .get(key("ammo_selected"), PersistentDataType.STRING);
+  }
+
+  @Test
+  void crouchClickCyclesCarriedCalibersWithoutFiringOrReloading() {
+    threeCalibers();
+    setInt("bullets_loaded", 1);
+    set("ammo_loaded", "iron");
+    player.getInventory().setItemInMainHand(gun);
+    player.getInventory().setItem(2, new ItemStack(Material.COPPER_INGOT, 4));
+    player.setSneaking(true);
+    try (var shooter = mockStatic(ProjectileShooter.class)) {
+      verify(use()).setCancelled(true);
+      // Iron loads by default, steel is not carried, so the first pick is bronze.
+      assertEquals("bronze", selected());
+      assertTrue(actionBar().matches("Next load: .*Copper.* \\(4 carried\\)"));
+      // The off-hand event of the same block click must not switch again.
+      use();
+      assertEquals("bronze", selected());
+      assertNull(player.nextActionBar());
+      server.getScheduler().performTicks(1);
+      use();
+      assertEquals("iron", selected());
+      assertTrue(actionBar().contains("(5 carried)"));
+      shooter.verifyNoInteractions();
+    }
+    assertEquals(1, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(4, player.getInventory().getItem(2).getAmount());
+  }
+
+  @Test
+  void crouchClickWithoutUsableAmmoSaysSo() {
+    threeCalibers();
+    player.getInventory().setItem(1, null);
+    player.setSneaking(true);
+    use();
+    assertEquals("You carry no shot this weapon can fire.", actionBar());
+    assertNull(selected());
+  }
+
+  @Test
+  void reloadUsesSelectedCaliber() {
+    threeCalibers();
+    set("ammo_selected", "steel");
+    player.getInventory().setItemInMainHand(gun);
+    player.getInventory().setItem(2, new ItemStack(Material.GOLD_NUGGET, 2));
+    use();
+    assertTrue(actionBar().matches("Loading .*Gold.*"));
+    server.getScheduler().performTicks(12);
+    ItemStack held = player.getInventory().getItemInMainHand();
+    assertEquals(2, readInt(held, "bullets_loaded"));
+    assertEquals(
+        "steel",
+        held.getItemMeta().getPersistentDataContainer().get(key("ammo_loaded"), PersistentDataType.STRING));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals("steel", selected());
+  }
+
+  @Test
+  void reloadRefusesOtherAmmoWhenSelectedCaliberRunsOut() {
+    threeCalibers();
+    set("ammo_selected", "steel");
+    player.getInventory().setItemInMainHand(gun);
+    use();
+    assertTrue(
+        actionBar().matches("You have no .*Gold.* left\\. Crouch and right-click to choose another\\."));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    // The refusal must not leave the player stuck in a reload.
+    player.getInventory().setItem(2, new ItemStack(Material.GOLD_NUGGET, 1));
+    use();
+    assertEquals(1, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+  }
+
+  @Test
+  void selectionThatIsNoLongerACaliberFallsBackToFirstCarried() {
+    threeCalibers();
+    set("ammo_selected", "mythril");
+    player.getInventory().setItemInMainHand(gun);
+    use();
+    assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    assertEquals(
+        "iron",
+        player
+            .getInventory()
+            .getItemInMainHand()
+            .getItemMeta()
+            .getPersistentDataContainer()
+            .get(key("reload_ammo"), PersistentDataType.STRING));
+  }
+
+  @Test
+  void singleCaliberReloadShowsNoAmmoName() {
+    use();
+    assertNull(player.nextActionBar());
+  }
 }
