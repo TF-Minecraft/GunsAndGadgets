@@ -32,6 +32,8 @@ class GunManagerTest {
   MockedStatic<TLibs> libs;
   MockedStatic<AttributeReader> attributes;
   MockedStatic<SoundPlayer> sounds;
+  MockedStatic<io.lumine.mythic.lib.api.player.MMOPlayerData> mmoPlayers;
+  io.lumine.mythic.lib.api.player.MMOPlayerData mmoPlayer;
   ItemStack gun;
   SkinData skin;
   io.lumine.mythic.lib.MythicLib oldMythic;
@@ -72,6 +74,12 @@ class GunManagerTest {
         .when(() -> AttributeReader.getReloadReductionMultFromAttributes(player))
         .thenReturn(1.0);
     sounds = mockStatic(SoundPlayer.class);
+    mmoPlayer = mock(io.lumine.mythic.lib.api.player.MMOPlayerData.class, RETURNS_DEEP_STUBS);
+    when(mmoPlayer.getActionBar().show(anyInt(), anyLong(), nullable(String.class))).thenReturn(true);
+    mmoPlayers = mockStatic(io.lumine.mythic.lib.api.player.MMOPlayerData.class);
+    mmoPlayers
+        .when(() -> io.lumine.mythic.lib.api.player.MMOPlayerData.get(any(OfflinePlayer.class)))
+        .thenReturn(mmoPlayer);
     gun = new ItemStack(Material.STICK);
     set("skin_id", "test");
     set("gun_id", new String("same-id"));
@@ -87,6 +95,7 @@ class GunManagerTest {
   void cleanup() {
     if (server != null && plugin != null) server.getScheduler().cancelTasks(plugin);
     if (sounds != null) sounds.close();
+    if (mmoPlayers != null) mmoPlayers.close();
     if (attributes != null) attributes.close();
     if (libs != null) libs.close();
     if (pluginStatic != null) pluginStatic.close();
@@ -1007,7 +1016,9 @@ class GunManagerTest {
       // Iron loads by default, steel is not carried, so the first pick is bronze.
       assertEquals("bronze", selected());
       assertTrue(actionBar().matches("Next load: .*Copper.* \\(4 carried\\)"));
-      // The off-hand event of the same block click must not switch again.
+      // Further events of the same click, even a tick or two later, must not switch again.
+      use();
+      server.getScheduler().performTicks(2);
       use();
       assertEquals("bronze", selected());
       assertNull(player.nextActionBar());
@@ -1081,6 +1092,20 @@ class GunManagerTest {
             .getItemMeta()
             .getPersistentDataContainer()
             .get(key("reload_ammo"), PersistentDataType.STRING));
+  }
+
+  @Test
+  void ammoMessagesHoldMmoCoreBarAndYieldToBusierOnes() {
+    threeCalibers();
+    player.setSneaking(true);
+    use();
+    verify(mmoPlayer.getActionBar()).show(30, 40L, (String) null);
+    assertNotNull(player.nextActionBar());
+    when(mmoPlayer.getActionBar().show(anyInt(), anyLong(), nullable(String.class))).thenReturn(false);
+    server.getScheduler().performTicks(3);
+    use();
+    assertEquals("iron", selected());
+    assertNull(player.nextActionBar());
   }
 
   @Test

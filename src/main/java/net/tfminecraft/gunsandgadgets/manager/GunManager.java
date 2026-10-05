@@ -53,6 +53,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import io.lumine.mythic.lib.api.item.NBTItem;
+import io.lumine.mythic.lib.api.player.MMOPlayerData;
+import io.lumine.mythic.lib.message.actionbar.ActionBarPriority;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver;
@@ -80,7 +82,9 @@ public class GunManager implements Listener {
     private final Map<UUID, Boolean> reloading = new HashMap<>();
     // Preserve the exact inputs through config reloads, including their item metadata.
     private final Map<UUID, Collection<ItemStack>> reloadRefunds = new HashMap<>();
-    // Clicking a block fires the interact event for each hand; switch ammo once per click.
+    // One click can arrive as several interact events (each hand, or an entity then the air)
+    // spread over neighbouring ticks; clients allow a new click only every 4 ticks.
+    private static final int AMMO_SWITCH_BURST_TICKS = 2;
     private final Map<UUID, Integer> lastAmmoSwitchTick = new HashMap<>();
 
     @EventHandler
@@ -164,8 +168,10 @@ public class GunManager implements Listener {
             return;
         }
         if (player.isSneaking()) {
-            Integer tick = Bukkit.getCurrentTick();
-            if (!tick.equals(lastAmmoSwitchTick.put(id, tick))) {
+            int tick = Bukkit.getCurrentTick();
+            Integer last = lastAmmoSwitchTick.get(id);
+            if (last == null || tick - last > AMMO_SWITCH_BURST_TICKS) {
+                lastAmmoSwitchTick.put(id, tick);
                 cycleAmmo(player, item);
             }
             return;
@@ -684,10 +690,12 @@ public class GunManager implements Listener {
     // Keep the existing legacy text representation of ammunition item names.
     @SuppressWarnings("deprecation")
     private String getAmmoName(Ammunition ammo) {
-        return StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(ammo.getInput()));
+        return StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(ammo.getInput())).trim();
     }
 
     private void sendActionBar(Player player, String legacyText) {
+        // Hold MMOCore's stat bar back for two seconds so the message can be read; a null text only reserves it.
+        if (!MMOPlayerData.get(player).getActionBar().show(ActionBarPriority.NORMAL, 40L, (String) null)) return;
         player.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(legacyText));
     }
 
