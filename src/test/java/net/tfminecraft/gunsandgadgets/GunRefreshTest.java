@@ -16,7 +16,10 @@ import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.utils.*;
 import org.bukkit.*;
 import org.bukkit.entity.*;
+import org.bukkit.block.DoubleChest;
+import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.*;
 import org.bukkit.persistence.PersistentDataType;
@@ -291,5 +294,79 @@ class GunRefreshTest extends GunsTestSupport {
         .set(GGCraftKeys.craftInputs(), PersistentDataType.STRING, "{not json");
     broken.setItemMeta(meta);
     assertNull(GunCraftInputs.readFrom(broken));
+  }
+
+  @Test
+  void joinSweepRefreshesInventoryArmourOffhandAndEnderChestOneTickLater() {
+    var player = server.addPlayer();
+    ItemStack original = gun("RIFLE", "id", true), rebuilt = new ItemStack(Material.BLAZE_ROD);
+    player.getInventory().setItem(2, original);
+    player.getInventory().setItemInOffHand(original);
+    player.getInventory().setItem(5, new ItemStack(Material.STICK));
+    player.getEnderChest().setItem(4, original);
+    try (var refresh = mockStatic(GunStatRefresher.class)) {
+      refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
+      refresh
+          .when(() -> GunStatRefresher.refreshIfOutdated(original))
+          .thenReturn(GunStatRefresher.RefreshResult.updated(rebuilt, List.of()));
+      PlayerJoinEvent event = mock(PlayerJoinEvent.class);
+      when(event.getPlayer()).thenReturn(player);
+      new GunRefreshListener().onJoin(event);
+      assertEquals(original, player.getInventory().getItem(2));
+      server.getScheduler().performOneTick();
+      assertEquals(rebuilt, player.getInventory().getItem(2));
+      assertEquals(rebuilt, player.getInventory().getItemInOffHand());
+      assertEquals(new ItemStack(Material.STICK), player.getInventory().getItem(5));
+      assertEquals(rebuilt, player.getEnderChest().getItem(4));
+    }
+  }
+
+  @Test
+  void joinSweepSkipsPlayersWhoLeftBeforeTheTick() {
+    Player gone = mock(Player.class);
+    when(gone.isOnline()).thenReturn(false);
+    PlayerJoinEvent event = mock(PlayerJoinEvent.class);
+    when(event.getPlayer()).thenReturn(gone);
+    new GunRefreshListener().onJoin(event);
+    server.getScheduler().performOneTick();
+    verify(gone, never()).getInventory();
+    verify(gone, never()).getEnderChest();
+  }
+
+  @Test
+  void openSweepOnlyTouchesWorldStorageAfterTheEvent() {
+    ItemStack original = gun("RIFLE", "id", true), rebuilt = new ItemStack(Material.BLAZE_ROD);
+    try (var refresh = mockStatic(GunStatRefresher.class)) {
+      refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
+      refresh
+          .when(() -> GunStatRefresher.refreshIfOutdated(original))
+          .thenReturn(GunStatRefresher.RefreshResult.updated(rebuilt, List.of()));
+      Inventory menu = mock(Inventory.class);
+      when(menu.getHolder(false)).thenReturn(null);
+      InventoryOpenEvent menuOpen = mock(InventoryOpenEvent.class);
+      when(menuOpen.getInventory()).thenReturn(menu);
+      new GunRefreshListener().onInventoryOpen(menuOpen);
+      server.getScheduler().performOneTick();
+      verify(menu, never()).getContents();
+
+      Inventory chest = mock(Inventory.class);
+      when(chest.getHolder(false)).thenReturn(mock(BlockInventoryHolder.class));
+      when(chest.getContents()).thenReturn(new ItemStack[] {null, original});
+      InventoryOpenEvent open = mock(InventoryOpenEvent.class);
+      when(open.getInventory()).thenReturn(chest);
+      new GunRefreshListener().onInventoryOpen(open);
+      verify(chest, never()).setItem(anyInt(), any());
+      server.getScheduler().performOneTick();
+      verify(chest).setItem(1, rebuilt);
+    }
+  }
+
+  @Test
+  void worldStorageCoversBlocksDoubleChestsAndEntitiesButNotMenus() {
+    assertTrue(GunRefreshListener.isWorldStorage(mock(BlockInventoryHolder.class)));
+    assertTrue(GunRefreshListener.isWorldStorage(mock(DoubleChest.class)));
+    assertTrue(GunRefreshListener.isWorldStorage(mock(StorageMinecart.class)));
+    assertFalse(GunRefreshListener.isWorldStorage(mock(InventoryHolder.class)));
+    assertFalse(GunRefreshListener.isWorldStorage(null));
   }
 }
