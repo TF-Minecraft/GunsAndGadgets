@@ -367,6 +367,7 @@ class GunRefreshTest extends GunsTestSupport {
     assertTrue(GunRefreshListener.isWorldStorage(mock(DoubleChest.class)));
     assertTrue(GunRefreshListener.isWorldStorage(mock(StorageMinecart.class)));
     assertFalse(GunRefreshListener.isWorldStorage(mock(InventoryHolder.class)));
+    assertFalse(GunRefreshListener.isWorldStorage(mock(Player.class)));
     assertFalse(GunRefreshListener.isWorldStorage(null));
   }
 }

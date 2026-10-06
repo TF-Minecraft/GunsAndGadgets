@@ -3,6 +3,7 @@ package net.tfminecraft.gunsandgadgets.manager;
 import org.bukkit.Bukkit;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -85,8 +86,10 @@ public class GunRefreshListener implements Listener {
         Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> sweep(inventory));
     }
 
+    /** Players are entities too, but a menu owned by a player is not storage. */
     public static boolean isWorldStorage(InventoryHolder holder) {
-        return holder instanceof BlockInventoryHolder || holder instanceof DoubleChest || holder instanceof Entity;
+        return holder instanceof BlockInventoryHolder || holder instanceof DoubleChest
+                || (holder instanceof Entity && !(holder instanceof HumanEntity));
     }
 
     private void sweep(Inventory inventory) {
