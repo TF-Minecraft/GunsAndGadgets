@@ -8,30 +8,16 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 
 - **Modular assembly** — select a weapon type and combine barrels, loaders, chambers, actions, and stocks where the design requires them.
 - **Meaningful parts** — components contribute to accuracy, damage, range, capacity, reload speed, fire rate, spread, and piercing.
-- **Ammunition compatibility** — weapons accept their supported calibres and consume ammunition as they are loaded and fired. Crouch and right-click to choose which carried calibre the next reload uses; the choice is saved on the gun.
+- **Ammunition compatibility** — choose supported ammunition for the next reload, with the selection saved on the gun.
 - **Reloading and handling** — timed reloads, progress feedback, character attribute effects, and loaded or unloaded appearances communicate weapon state.
 - **Projectile combat** — shot trajectories, impacts, sounds, and visual effects support firearm and launcher attacks.
 - **Weapon appearances** — skin support keeps custom gun designs connected to their firing and reload states.
+- **Maintained weapons** — existing guns pick up changed part stats when players join, open world storage, or handle their inventory.
+- **Staff provisioning** — give completed weapons using the same part and design validation as normal assembly.
 
 ## From workbench to combat
 
 The assembly interface lets players inspect available components and the resulting weapon before completing a craft. Those choices continue to matter in combat through the gun's statistics, ammunition, and handling, making gunsmithing part of how a character prepares their equipment.
-
-## Staff gun commands
-
-`/gg give <player> <rifle|pistol|shotgun|launcher> <part> [part...]`
-
-Gives one completed, unloaded gun to an online player. Use part IDs from `parts.yml`
-and supply exactly one enabled, compatible part for every category in `required-parts`.
-The normal assembly builder applies stats, skins and provenance. Conflicting class
-requirements and invalid designs are rejected. No crafting materials are charged or
-recorded, and the recipient needs an empty inventory slot. Load ammunition normally.
-
-`give-permission` in `config.yml` defaults to `gunsandgadgets.give` (operators).
-Set it to your staff permission; a blank value disables giving. This permission is
-independent of `gunsandgadgets.reload`, which still gates reload and refresh.
-Reload configuration with `/gg reload`. Tab completion suggests recipients, types
-and configured part IDs.
 
 ## Documentation
 
@@ -39,13 +25,17 @@ and configured part IDs.
 
 Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/TF-Minecraft/Docs).
 
+[Commands and ammunition handling](https://github.com/TF-Minecraft/Docs/blob/main/projects/GunsAndGadgets/operations.md)
+
 ## Tests
 
 With Java 21 and the pinned plugin dependencies installed, run `mvn clean verify`.
-Tests use JUnit, Mockito, and MockBukkit; JaCoCo reports are written to
-`target/site/jacoco/index.html` and uploaded by CI. Tests run locally without a live
-Minecraft server. Verification requires 100% line, branch, and instruction
+Tests use JUnit 5, Mockito, and MockBukkit. Surefire test results are in
+`target/surefire-reports/`; JaCoCo HTML and XML reports are in `target/site/jacoco/`.
+CI uploads both. Verification requires 100% line, branch, and instruction
 coverage of production code, with no coverage exclusions.
+Live projectile combat, client models and effects, and the complete server plugin
+stack require separate in-game checks.
 
 ## License
 
