@@ -67,6 +67,31 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
   }
 
   @Test
+  void characterSwitchesAreHeardOnlyWhenRpCharactersIsEnabled() {
+    for (String dependency :
+        List.of("TLibs", "MythicLib", "MMOItems", "MMOCore", "RPCharacters")) {
+      MockBukkit.createMockPlugin(dependency);
+    }
+    plugins.when(GunsAndGadgets::getInstance).thenCallRealMethod();
+    try (var config = mockConstruction(ConfigLoader.class);
+        var ammunition = mockConstruction(AmmunitionLoader.class);
+        var partData = mockConstruction(PartDataLoader.class);
+        var parts = mockConstruction(PartLoader.class);
+        var skins = mockConstruction(SkinLoader.class);
+        var guns = mockConstruction(GunManager.class)) {
+      GunsAndGadgets actual = MockBukkit.load(GunsAndGadgets.class);
+      var listeners =
+          java.util.Arrays.stream(
+                  net.tfminecraft.rpcharacters.lifecycle.CharacterActivatedEvent.getHandlerList()
+                      .getRegisteredListeners())
+              .filter(listener -> listener.getPlugin() == actual)
+              .toList();
+      assertEquals(1, listeners.size());
+      assertInstanceOf(CharacterSwitchListener.class, listeners.getFirst().getListener());
+    }
+  }
+
+  @Test
   void missingCommandRegistrationLogsFailureWithoutThrowing() {
     doCallRealMethod().when(plugin).registerCommands();
     assertDoesNotThrow(plugin::registerCommands);

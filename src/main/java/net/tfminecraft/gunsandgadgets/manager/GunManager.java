@@ -45,6 +45,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CrossbowMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -460,6 +461,18 @@ public class GunManager implements Listener {
                 player.getInventory().setItem(event.getNewSlot(), held);
             }
         });
+    }
+
+    // Runs before the player is saved, so the ammunition goes back into the saved inventory.
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        cancelActiveReload(event.getPlayer());
+    }
+
+    /** Returns reserved ammunition when the player stops being the one who started the reload. */
+    public void cancelActiveReload(Player player) {
+        if (player == null || !reloading.containsKey(player.getUniqueId())) return;
+        cancelReload(player, player.getInventory().getHeldItemSlot());
     }
 
     private void cancelReload(Player player, int slot) {

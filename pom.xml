@@ -14,6 +14,7 @@
         <maven.compiler.proc>full</maven.compiler.proc>
         <coreprotect.version>25.0.0</coreprotect.version>
         <mythiclib.jar>MythicLib-1.7.1-SNAPSHOT.jar</mythiclib.jar>
+        <rpcharacters.version>2.4.0</rpcharacters.version>
         <tlibs.version>2.0.0</tlibs.version>
         <vehicleframework.version>2.0.1</vehicleframework.version>
     </properties>
@@ -79,6 +80,18 @@
             <artifactId>paper-api</artifactId>
             <version>1.21.10-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.tfminecraft</groupId>
+            <artifactId>rpcharacters</artifactId>
+            <version>${rpcharacters.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>me.plugins</groupId>

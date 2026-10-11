@@ -229,6 +229,38 @@ class GunManagerTest {
   }
 
   @Test
+  void switchingCharacterCancelsReloadAndKeepsTheAmmo() {
+    use();
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+    new CharacterSwitchListener(manager)
+        .onCharacterActivated(
+            new net.tfminecraft.rpcharacters.lifecycle.CharacterActivatedEvent(
+                player, player.getUniqueId(), null, null));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    server.getScheduler().performTicks(12);
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void quittingCancelsReloadBeforeTheInventoryIsSaved() {
+    use();
+    manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (String) null));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    server.getScheduler().performTicks(12);
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+  }
+
+  @Test
+  void characterSwitchWithoutReloadLeavesInventoryAlone() {
+    manager.cancelActiveReload(player);
+    manager.cancelActiveReload(null);
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
   void changingGunIdentityCancelsReload() {
     use();
     var held = player.getInventory().getItemInMainHand();

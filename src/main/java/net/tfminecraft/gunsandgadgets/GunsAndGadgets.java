@@ -10,6 +10,7 @@ import net.tfminecraft.gunsandgadgets.loader.ConfigLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
+import net.tfminecraft.gunsandgadgets.manager.CharacterSwitchListener;
 import net.tfminecraft.gunsandgadgets.manager.CraftingManager;
 import net.tfminecraft.gunsandgadgets.manager.GgCommand;
 import net.tfminecraft.gunsandgadgets.manager.GunManager;
@@ -50,6 +51,9 @@ public class GunsAndGadgets extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(new InventoryManager(), this);
 		getServer().getPluginManager().registerEvents(gunManager, this);
 		getServer().getPluginManager().registerEvents(new GunRefreshListener(), this);
+		if (getServer().getPluginManager().isPluginEnabled("RPCharacters")) {
+			getServer().getPluginManager().registerEvents(new CharacterSwitchListener(gunManager), this);
+		}
 	}
 
 	public void registerCommands() {
