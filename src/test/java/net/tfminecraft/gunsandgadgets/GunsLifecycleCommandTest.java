@@ -11,6 +11,7 @@ import net.tfminecraft.gunsandgadgets.loader.*;
 import net.tfminecraft.gunsandgadgets.manager.*;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.utils.GunStatRefresher;
+import net.tfminecraft.tlibs.character.Characters;
 import org.bukkit.Material;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -55,7 +56,9 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
       SkinData skin = mock(SkinData.class);
       SkinLoader.get().put("skin", skin);
       assertSame(skin, actual.getSkin("skin"));
+      Player player = server.addPlayer();
       actual.onDisable();
+      verify(guns.constructed().getFirst()).cancelActiveReload(player);
       try (var paths = Files.walk(actual.getDataFolder().toPath())) {
         for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
           Files.delete(path);
@@ -67,11 +70,12 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
   }
 
   @Test
-  void characterSwitchesAreHeardOnlyWhenRpCharactersIsEnabled() {
+  void sharedSessionEndsAreRegisteredWithoutRpCharacters() {
     for (String dependency :
-        List.of("TLibs", "MythicLib", "MMOItems", "MMOCore", "RPCharacters")) {
+        List.of("TLibs", "MythicLib", "MMOItems", "MMOCore")) {
       MockBukkit.createMockPlugin(dependency);
     }
+    assertFalse(Characters.available());
     plugins.when(GunsAndGadgets::getInstance).thenCallRealMethod();
     try (var config = mockConstruction(ConfigLoader.class);
         var ammunition = mockConstruction(AmmunitionLoader.class);
@@ -80,15 +84,47 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
         var skins = mockConstruction(SkinLoader.class);
         var guns = mockConstruction(GunManager.class)) {
       GunsAndGadgets actual = MockBukkit.load(GunsAndGadgets.class);
+      assertTrue(actual.isEnabled());
       var listeners =
           java.util.Arrays.stream(
-                  net.tfminecraft.rpcharacters.lifecycle.CharacterActivatedEvent.getHandlerList()
+                  net.tfminecraft.tlibs.character.CharacterSessionEndEvent.getHandlerList()
                       .getRegisteredListeners())
               .filter(listener -> listener.getPlugin() == actual)
               .toList();
       assertEquals(1, listeners.size());
-      assertInstanceOf(CharacterSwitchListener.class, listeners.getFirst().getListener());
+      assertInstanceOf(CharacterSessionListener.class, listeners.getFirst().getListener());
     }
+  }
+
+  @Test
+  void missingSharedCharacterApiDisablesBeforeInitializationWithAnUpgradeMessage() {
+    var startupServer = mock(org.bukkit.Server.class);
+    var manager = mock(org.bukkit.plugin.PluginManager.class);
+    var logger = mock(java.util.logging.Logger.class);
+    when(plugin.getServer()).thenReturn(startupServer);
+    when(startupServer.getPluginManager()).thenReturn(manager);
+    when(plugin.getLogger()).thenReturn(logger);
+    doCallRealMethod().when(plugin).onEnable();
+    try (var characters = mockStatic(Characters.class);
+        var guns = mockConstruction(GunManager.class)) {
+      characters.when(Characters::available).thenThrow(new NoClassDefFoundError("CharacterIdentity"));
+
+      assertDoesNotThrow(plugin::onEnable);
+
+      assertTrue(guns.constructed().isEmpty());
+      verify(logger).severe(contains("TLibs 2.3.0 or newer"));
+      verify(manager).disablePlugin(plugin);
+      verify(plugin, never()).createConfigs();
+      verify(plugin, never()).loadConfigs();
+      verify(plugin, never()).registerListeners();
+      verify(plugin, never()).registerCommands();
+    }
+  }
+
+  @Test
+  void failedStartupCanDisableBeforeGunManagerExists() {
+    doCallRealMethod().when(plugin).onDisable();
+    assertDoesNotThrow(plugin::onDisable);
   }
 
   @Test

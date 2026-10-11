@@ -10,13 +10,14 @@ import net.tfminecraft.gunsandgadgets.loader.ConfigLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
-import net.tfminecraft.gunsandgadgets.manager.CharacterSwitchListener;
+import net.tfminecraft.gunsandgadgets.manager.CharacterSessionListener;
 import net.tfminecraft.gunsandgadgets.manager.CraftingManager;
 import net.tfminecraft.gunsandgadgets.manager.GgCommand;
 import net.tfminecraft.gunsandgadgets.manager.GunManager;
 import net.tfminecraft.gunsandgadgets.manager.GunRefreshListener;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.utils.RevisionTracker;
+import net.tfminecraft.tlibs.character.Characters;
 
 public class GunsAndGadgets extends JavaPlugin {
 	private static GunsAndGadgets instance;
@@ -32,6 +33,13 @@ public class GunsAndGadgets extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
+		try {
+			Characters.available();
+		} catch (LinkageError error) {
+			getLogger().severe("GunsAndGadgets requires TLibs 2.3.0 or newer. Update TLibs and restart the server.");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		}
 		instance = this;
 		gunManager = new GunManager();
 		createConfigs();
@@ -43,6 +51,9 @@ public class GunsAndGadgets extends JavaPlugin {
 
 	@Override
 	public void onDisable() {
+		if (gunManager != null) {
+			for (var player : getServer().getOnlinePlayers()) gunManager.cancelActiveReload(player);
+		}
 		revisionTracker.flush();
 	}
 
@@ -51,9 +62,7 @@ public class GunsAndGadgets extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(new InventoryManager(), this);
 		getServer().getPluginManager().registerEvents(gunManager, this);
 		getServer().getPluginManager().registerEvents(new GunRefreshListener(), this);
-		if (getServer().getPluginManager().isPluginEnabled("RPCharacters")) {
-			getServer().getPluginManager().registerEvents(new CharacterSwitchListener(gunManager), this);
-		}
+		getServer().getPluginManager().registerEvents(new CharacterSessionListener(gunManager), this);
 	}
 
 	public void registerCommands() {

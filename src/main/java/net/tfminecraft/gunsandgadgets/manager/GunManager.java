@@ -58,6 +58,8 @@ import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.message.actionbar.ActionBarPriority;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.character.Characters;
+import net.tfminecraft.tlibs.character.CharacterSession;
 import net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver;
 import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 
@@ -163,6 +165,8 @@ public class GunManager implements Listener {
             return;
         }
         event.setCancelled(true);
+        var session = Characters.currentSession(player).orElse(null);
+        if (session == null && Characters.available()) return;
         if(!checkClass(player, item)) return;
         // ✅ Block duplicate reloads
         if (reloading.getOrDefault(id, false)) {
@@ -303,12 +307,17 @@ public class GunManager implements Listener {
             @SuppressWarnings("deprecation")
             @Override
             public void run() {
-                ItemStack current = player.getInventory().getItemInMainHand();
                 // A cancelled task must never act on a newer reload for this player.
                 if (reloadRefunds.get(id) != reservation) {
                     cancel();
                     return;
                 }
+                if (!player.isOnline() || sessionEnded(session)) {
+                    cancelReload(player, reloadSlot);
+                    cancel();
+                    return;
+                }
+                ItemStack current = player.getInventory().getItemInMainHand();
                 if (current.getItemMeta() == null) {
                     cancelReload(player, reloadSlot);
                     cancel();
@@ -448,7 +457,10 @@ public class GunManager implements Listener {
             cancelReload(player, event.getPreviousSlot());
         }
 
+        var session = Characters.currentSession(player).orElse(null);
+        if (session == null && Characters.available()) return;
         Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> {
+            if (!player.isOnline() || sessionEnded(session)) return;
             ItemStack held = player.getInventory().getItem(event.getNewSlot());
             if (held == null || !held.hasItemMeta()) {
                 return;
@@ -461,6 +473,10 @@ public class GunManager implements Listener {
                 player.getInventory().setItem(event.getNewSlot(), held);
             }
         });
+    }
+
+    private static boolean sessionEnded(CharacterSession session) {
+        return session == null ? Characters.available() : !Characters.isCurrent(session);
     }
 
     // Runs before the player is saved, so the ammunition goes back into the saved inventory.

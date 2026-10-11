@@ -12,6 +12,7 @@ import net.tfminecraft.gunsandgadgets.loader.*;
 import net.tfminecraft.gunsandgadgets.shooter.ProjectileShooter;
 import net.tfminecraft.gunsandgadgets.util.SoundPlayer;
 import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.character.*;
 import net.tfminecraft.tlibs.objects.api.ItemAPI;
 import org.bukkit.*;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -228,19 +229,70 @@ class GunManagerTest {
     assertEquals(0, readInt(player.getInventory().getItem(0), "bullets_loaded"));
   }
 
-  @Test
-  void switchingCharacterCancelsReloadAndKeepsTheAmmo() {
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.EnumSource(CharacterSessionEndEvent.Reason.class)
+  void everySessionEndRefundsOutgoingAmmoExactlyOnce(CharacterSessionEndEvent.Reason reason) {
     use();
     assertEquals(2, player.getInventory().getItem(1).getAmount());
-    new CharacterSwitchListener(manager)
-        .onCharacterActivated(
-            new net.tfminecraft.rpcharacters.lifecycle.CharacterActivatedEvent(
-                player, player.getUniqueId(), null, null));
+    var listener = new CharacterSessionListener(manager);
+    var session = new CharacterSession(new CharacterRef(player.getUniqueId(), UUID.randomUUID()), 1);
+    var event = new CharacterSessionEndEvent(player, session, reason);
+    listener.onSessionEnd(event);
+    listener.onSessionEnd(event);
+    manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (String) null));
     assertEquals(5, player.getInventory().getItem(1).getAmount());
     assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
     server.getScheduler().performTicks(12);
     assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
     assertEquals(5, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void reloadWaitsForReadyIdentityAndCannotFinishUnderANewerSessionOfTheSameCharacter() {
+    var identity = mock(CharacterIdentity.class);
+    var provider = MockBukkit.createMockPlugin("IdentityProvider");
+    server.getServicesManager().register(CharacterIdentity.class, identity, provider, org.bukkit.plugin.ServicePriority.Normal);
+    var ref = new CharacterRef(player.getUniqueId(), UUID.randomUUID());
+    var current = new java.util.concurrent.atomic.AtomicReference<CharacterSession>();
+    when(identity.currentSession(player)).thenAnswer(call -> Optional.ofNullable(current.get()));
+    when(identity.isCurrent(any())).thenAnswer(call -> call.getArgument(0).equals(current.get()));
+    use();
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    current.set(new CharacterSession(ref, 1));
+    use();
+    server.getScheduler().performTicks(1);
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+    current.set(new CharacterSession(ref, 3));
+    server.getScheduler().performTicks(12);
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    use();
+    server.getScheduler().performTicks(12);
+    assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(2, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void providerAppearanceCancelsAnAccountFallbackReloadAndReturnsItsReservationOnce() {
+    use();
+    var identity = mock(CharacterIdentity.class);
+    var provider = MockBukkit.createMockPlugin("IdentityProvider");
+    server.getServicesManager().register(CharacterIdentity.class, identity, provider, org.bukkit.plugin.ServicePriority.Normal);
+    server.getScheduler().performTicks(12);
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    manager.cancelActiveReload(player);
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void disconnectedReloadOwnerCannotCompleteTheOldTimer() {
+    use();
+    player.disconnect();
+    server.getScheduler().performTicks(12);
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
   }
 
   @Test
@@ -971,6 +1023,87 @@ class GunManagerTest {
       verify(inventory).addItem(new ItemStack(Material.IRON_NUGGET, 3));
       server.getScheduler().cancelTasks(plugin);
     }
+  }
+
+  @Test
+  void deferredSlotCheckRequiresTheSameReadySessionIncludingReturningToTheSameCharacter() {
+    var identity = mock(CharacterIdentity.class);
+    var provider = MockBukkit.createMockPlugin("IdentityProvider");
+    server.getServicesManager().register(CharacterIdentity.class, identity, provider, org.bukkit.plugin.ServicePriority.Normal);
+    var ref = new CharacterRef(player.getUniqueId(), UUID.randomUUID());
+    var current = new java.util.concurrent.atomic.AtomicReference<>(new CharacterSession(ref, 1));
+    when(identity.currentSession(player)).thenAnswer(call -> Optional.ofNullable(current.get()));
+    when(identity.isCurrent(any())).thenAnswer(call -> call.getArgument(0).equals(current.get()));
+    var change = new org.bukkit.event.player.PlayerItemHeldEvent(player, 2, 0);
+    try (var marker = mockStatic(net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.class)) {
+      marker.when(() -> net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(any())).thenReturn(true);
+      manager.onSlotChange(change);
+      current.set(new CharacterSession(ref, 3));
+      server.getScheduler().performTicks(1);
+      marker.verifyNoInteractions();
+      manager.onSlotChange(change);
+      server.getScheduler().performTicks(1);
+      marker.verify(() -> net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(any()));
+      marker.clearInvocations();
+      current.set(null);
+      manager.onSlotChange(change);
+      server.getScheduler().performTicks(1);
+      marker.verifyNoInteractions();
+      current.set(new CharacterSession(ref, 4));
+      manager.onSlotChange(change);
+      server.getServicesManager().unregister(identity);
+      server.getScheduler().performTicks(1);
+      marker.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void deferredSlotCheckStopsIfAProviderAppearsOrThePlayerDisconnects() {
+    var change = new org.bukkit.event.player.PlayerItemHeldEvent(player, 2, 0);
+    try (var marker = mockStatic(net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.class)) {
+      manager.onSlotChange(change);
+      var identity = mock(CharacterIdentity.class);
+      var provider = MockBukkit.createMockPlugin("IdentityProvider");
+      server.getServicesManager().register(CharacterIdentity.class, identity, provider, org.bukkit.plugin.ServicePriority.Normal);
+      server.getScheduler().performTicks(1);
+      marker.verifyNoInteractions();
+      server.getServicesManager().unregister(identity);
+      manager.onSlotChange(change);
+      player.disconnect();
+      server.getScheduler().performTicks(1);
+      marker.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void disablingBeforeProviderShutdownReturnsReservedAmmoWithoutWaitingForATimer() throws Exception {
+    use();
+    var field = GunsAndGadgets.class.getDeclaredField("gunManager");
+    field.setAccessible(true);
+    field.set(plugin, manager);
+    when(plugin.getServer()).thenReturn(server);
+    doCallRealMethod().when(plugin).onDisable();
+    plugin.onDisable();
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
+    server.getScheduler().performTicks(12);
+    assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    assertEquals(5, player.getInventory().getItem(1).getAmount());
+  }
+
+  @Test
+  void deferredSlotCheckLeavesAnEmptiedSlotAlone() {
+    var online = mock(org.bukkit.entity.Player.class);
+    var inventory = mock(org.bukkit.inventory.PlayerInventory.class);
+    when(online.isOnline()).thenReturn(true);
+    when(online.getInventory()).thenReturn(inventory);
+    for (ItemStack emptyOrPlain : Arrays.asList(null, mock(ItemStack.class))) {
+      when(inventory.getItem(2)).thenReturn(emptyOrPlain);
+      manager.onSlotChange(new org.bukkit.event.player.PlayerItemHeldEvent(online, 0, 2));
+      server.getScheduler().performTicks(1);
+    }
+    verify(inventory, times(2)).getItem(2);
+    verify(inventory, never()).setItem(anyInt(), any());
   }
 
   @Test
