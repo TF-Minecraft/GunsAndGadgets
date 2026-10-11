@@ -55,7 +55,9 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
       SkinData skin = mock(SkinData.class);
       SkinLoader.get().put("skin", skin);
       assertSame(skin, actual.getSkin("skin"));
+      Player player = server.addPlayer();
       actual.onDisable();
+      verify(guns.constructed().getFirst()).cancelActiveReload(player);
       try (var paths = Files.walk(actual.getDataFolder().toPath())) {
         for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
           Files.delete(path);
@@ -67,9 +69,9 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
   }
 
   @Test
-  void characterSwitchesAreHeardOnlyWhenRpCharactersIsEnabled() {
+  void sharedSessionEndsAreRegisteredWithoutRpCharacters() {
     for (String dependency :
-        List.of("TLibs", "MythicLib", "MMOItems", "MMOCore", "RPCharacters")) {
+        List.of("TLibs", "MythicLib", "MMOItems", "MMOCore")) {
       MockBukkit.createMockPlugin(dependency);
     }
     plugins.when(GunsAndGadgets::getInstance).thenCallRealMethod();
@@ -82,13 +84,19 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
       GunsAndGadgets actual = MockBukkit.load(GunsAndGadgets.class);
       var listeners =
           java.util.Arrays.stream(
-                  net.tfminecraft.rpcharacters.lifecycle.CharacterActivatedEvent.getHandlerList()
+                  net.tfminecraft.tlibs.character.CharacterSessionEndEvent.getHandlerList()
                       .getRegisteredListeners())
               .filter(listener -> listener.getPlugin() == actual)
               .toList();
       assertEquals(1, listeners.size());
-      assertInstanceOf(CharacterSwitchListener.class, listeners.getFirst().getListener());
+      assertInstanceOf(CharacterSessionListener.class, listeners.getFirst().getListener());
     }
+  }
+
+  @Test
+  void failedStartupCanDisableBeforeGunManagerExists() {
+    doCallRealMethod().when(plugin).onDisable();
+    assertDoesNotThrow(plugin::onDisable);
   }
 
   @Test
