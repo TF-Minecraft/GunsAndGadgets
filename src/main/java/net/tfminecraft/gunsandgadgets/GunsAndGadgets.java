@@ -17,6 +17,7 @@ import net.tfminecraft.gunsandgadgets.manager.GunManager;
 import net.tfminecraft.gunsandgadgets.manager.GunRefreshListener;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.utils.RevisionTracker;
+import net.tfminecraft.tlibs.character.Characters;
 
 public class GunsAndGadgets extends JavaPlugin {
 	private static GunsAndGadgets instance;
@@ -32,6 +33,13 @@ public class GunsAndGadgets extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
+		try {
+			Characters.available();
+		} catch (LinkageError error) {
+			getLogger().severe("GunsAndGadgets requires TLibs 2.3.0 or newer. Update TLibs and restart the server.");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		}
 		instance = this;
 		gunManager = new GunManager();
 		createConfigs();
