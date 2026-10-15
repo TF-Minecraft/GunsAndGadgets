@@ -86,7 +86,31 @@ public final class GunGiveCommand {
         List<String> options = new ArrayList<>();
         if (args.length == 2) Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
         else if (args.length == 3) Arrays.stream(GunType.values()).forEach(t -> options.add(t.name().toLowerCase(Locale.ROOT)));
-        else if (args.length >= 4) options.addAll(PartLoader.get().keySet());
+        else if (args.length >= 4) {
+            GunType type;
+            try {
+                type = GunType.valueOf(args[2].toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return List.of();
+            }
+            Set<String> missing = new HashSet<>();
+            Cache.requiredParts.getOrDefault(type, List.of())
+                    .forEach(category -> missing.add(category.toLowerCase(Locale.ROOT)));
+            for (int i = 3; i < args.length - 1; i++) {
+                GunPart part = PartLoader.getByString(args[i]);
+                if (part == null || part.isDisabled() || !part.getGunTypes().contains(type)
+                        || part.getPartType() == null
+                        || !missing.remove(part.getPartType().getId().toLowerCase(Locale.ROOT))) {
+                    return List.of();
+                }
+            }
+            PartLoader.get().forEach((id, part) -> {
+                if (!part.isDisabled() && part.getGunTypes().contains(type) && part.getPartType() != null
+                        && missing.contains(part.getPartType().getId().toLowerCase(Locale.ROOT))) {
+                    options.add(id);
+                }
+            });
+        }
         String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
         return options.stream().filter(s -> s.toLowerCase(Locale.ROOT).startsWith(prefix)).sorted().toList();
     }

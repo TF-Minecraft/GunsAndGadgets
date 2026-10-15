@@ -78,4 +78,27 @@ class GunGiveTest extends GunsTestSupport {
         Cache.givePermission="";assertTrue(tab("give","").isEmpty());Cache.givePermission="custom.staff";
         when(sender.hasPermission("custom.staff")).thenReturn(false);assertTrue(tab("give","").isEmpty());assertTrue(tab("g").isEmpty());
     }
+    @Test void completionOnlyOffersMissingCompatibleEnabledCategories() {
+        Cache.requiredParts.put(GunType.RIFLE, List.of("barrel", "stock"));
+        PartLoader.get().put("barrel_other", part("barrel", false, GunType.RIFLE));
+        PartLoader.get().put("stock", part("stock", false, GunType.RIFLE));
+        PartLoader.get().put("disabled", part("stock", true, GunType.RIFLE));
+        PartLoader.get().put("pistol", part("barrel", false, GunType.PISTOL));
+        PartLoader.get().put("extra", part("sight", false, GunType.RIFLE));
+        assertEquals(List.of("barrel", "barrel_other", "stock"), tab("give", "Gunner", "RiFlE", ""));
+        assertEquals(List.of("barrel", "barrel_other"), tab("give", "Gunner", "rifle", "BAR"));
+        assertEquals(List.of("stock"), tab("give", "Gunner", "rifle", "barrel", ""));
+        assertTrue(tab("give", "Gunner", "rifle", "barrel", "stock", "").isEmpty());
+        assertTrue(tab("give", "Gunner", "rifle", "barrel", "barrel_other", "").isEmpty());
+        for (String invalid : List.of("missing", "disabled", "pistol", "extra")) {
+            assertTrue(tab("give", "Gunner", "rifle", invalid, "").isEmpty());
+        }
+        assertTrue(tab("give", "Gunner", "invalid", "").isEmpty());
+        GunPart unclassified = part("barrel", false, GunType.RIFLE);
+        when(unclassified.getPartType()).thenReturn(null);
+        PartLoader.get().put("unclassified", unclassified);
+        assertEquals(List.of("barrel", "barrel_other", "stock"), tab("give", "Gunner", "rifle", ""));
+        assertTrue(tab("give", "Gunner", "rifle", "unclassified", "").isEmpty());
+    }
+
 }
