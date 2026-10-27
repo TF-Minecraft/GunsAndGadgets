@@ -306,7 +306,7 @@ class ProjectileShooterTest {
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 0, 1), player));
     assertFalse(hits(ammo(), 1));
-    verify(player, never()).damage(anyDouble());
+    verify(player, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
   }
 
   @Test
@@ -316,7 +316,7 @@ class ProjectileShooterTest {
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 0, 1), target));
     assertTrue(hits(ammo(), 1));
-    verify(target).damage(10);
+    verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
   }
 
   @Test
@@ -327,11 +327,11 @@ class ProjectileShooterTest {
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 1.6, 1), target));
     assertTrue(hits(ammo(), 1));
-    verify(target).damage(15);
+    verify(target).damage(eq(15.0), any(org.bukkit.damage.DamageSource.class));
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, .5, 1), target));
     assertTrue(hits(ammo(), 1));
-    verify(target).damage(10);
+    verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     verify(player, times(2))
         .playSound(any(Location.class), eq(Sound.ENTITY_ARROW_HIT_PLAYER), eq(1f), eq(1f));
   }
@@ -347,7 +347,7 @@ class ProjectileShooterTest {
               return null;
             })
         .when(target)
-        .damage(anyDouble());
+        .damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 0, 1), target));
     assertTrue(hits(ammo(), 1));
@@ -399,7 +399,7 @@ class ProjectileShooterTest {
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 0, 1.8), target));
     assertTrue(hits(ammo(), 1));
-    verify(target, never()).damage(anyDouble());
+    verify(target, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
   }
 
   @Test
@@ -453,8 +453,8 @@ class ProjectileShooterTest {
       ProjectileShooter.applyDamage(player, target, 10, -20);
       ProjectileShooter.applyDamage(player, target, 10, 40);
       assertEquals(List.of(10.0, 5.0, 10.0), normalAmounts);
-      verify(target).damage(5);
-      verify(target, times(2)).damage(10);
+      verify(target).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
+      verify(target, times(2)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
       verify(mythic.getDamage(), times(3)).registerAttack(any(), eq(false), eq(true));
     } finally {
       io.lumine.mythic.lib.MythicLib.plugin = previous;
@@ -466,7 +466,18 @@ class ProjectileShooterTest {
     var target = mock(LivingEntity.class);
     when(target.getHealth()).thenReturn(5.0);
     ProjectileShooter.applyDamage(player, target, 10, 20);
-    verify(target).damage(10);
+    verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void piercingDamageIsCreditedToTheShooter() {
+    var target = mock(LivingEntity.class);
+    ProjectileShooter.applyDamage(player, target, 10, 20);
+    var source = ArgumentCaptor.forClass(org.bukkit.damage.DamageSource.class);
+    verify(target).damage(eq(10.0), source.capture());
+    assertSame(player, source.getValue().getCausingEntity());
+    assertSame(player, source.getValue().getDirectEntity());
+    assertEquals(org.bukkit.damage.DamageType.GENERIC, source.getValue().getDamageType());
   }
 
   @Test
@@ -491,10 +502,10 @@ class ProjectileShooterTest {
         10.0,
         20,
         10);
-    verify(near).damage(7.5);
-    verify(far, never()).damage(anyDouble());
-    verify(otherPlayer).damage(5);
-    verify(player).damage(20);
+    verify(near).damage(eq(7.5), any(org.bukkit.damage.DamageSource.class));
+    verify(far, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
+    verify(otherPlayer).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
+    verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
   }
 
   @Test
@@ -512,7 +523,7 @@ class ProjectileShooterTest {
           20,
           ticks);
     }
-    verify(player, times(3)).damage(10.0);
+    verify(player, times(3)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     call(
         "explode",
         new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
@@ -521,7 +532,7 @@ class ProjectileShooterTest {
         20.0,
         20,
         10);
-    verify(player).damage(20.0);
+    verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
   }
 
   @Test
@@ -586,7 +597,7 @@ class ProjectileShooterTest {
     when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
         .thenReturn(new RayTraceResult(new Vector(0, 0, .8), target));
     assertTrue(hits(ammo(), 1));
-    verify(target).damage(10);
+    verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     verify(world, never())
         .playSound(any(Location.class), eq(Sound.BLOCK_STONE_BREAK), anyFloat(), anyFloat());
   }
