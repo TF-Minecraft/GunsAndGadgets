@@ -38,6 +38,9 @@ class ProjectileShooterTest {
   MockedStatic<SoundPlayer> sounds;
   MockedStatic<ImpactVfx> impacts;
   MockedConstruction<LightEffect> lights;
+  MockedStatic<io.lumine.mythic.lib.api.stat.provider.StatProvider> providers;
+  io.lumine.mythic.lib.MythicLib previousMythic;
+  io.lumine.mythic.lib.MythicLib mythic;
   boolean oldBlockDamage;
   String oldRocketSound;
 
@@ -56,6 +59,10 @@ class ProjectileShooterTest {
         .when(() -> ImpactVfx.onBlockSurface(any(), any(), any()))
         .thenAnswer(i -> i.getArgument(0));
     lights = mockConstruction(LightEffect.class);
+    previousMythic = io.lumine.mythic.lib.MythicLib.plugin;
+    mythic = mock(io.lumine.mythic.lib.MythicLib.class, RETURNS_DEEP_STUBS);
+    io.lumine.mythic.lib.MythicLib.plugin = mythic;
+    providers = mockStatic(io.lumine.mythic.lib.api.stat.provider.StatProvider.class);
     world = mock(World.class);
     player = mock(Player.class);
     when(player.getWorld()).thenReturn(world);
@@ -92,6 +99,8 @@ class ProjectileShooterTest {
   void close() {
     server.getScheduler().cancelTasks(plugin);
     lights.close();
+    providers.close();
+    io.lumine.mythic.lib.MythicLib.plugin = previousMythic;
     impacts.close();
     sounds.close();
     attributes.close();
@@ -428,19 +437,15 @@ class ProjectileShooterTest {
   void damageSplitsBetweenDirectPiercingAndMythicAttack() {
     var target = mock(LivingEntity.class);
     when(target.getHealth()).thenReturn(100.0);
-    var previous = io.lumine.mythic.lib.MythicLib.plugin;
-    var mythic = mock(io.lumine.mythic.lib.MythicLib.class, RETURNS_DEEP_STUBS);
-    io.lumine.mythic.lib.MythicLib.plugin = mythic;
     var provider = mock(io.lumine.mythic.lib.api.stat.provider.StatProvider.class);
-    List<Double> normalAmounts = new ArrayList<>();
-    try (var providers = mockStatic(io.lumine.mythic.lib.api.stat.provider.StatProvider.class);
-        var attacks =
-            mockConstruction(
-                io.lumine.mythic.lib.damage.AttackMetadata.class,
-                (mock, context) ->
-                    normalAmounts.add(
-                        ((io.lumine.mythic.lib.damage.DamageMetadata) context.arguments().get(0))
-                            .getDamage()))) {
+    List<Double> attackAmounts = new ArrayList<>();
+    try (var attacks =
+        mockConstruction(
+            io.lumine.mythic.lib.damage.AttackMetadata.class,
+            (mock, context) ->
+                attackAmounts.add(
+                    ((io.lumine.mythic.lib.damage.DamageMetadata) context.arguments().get(0))
+                        .getDamage()))) {
       providers
           .when(
               () ->
@@ -452,12 +457,13 @@ class ProjectileShooterTest {
       ProjectileShooter.applyDamage(player, target, 10, 20);
       ProjectileShooter.applyDamage(player, target, 10, -20);
       ProjectileShooter.applyDamage(player, target, 10, 40);
-      assertEquals(List.of(10.0, 5.0, 10.0), normalAmounts);
+      // Each piercing share is registered before the normal share of the same hit.
+      assertEquals(List.of(10.0, 5.0, 5.0, 10.0, 10.0, 10.0), attackAmounts);
       verify(target).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
       verify(target, times(2)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
       verify(mythic.getDamage(), times(3)).registerAttack(any(), eq(false), eq(true));
-    } finally {
-      io.lumine.mythic.lib.MythicLib.plugin = previous;
+      verify(mythic.getDamage(), times(3)).markAsMetadata(any());
+      verify(mythic.getDamage(), times(3)).unmarkAsMetadata(target);
     }
   }
 
@@ -478,6 +484,39 @@ class ProjectileShooterTest {
     assertSame(player, source.getValue().getCausingEntity());
     assertSame(player, source.getValue().getDirectEntity());
     assertEquals(org.bukkit.damage.DamageType.GENERIC, source.getValue().getDamageType());
+  }
+
+  @Test
+  void piercingHitIsAProjectileAttackWhileItLands() {
+    var target = mock(LivingEntity.class);
+    var damages = mythic.getDamage();
+    var marked = ArgumentCaptor.forClass(io.lumine.mythic.lib.damage.AttackMetadata.class);
+    doAnswer(
+            i -> {
+              verify(damages).markAsMetadata(marked.capture());
+              verify(damages, never()).unmarkAsMetadata(any(Entity.class));
+              return true;
+            })
+        .when(target)
+        .damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
+    ProjectileShooter.applyDamage(player, target, 10, 20);
+    var attack = marked.getValue();
+    assertSame(target, attack.getTarget());
+    assertFalse(attack instanceof io.lumine.mythic.lib.damage.MeleeAttackMetadata);
+    assertEquals(10.0, attack.getDamage().getDamage());
+    assertTrue(attack.getDamage().hasType(io.lumine.mythic.lib.damage.DamageType.PROJECTILE));
+    verify(damages).unmarkAsMetadata(target);
+  }
+
+  @Test
+  void piercingHitIsUnregisteredWhenDamageFails() {
+    var target = mock(LivingEntity.class);
+    doThrow(new IllegalStateException("boom"))
+        .when(target)
+        .damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
+    assertThrows(
+        IllegalStateException.class, () -> ProjectileShooter.applyDamage(player, target, 10, 20));
+    verify(mythic.getDamage()).unmarkAsMetadata(target);
   }
 
   @Test

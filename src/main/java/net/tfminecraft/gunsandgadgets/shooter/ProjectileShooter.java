@@ -45,6 +45,7 @@ import io.lumine.mythic.lib.api.stat.provider.StatProvider;
 import io.lumine.mythic.lib.damage.AttackMetadata;
 import io.lumine.mythic.lib.damage.DamageMetadata;
 import io.lumine.mythic.lib.damage.DamageType;
+import io.lumine.mythic.lib.manager.DamageManager;
 
 public class ProjectileShooter {
 
@@ -545,11 +546,9 @@ public class ProjectileShooter {
         double pierceDamage = baseDamage * piercePercent;
         double normalDamage = baseDamage - pierceDamage;
 
-        // --- Step 2: Apply pierce directly (ignores reduction) ---
-        // Generic damage bypasses armour and knockback; naming the shooter lets duels and
-        // nonlethal PvP treat the hit as theirs instead of as an environmental death.
+        // --- Step 2: Apply pierce directly (ignores armour) ---
         if (pierceDamage > 0) {
-            target.damage(pierceDamage, pierceSource(attacker));
+            applyPiercing(attacker, target, pierceDamage);
         }
 
         // --- Step 3: Apply remaining damage via MythicLib/MMOCore ---
@@ -560,6 +559,23 @@ public class ProjectileShooter {
         }
     }
 
+
+    /**
+     * Generic damage bypasses armour and knockback. Naming the shooter lets duels and nonlethal
+     * PvP treat the hit as theirs instead of as an environmental death. MythicLib reads any
+     * unregistered hit from a player as melee, which MMOItems cancels for guns, so the hit is
+     * registered as a projectile attack first.
+     */
+    private static void applyPiercing(Player attacker, LivingEntity target, double amount) {
+        DamageManager damages = MythicLib.inst().getDamage();
+        DamageMetadata dmgMeta = new DamageMetadata(amount, java.util.Arrays.asList(DamageType.PROJECTILE));
+        damages.markAsMetadata(new AttackMetadata(dmgMeta, target, StatProvider.get(attacker, EquipmentSlot.MAIN_HAND, true)));
+        try {
+            target.damage(amount, pierceSource(attacker));
+        } finally {
+            damages.unmarkAsMetadata(target);
+        }
+    }
 
     static org.bukkit.damage.DamageSource pierceSource(Player attacker) {
         return org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.GENERIC)
