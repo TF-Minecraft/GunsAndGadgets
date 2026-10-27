@@ -546,8 +546,10 @@ public class ProjectileShooter {
         double normalDamage = baseDamage - pierceDamage;
 
         // --- Step 2: Apply pierce directly (ignores reduction) ---
+        // Generic damage bypasses armour and knockback; naming the shooter lets duels and
+        // nonlethal PvP treat the hit as theirs instead of as an environmental death.
         if (pierceDamage > 0) {
-            target.damage(pierceDamage); // vanilla direct damage
+            target.damage(pierceDamage, pierceSource(attacker));
         }
 
         // --- Step 3: Apply remaining damage via MythicLib/MMOCore ---
@@ -558,6 +560,13 @@ public class ProjectileShooter {
         }
     }
 
+
+    static org.bukkit.damage.DamageSource pierceSource(Player attacker) {
+        return org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.GENERIC)
+                .withCausingEntity(attacker)
+                .withDirectEntity(attacker)
+                .build();
+    }
 
     private static void drawLine(Ammunition ammo, Location from, Location to, double radius) {
         Vector diff = to.toVector().subtract(from.toVector());
