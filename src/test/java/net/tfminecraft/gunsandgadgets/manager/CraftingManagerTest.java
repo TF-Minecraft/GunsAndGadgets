@@ -52,7 +52,7 @@ class CraftingManagerTest {
     click = mock(InventoryClickEvent.class);
     when(click.getWhoClicked()).thenReturn(player);
     Inventory top = mock(Inventory.class);
-    when(top.getHolder()).thenReturn(new AssemblyHolder());
+    when(top.getHolder(false)).thenReturn(new AssemblyHolder());
     when(click.getInventory()).thenReturn(top);
     when(click.getSlot()).thenReturn(8);
     when(click.getCurrentItem()).thenReturn(new ItemStack(Material.CROSSBOW));

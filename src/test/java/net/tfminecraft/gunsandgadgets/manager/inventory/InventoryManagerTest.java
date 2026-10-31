@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import io.lumine.mythic.lib.api.item.NBTItem;
 import java.util.*;
+import net.tfminecraft.gunsandgadgets.HolderLookupServerMock;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.*;
@@ -47,7 +48,7 @@ class InventoryManagerTest {
 
   @BeforeEach
   void setup() {
-    server = MockBukkit.mock();
+    server = MockBukkit.mock(new HolderLookupServerMock());
     player = server.addPlayer();
     manager = new InventoryManager();
     plugin = mock(GunsAndGadgets.class);
@@ -145,7 +146,8 @@ class InventoryManagerTest {
   InventoryClickEvent click(InventoryHolder holder, int slot, ItemStack item) {
     var e = mock(InventoryClickEvent.class);
     when(e.getWhoClicked()).thenReturn(player);
-    when(e.getInventory()).thenReturn(server.createInventory(holder, 27));
+    var inventory = server.createInventory(holder, 27);
+    when(e.getInventory()).thenReturn(inventory);
     when(e.getSlot()).thenReturn(slot);
     when(e.getCurrentItem()).thenReturn(item);
     return e;

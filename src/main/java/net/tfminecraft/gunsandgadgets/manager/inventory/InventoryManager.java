@@ -22,6 +22,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -720,8 +721,10 @@ public class InventoryManager implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
+        InventoryHolder menu = event.getInventory().getHolder(false);
+
         // ASSEMBLY GUI
-        if (event.getInventory().getHolder() instanceof AssemblyHolder) {
+        if (menu instanceof AssemblyHolder) {
             event.setCancelled(true); // fully managed GUI
 
             ItemStack current = event.getCurrentItem();
@@ -746,7 +749,7 @@ public class InventoryManager implements Listener {
         }
 
         // TYPE SELECTION GUI
-        if (event.getInventory().getHolder() instanceof TypeSelectionHolder) {
+        if (menu instanceof TypeSelectionHolder) {
             event.setCancelled(true);
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || !clicked.hasItemMeta()) return;
@@ -773,7 +776,7 @@ public class InventoryManager implements Listener {
         }
 
         // PART SELECTION GUI
-        if (event.getInventory().getHolder() instanceof PartSelectionHolder holder) {
+        if (menu instanceof PartSelectionHolder holder) {
             event.setCancelled(true);
 
             ItemStack clicked = event.getCurrentItem();

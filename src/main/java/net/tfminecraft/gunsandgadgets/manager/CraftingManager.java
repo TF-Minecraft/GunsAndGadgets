@@ -52,7 +52,7 @@ public class CraftingManager implements Listener {
         if (!(e.getWhoClicked() instanceof Player player)) return;
 
         // ASSEMBLY GUI
-        if (e.getInventory().getHolder() instanceof AssemblyHolder) {
+        if (e.getInventory().getHolder(false) instanceof AssemblyHolder) {
             e.setCancelled(true); // fully managed GUI
 
             ItemStack current = e.getCurrentItem();
