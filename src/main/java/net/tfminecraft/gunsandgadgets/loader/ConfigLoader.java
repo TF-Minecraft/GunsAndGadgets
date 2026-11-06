@@ -53,16 +53,16 @@ public class ConfigLoader {
         Cache.rocketSound = config.getString("rocket-sound", "none");
         Cache.statRefreshDebug = config.getBoolean("stat_refresh_debug", false);
 
-        Cache.headshotMultiplier = Math.max(0.0, config.getDouble("handling.headshot-multiplier", 1.5));
-        Cache.spreadSneaking = Math.max(0.0, config.getDouble("handling.spread-multipliers.sneaking", 1.0));
-        Cache.spreadMoving = Math.max(0.0, config.getDouble("handling.spread-multipliers.moving", 1.0));
-        Cache.spreadSprinting = Math.max(0.0, config.getDouble("handling.spread-multipliers.sprinting", 1.0));
-        Cache.spreadAirborne = Math.max(0.0, config.getDouble("handling.spread-multipliers.airborne", 1.0));
-        Cache.spreadMounted = Math.max(0.0, config.getDouble("handling.spread-multipliers.mounted", 1.0));
-        Cache.maxSpreadDegrees = Math.max(0.02, config.getDouble("handling.max-spread-degrees", 45.0));
-        Cache.falloffStartDistance = Math.max(0.0, config.getDouble("handling.falloff.start-distance", 0.0));
+        Cache.headshotMultiplier = Math.max(0.0, finite(config, "handling.headshot-multiplier", 1.5));
+        Cache.spreadSneaking = Math.max(0.0, finite(config, "handling.spread-multipliers.sneaking", 1.0));
+        Cache.spreadMoving = Math.max(0.0, finite(config, "handling.spread-multipliers.moving", 1.0));
+        Cache.spreadSprinting = Math.max(0.0, finite(config, "handling.spread-multipliers.sprinting", 1.0));
+        Cache.spreadAirborne = Math.max(0.0, finite(config, "handling.spread-multipliers.airborne", 1.0));
+        Cache.spreadMounted = Math.max(0.0, finite(config, "handling.spread-multipliers.mounted", 1.0));
+        Cache.maxSpreadDegrees = Math.max(0.02, finite(config, "handling.max-spread-degrees", 45.0));
+        Cache.falloffStartDistance = Math.max(0.0, finite(config, "handling.falloff.start-distance", 0.0));
         Cache.falloffMinMultiplier =
-                Math.max(0.0, Math.min(1.0, config.getDouble("handling.falloff.min-multiplier", 1.0)));
+                Math.max(0.0, Math.min(1.0, finite(config, "handling.falloff.min-multiplier", 1.0)));
 
         section = config.getConfigurationSection("required-parts");
         if (section != null) {
@@ -77,4 +77,13 @@ public class ConfigLoader {
             }
         }
 	}
+
+    /**
+     * A handling number, or its default when the value is NaN or infinite: Math.max/min pass NaN
+     * through, which would turn damage or spread into NaN.
+     */
+    private static double finite(FileConfiguration config, String path, double fallback) {
+        double value = config.getDouble(path, fallback);
+        return Double.isFinite(value) ? value : fallback;
+    }
 }

@@ -97,6 +97,27 @@ handling:
     assertEquals(1.0, Cache.falloffMinMultiplier);
     loader.loadConfig(file("negative-falloff.yml", "handling: {falloff: {min-multiplier: -2}}").toFile());
     assertEquals(0.0, Cache.falloffMinMultiplier);
+    // NaN or infinity fall back to each key's default instead of reaching damage and spread.
+    loader.loadConfig(
+        file(
+                "nonfinite.yml",
+                """
+handling:
+  headshot-multiplier: .nan
+  spread-multipliers: {sneaking: .nan, moving: .inf, sprinting: -.inf, airborne: .nan, mounted: .inf}
+  max-spread-degrees: .nan
+  falloff: {start-distance: .inf, min-multiplier: .nan}
+""")
+            .toFile());
+    assertEquals(1.5, Cache.headshotMultiplier);
+    assertEquals(1.0, Cache.spreadSneaking);
+    assertEquals(1.0, Cache.spreadMoving);
+    assertEquals(1.0, Cache.spreadSprinting);
+    assertEquals(1.0, Cache.spreadAirborne);
+    assertEquals(1.0, Cache.spreadMounted);
+    assertEquals(45.0, Cache.maxSpreadDegrees);
+    assertEquals(0.0, Cache.falloffStartDistance);
+    assertEquals(1.0, Cache.falloffMinMultiplier);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
     loader.loadConfig(temp.resolve("missing").toFile());
     loader.loadConfig(file("bad.yml", "x: [").toFile());
