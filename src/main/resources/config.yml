@@ -22,15 +22,16 @@ handling:
     # Damage multiplier for hits in the top quarter of a player's hitbox.
     headshot-multiplier: 1.25
     # Spread multiplier for the shooter's stance when the shot fires. Riding an
-    # animal uses mounted and other seats (chairs, vehicle seats) count as still;
-    # otherwise airborne beats sprinting, sprinting beats moving, and sneaking
-    # scales the ground value (still or moving).
+    # animal or sitting in a moving vehicle (boat, minecart, VehicleFramework
+    # vehicle with speed) uses mounted; a seat that isn't moving (chairs, parked
+    # vehicles) counts as still. Otherwise airborne beats sprinting, sprinting
+    # beats moving, and sneaking scales the ground value (still or moving).
     spread-multipliers:
         sneaking: 0.8
-        moving: 1.5
-        sprinting: 3.0
-        airborne: 4.0
-        mounted: 1.5
+        moving: 2.0
+        sprinting: 4.0
+        airborne: 5.0
+        mounted: 2.0
     # Upper limit for the final spread in degrees.
     max-spread-degrees: 45
     # Bullets do full damage up to start-distance blocks from the muzzle, then

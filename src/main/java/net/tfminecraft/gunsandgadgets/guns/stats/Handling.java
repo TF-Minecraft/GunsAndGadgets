@@ -1,12 +1,16 @@
 package net.tfminecraft.gunsandgadgets.guns.stats;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Input;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import net.tfminecraft.gunsandgadgets.cache.Cache;
+import net.tfminecraft.vehicleframework.VehicleFramework;
+import net.tfminecraft.vehicleframework.vehicles.ActiveVehicle;
 
 /**
  * Shot handling from {@code handling} in config.yml: spread by stance, damage falloff over
@@ -14,18 +18,25 @@ import net.tfminecraft.gunsandgadgets.cache.Cache;
  * has not added the section plays exactly as before.
  */
 public final class Handling {
+    /** 0.01 blocks a tick horizontally: anything slower is drift, not travel. */
+    private static final double MOVING_SEAT_SPEED_SQUARED = 0.01 * 0.01;
+
+    /** Longest coupling walked to find a train's lead vehicle (guards against a coupling loop). */
+    private static final int MAX_COUPLING = 64;
+
     private Handling() {}
 
     /**
      * Spread multiplier for the shooter's stance when the shot leaves the barrel. Riding an animal
-     * uses the mounted value and any other seat (chairs, vehicle seats) counts as standing still;
-     * otherwise airborne beats sprinting, sprinting beats moving, and sneaking scales whatever
-     * applies on the ground.
+     * or sitting in a moving vehicle uses the mounted value, and a seat that is not moving (chairs,
+     * parked vehicles) counts as standing still; otherwise airborne beats sprinting, sprinting
+     * beats moving, and sneaking scales whatever applies on the ground.
      */
     public static double spreadMultiplier(Player player) {
         if (player.isInsideVehicle()) {
             Entity vehicle = player.getVehicle();
-            return vehicle instanceof LivingEntity && !(vehicle instanceof ArmorStand) ? Cache.spreadMounted : 1.0;
+            boolean animal = vehicle instanceof LivingEntity && !(vehicle instanceof ArmorStand);
+            return animal || isSeatMoving(player, vehicle) ? Cache.spreadMounted : 1.0;
         }
         if (isAirborne(player)) {
             return Cache.spreadAirborne;
@@ -40,6 +51,33 @@ public final class Handling {
             multiplier *= Cache.spreadSneaking;
         }
         return multiplier;
+    }
+
+    /**
+     * Boats and minecarts carry their own velocity. VehicleFramework moves its seats by teleport,
+     * so its vehicles report motion through the access panel speed (engines, geared engines and
+     * harnessed carts all set it). Coupled cars such as train carriages move with the vehicle at
+     * the front of the coupling, so that one's speed decides.
+     */
+    static boolean isSeatMoving(Player player, Entity seat) {
+        if (seat != null) {
+            Vector velocity = seat.getVelocity();
+            if (velocity.getX() * velocity.getX() + velocity.getZ() * velocity.getZ() > MOVING_SEAT_SPEED_SQUARED) {
+                return true;
+            }
+        }
+        if (!Bukkit.getPluginManager().isPluginEnabled("VehicleFramework")) {
+            return false;
+        }
+        ActiveVehicle vehicle = VehicleFramework.getVehicleManager().getByPassenger(player);
+        if (vehicle == null) {
+            return false;
+        }
+        ActiveVehicle lead = vehicle;
+        for (int guard = 0; lead.hasParent() && guard < MAX_COUPLING; guard++) {
+            lead = lead.getParent();
+        }
+        return lead.getAccessPanel() != null && lead.getAccessPanel().getSpeed() != 0.0;
     }
 
     // The server only knows the ground state the client reports, which is all a shot needs.

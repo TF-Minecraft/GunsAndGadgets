@@ -68,15 +68,105 @@ class HandlingTest {
     assertEquals(2.0, Handling.spreadMultiplier(player));
   }
 
-  @Test
-  void otherSeatsCountAsStandingStill() {
-    var player = mock(Player.class);
-    when(player.isInsideVehicle()).thenReturn(true);
-    var stand = mock(org.bukkit.entity.ArmorStand.class);
-    var display = mock(org.bukkit.entity.BlockDisplay.class);
-    for (var seat : new org.bukkit.entity.Entity[] {stand, display, null}) {
-      when(player.getVehicle()).thenReturn(seat);
-      assertEquals(1.0, Handling.spreadMultiplier(player));
+  @Nested
+  class Seats {
+    org.mockbukkit.mockbukkit.ServerMock server;
+    Player player;
+
+    @BeforeEach
+    void server() {
+      server = org.mockbukkit.mockbukkit.MockBukkit.mock();
+      player = mock(Player.class);
+      when(player.isInsideVehicle()).thenReturn(true);
+    }
+
+    @AfterEach
+    void unmock() {
+      org.mockbukkit.mockbukkit.MockBukkit.unmock();
+    }
+
+    <T extends org.bukkit.entity.Entity> T seat(Class<T> type, double x, double y, double z) {
+      T seat = mock(type);
+      when(seat.getVelocity()).thenReturn(new org.bukkit.util.Vector(x, y, z));
+      return seat;
+    }
+
+    @Test
+    void stillSeatsCountAsStandingStillWithoutVehicleFramework() {
+      for (var seat :
+          new org.bukkit.entity.Entity[] {
+            seat(org.bukkit.entity.ArmorStand.class, 0, 0, 0),
+            seat(org.bukkit.entity.BlockDisplay.class, 0.005, -0.5, 0.005),
+            null
+          }) {
+        when(player.getVehicle()).thenReturn(seat);
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+      }
+    }
+
+    @Test
+    void travellingBoatsAndMinecartsCountAsMounted() {
+      var boat = seat(org.bukkit.entity.Boat.class, 0.3, 0, 0);
+      var minecart = seat(org.bukkit.entity.Minecart.class, 0, 0, -0.2);
+      when(player.getVehicle()).thenReturn(boat);
+      assertEquals(2.0, Handling.spreadMultiplier(player));
+      when(player.getVehicle()).thenReturn(minecart);
+      assertEquals(2.0, Handling.spreadMultiplier(player));
+    }
+
+    @Test
+    void vehicleFrameworkSeatsFollowTheAccessPanelSpeed() {
+      org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
+      var stand = seat(org.bukkit.entity.ArmorStand.class, 0, 0, 0);
+      when(player.getVehicle()).thenReturn(stand);
+      var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+      var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+      var panel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
+      try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+        framework
+            .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+            .thenReturn(manager);
+        // Not a VehicleFramework passenger: a still seat.
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+        when(manager.getByPassenger(player)).thenReturn(vehicle);
+        // A vehicle without an access panel cannot report speed.
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+        when(vehicle.getAccessPanel()).thenReturn(panel);
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+        when(panel.getSpeed()).thenReturn(0.4);
+        assertEquals(2.0, Handling.spreadMultiplier(player));
+        when(panel.getSpeed()).thenReturn(-0.2);
+        assertEquals(2.0, Handling.spreadMultiplier(player));
+      }
+    }
+
+    @Test
+    void trainCarriagesMoveWithTheirLocomotive() {
+      org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
+      var stand = seat(org.bukkit.entity.ArmorStand.class, 0, 0, 0);
+      when(player.getVehicle()).thenReturn(stand);
+      var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+      var carriage = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+      var locomotive = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+      var carriagePanel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
+      var locomotivePanel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
+      when(carriage.hasParent()).thenReturn(true);
+      when(carriage.getParent()).thenReturn(locomotive);
+      when(carriage.getAccessPanel()).thenReturn(carriagePanel);
+      when(locomotive.getAccessPanel()).thenReturn(locomotivePanel);
+      when(manager.getByPassenger(player)).thenReturn(carriage);
+      try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+        framework
+            .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+            .thenReturn(manager);
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+        when(locomotivePanel.getSpeed()).thenReturn(0.5);
+        assertEquals(2.0, Handling.spreadMultiplier(player));
+        // A coupling loop stops after the guard instead of spinning forever.
+        when(carriage.getParent()).thenReturn(carriage);
+        assertEquals(1.0, Handling.spreadMultiplier(player));
+        verify(carriage, atLeast(64)).getParent();
+      }
     }
   }
 
