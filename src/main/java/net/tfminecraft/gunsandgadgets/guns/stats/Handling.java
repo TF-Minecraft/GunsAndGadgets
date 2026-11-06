@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets.guns.stats;
 
+import java.util.List;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Input;
 import org.bukkit.entity.ArmorStand;
@@ -27,16 +29,20 @@ public final class Handling {
     private Handling() {}
 
     /**
-     * Spread multiplier for the shooter's stance when the shot leaves the barrel. Riding an animal
-     * or sitting in a moving vehicle uses the mounted value, and a seat that is not moving (chairs,
-     * parked vehicles) counts as standing still; otherwise airborne beats sprinting, sprinting
-     * beats moving, and sneaking scales whatever applies on the ground.
+     * Spread multiplier for the shooter's stance when the shot leaves the barrel. A seat counts as
+     * mounted while its vehicle moves (riding an animal always does) and as standing still
+     * otherwise; on foot, airborne beats sprinting, sprinting beats moving, and sneaking scales
+     * whatever applies on the ground.
      */
     public static double spreadMultiplier(Player player) {
+        ActiveVehicle seat = vehicleFrameworkSeat(player);
+        if (seat != null) {
+            return isTravelling(seat) ? Cache.spreadMounted : 1.0;
+        }
         if (player.isInsideVehicle()) {
             Entity vehicle = player.getVehicle();
             boolean animal = vehicle instanceof LivingEntity && !(vehicle instanceof ArmorStand);
-            return animal || isSeatMoving(player, vehicle) ? Cache.spreadMounted : 1.0;
+            return animal || isSeatMoving(vehicle) ? Cache.spreadMounted : 1.0;
         }
         if (isAirborne(player)) {
             return Cache.spreadAirborne;
@@ -54,30 +60,48 @@ public final class Handling {
     }
 
     /**
-     * Boats and minecarts carry their own velocity. VehicleFramework moves its seats by teleport,
-     * so its vehicles report motion through the access panel speed (engines, geared engines and
-     * harnessed carts all set it). Coupled cars such as train carriages move with the vehicle at
-     * the front of the coupling, so that one's speed decides.
+     * The VehicleFramework vehicle the player sits in, or null. VehicleFramework seats riders
+     * through ModelEngine's mount manager, so they have no Bukkit vehicle and are found here.
      */
-    static boolean isSeatMoving(Player player, Entity seat) {
-        if (seat != null) {
-            Vector velocity = seat.getVelocity();
-            if (velocity.getX() * velocity.getX() + velocity.getZ() * velocity.getZ() > MOVING_SEAT_SPEED_SQUARED) {
-                return true;
-            }
-        }
+    static ActiveVehicle vehicleFrameworkSeat(Player player) {
         if (!Bukkit.getPluginManager().isPluginEnabled("VehicleFramework")) {
-            return false;
+            return null;
         }
-        ActiveVehicle vehicle = VehicleFramework.getVehicleManager().getByPassenger(player);
-        if (vehicle == null) {
-            return false;
-        }
+        return VehicleFramework.getVehicleManager().getByPassenger(player);
+    }
+
+    /**
+     * A VehicleFramework vehicle reports motion through its access panel speed (engines, geared
+     * engines and harnessed carts all set it). Coupled cars such as train carriages move with the
+     * vehicle at the front of the coupling, so that one's speed decides.
+     */
+    static boolean isTravelling(ActiveVehicle vehicle) {
         ActiveVehicle lead = vehicle;
         for (int guard = 0; lead.hasParent() && guard < MAX_COUPLING; guard++) {
             lead = lead.getParent();
         }
         return lead.getAccessPanel() != null && lead.getAccessPanel().getSpeed() != 0.0;
+    }
+
+    /**
+     * Minecarts are simulated on the server, so their velocity shows travel. A player-driven boat
+     * moves on its driver's client and reads zero velocity on the server, so it counts as moving
+     * while the driver (first passenger) holds forward or back.
+     */
+    static boolean isSeatMoving(Entity seat) {
+        if (seat == null) {
+            return false;
+        }
+        Vector velocity = seat.getVelocity();
+        if (velocity.getX() * velocity.getX() + velocity.getZ() * velocity.getZ() > MOVING_SEAT_SPEED_SQUARED) {
+            return true;
+        }
+        List<Entity> passengers = seat.getPassengers();
+        if (passengers.isEmpty() || !(passengers.get(0) instanceof Player driver)) {
+            return false;
+        }
+        Input input = driver.getCurrentInput();
+        return input != null && (input.isForward() || input.isBackward());
     }
 
     // The server only knows the ground state the client reports, which is all a shot needs.
@@ -90,7 +114,7 @@ public final class Handling {
         return input != null && (input.isForward() || input.isBackward() || input.isLeft() || input.isRight());
     }
 
-    /** Final spread in degrees: never below the old 0.02 floor, never above the configured cap. */
+    /** Final launch spread in degrees: never below the old 0.02 floor, never above the configured cap. */
     public static double clampSpread(double degrees) {
         return Math.min(Cache.maxSpreadDegrees, Math.max(0.02, degrees));
     }

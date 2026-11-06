@@ -185,9 +185,9 @@ public class ProjectileShooter {
         int ammoAcc = ammo.getStats().getOrDefault("accuracy", 0);
 
         int totalAcc = gunAcc + ammoAcc;
-        double spreadDegrees = Handling.clampSpread(StatCalculator.calculateAccuracy(totalAcc)
-                * AttributeReader.getAccuracyMultFromAttributes(player)
-                * Handling.spreadMultiplier(player));
+        double baseSpread = Math.max(0.02, StatCalculator.calculateAccuracy(totalAcc)*AttributeReader.getAccuracyMultFromAttributes(player));
+        // Stance widens only the launch cone; rocket wobble in flight keeps the gun's own spread.
+        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player));
 
         int salt = meta.getPersistentDataContainer().getOrDefault(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "accuracy_salt"),
@@ -208,7 +208,7 @@ public class ProjectileShooter {
 
             int pierceStat = ammo.getStats().getOrDefault("pierce", 0);
 
-            startProjectileTask(player, ammo, start.clone(), velocity, spreadDegrees, maxDistance, totalDamage, pierceStat, Math::random);
+            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, totalDamage, pierceStat, Math::random);
         }
     }
 

@@ -72,7 +72,7 @@ handling:
     assertEquals(1.0, Cache.spreadSprinting);
     assertEquals(1.0, Cache.spreadAirborne);
     assertEquals(1.0, Cache.spreadMounted);
-    assertEquals(45.0, Cache.maxSpreadDegrees);
+    assertEquals(Double.POSITIVE_INFINITY, Cache.maxSpreadDegrees);
     assertEquals(0.0, Cache.falloffStartDistance);
     assertEquals(1.0, Cache.falloffMinMultiplier);
     loader.loadConfig(
@@ -115,9 +115,20 @@ handling:
     assertEquals(1.0, Cache.spreadSprinting);
     assertEquals(1.0, Cache.spreadAirborne);
     assertEquals(1.0, Cache.spreadMounted);
-    assertEquals(45.0, Cache.maxSpreadDegrees);
+    assertEquals(Double.POSITIVE_INFINITY, Cache.maxSpreadDegrees);
     assertEquals(0.0, Cache.falloffStartDistance);
     assertEquals(1.0, Cache.falloffMinMultiplier);
+    // The shipped config.yml carries the tuned values (a typo or indent slip would fall back).
+    loader.loadConfig(java.nio.file.Path.of("src/main/resources/config.yml").toFile());
+    assertEquals(1.25, Cache.headshotMultiplier);
+    assertEquals(0.8, Cache.spreadSneaking);
+    assertEquals(2.0, Cache.spreadMoving);
+    assertEquals(4.0, Cache.spreadSprinting);
+    assertEquals(5.0, Cache.spreadAirborne);
+    assertEquals(2.0, Cache.spreadMounted);
+    assertEquals(45.0, Cache.maxSpreadDegrees);
+    assertEquals(24.0, Cache.falloffStartDistance);
+    assertEquals(0.5, Cache.falloffMinMultiplier);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
     loader.loadConfig(temp.resolve("missing").toFile());
     loader.loadConfig(file("bad.yml", "x: [").toFile());

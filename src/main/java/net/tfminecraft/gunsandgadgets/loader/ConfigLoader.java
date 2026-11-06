@@ -59,7 +59,7 @@ public class ConfigLoader {
         Cache.spreadSprinting = Math.max(0.0, finite(config, "handling.spread-multipliers.sprinting", 1.0));
         Cache.spreadAirborne = Math.max(0.0, finite(config, "handling.spread-multipliers.airborne", 1.0));
         Cache.spreadMounted = Math.max(0.0, finite(config, "handling.spread-multipliers.mounted", 1.0));
-        Cache.maxSpreadDegrees = Math.max(0.02, finite(config, "handling.max-spread-degrees", 45.0));
+        Cache.maxSpreadDegrees = Math.max(0.02, finite(config, "handling.max-spread-degrees", Double.POSITIVE_INFINITY));
         Cache.falloffStartDistance = Math.max(0.0, finite(config, "handling.falloff.start-distance", 0.0));
         Cache.falloffMinMultiplier =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.falloff.min-multiplier", 1.0)));

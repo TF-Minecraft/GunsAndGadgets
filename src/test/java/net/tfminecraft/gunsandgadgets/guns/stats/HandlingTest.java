@@ -14,6 +14,7 @@ class HandlingTest {
 
   @BeforeEach
   void configure() {
+    org.mockbukkit.mockbukkit.MockBukkit.mock();
     sneaking = Cache.spreadSneaking;
     moving = Cache.spreadMoving;
     sprinting = Cache.spreadSprinting;
@@ -42,6 +43,7 @@ class HandlingTest {
     Cache.maxSpreadDegrees = maxSpread;
     Cache.falloffStartDistance = falloffStart;
     Cache.falloffMinMultiplier = falloffMin;
+    org.mockbukkit.mockbukkit.MockBukkit.unmock();
   }
 
   Player grounded() {
@@ -70,19 +72,12 @@ class HandlingTest {
 
   @Nested
   class Seats {
-    org.mockbukkit.mockbukkit.ServerMock server;
     Player player;
 
     @BeforeEach
-    void server() {
-      server = org.mockbukkit.mockbukkit.MockBukkit.mock();
+    void rider() {
       player = mock(Player.class);
       when(player.isInsideVehicle()).thenReturn(true);
-    }
-
-    @AfterEach
-    void unmock() {
-      org.mockbukkit.mockbukkit.MockBukkit.unmock();
     }
 
     <T extends org.bukkit.entity.Entity> T seat(Class<T> type, double x, double y, double z) {
@@ -105,20 +100,44 @@ class HandlingTest {
     }
 
     @Test
-    void travellingBoatsAndMinecartsCountAsMounted() {
-      var boat = seat(org.bukkit.entity.Boat.class, 0.3, 0, 0);
+    void movingMinecartsCountAsMounted() {
       var minecart = seat(org.bukkit.entity.Minecart.class, 0, 0, -0.2);
-      when(player.getVehicle()).thenReturn(boat);
-      assertEquals(2.0, Handling.spreadMultiplier(player));
       when(player.getVehicle()).thenReturn(minecart);
       assertEquals(2.0, Handling.spreadMultiplier(player));
     }
 
     @Test
-    void vehicleFrameworkSeatsFollowTheAccessPanelSpeed() {
+    void driverHeldBoatsCountAsMountedBecauseTheyReadNoVelocity() {
+      // A player-driven boat moves on the client, so the server sees zero velocity.
+      var boat = seat(org.bukkit.entity.Boat.class, 0, 0, 0);
+      when(player.getVehicle()).thenReturn(boat);
+      var driver = mock(Player.class);
+      var passenger = mock(Player.class);
+      var forward = input(true, false, false, false);
+      var backward = input(false, true, false, false);
+      var turning = input(false, false, true, true);
+      when(boat.getPassengers()).thenReturn(java.util.List.of(driver, passenger));
+      // Driver holds no keys (null input), then only turns: the boat counts as still.
+      assertEquals(1.0, Handling.spreadMultiplier(player));
+      when(driver.getCurrentInput()).thenReturn(turning);
+      assertEquals(1.0, Handling.spreadMultiplier(player));
+      when(driver.getCurrentInput()).thenReturn(forward);
+      assertEquals(2.0, Handling.spreadMultiplier(player));
+      when(driver.getCurrentInput()).thenReturn(backward);
+      assertEquals(2.0, Handling.spreadMultiplier(player));
+      // A boat with a mob or nobody at the front has no driver to read.
+      var mob = mock(org.bukkit.entity.Zombie.class);
+      when(boat.getPassengers()).thenReturn(java.util.List.of(mob));
+      assertEquals(1.0, Handling.spreadMultiplier(player));
+      when(boat.getPassengers()).thenReturn(java.util.List.of());
+      assertEquals(1.0, Handling.spreadMultiplier(player));
+    }
+
+    @Test
+    void vehicleFrameworkRidersHaveNoBukkitVehicleAndFollowTheAccessPanelSpeed() {
+      // Live servers seat VehicleFramework riders through ModelEngine: no Bukkit vehicle at all.
+      when(player.isInsideVehicle()).thenReturn(false);
       org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
-      var stand = seat(org.bukkit.entity.ArmorStand.class, 0, 0, 0);
-      when(player.getVehicle()).thenReturn(stand);
       var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
       var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
       var panel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
@@ -126,10 +145,10 @@ class HandlingTest {
         framework
             .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
             .thenReturn(manager);
-        // Not a VehicleFramework passenger: a still seat.
-        assertEquals(1.0, Handling.spreadMultiplier(player));
+        // Not a VehicleFramework passenger and not on the ground: the on-foot airborne rule.
+        assertEquals(4.0, Handling.spreadMultiplier(player));
         when(manager.getByPassenger(player)).thenReturn(vehicle);
-        // A vehicle without an access panel cannot report speed.
+        // Seated, whatever the client says about the ground; no access panel means no speed.
         assertEquals(1.0, Handling.spreadMultiplier(player));
         when(vehicle.getAccessPanel()).thenReturn(panel);
         assertEquals(1.0, Handling.spreadMultiplier(player));
@@ -142,9 +161,8 @@ class HandlingTest {
 
     @Test
     void trainCarriagesMoveWithTheirLocomotive() {
+      when(player.isInsideVehicle()).thenReturn(false);
       org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
-      var stand = seat(org.bukkit.entity.ArmorStand.class, 0, 0, 0);
-      when(player.getVehicle()).thenReturn(stand);
       var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
       var carriage = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
       var locomotive = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
@@ -231,6 +249,8 @@ class HandlingTest {
     assertEquals(0.02, Handling.clampSpread(0.0));
     assertEquals(45.0, Handling.clampSpread(160.0));
     assertEquals(3.0, Handling.clampSpread(3.0));
+    Cache.maxSpreadDegrees = Double.POSITIVE_INFINITY;
+    assertEquals(160.0, Handling.clampSpread(160.0));
   }
 
   @Test

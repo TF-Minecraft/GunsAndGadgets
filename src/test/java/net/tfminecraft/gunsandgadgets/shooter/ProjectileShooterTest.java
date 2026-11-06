@@ -366,7 +366,9 @@ class ProjectileShooterTest {
   @Test
   void shooterStanceWidensSpread() {
     double oldSprinting = Cache.spreadSprinting;
+    double oldCap = Cache.maxSpreadDegrees;
     try {
+      Cache.maxSpreadDegrees = 45.0;
       var config = new YamlConfiguration();
       config.set("amount", 20);
       putInt("stat_value_range", 1);
@@ -398,6 +400,7 @@ class ProjectileShooterTest {
       assertTrue(widest > Math.toRadians(2));
     } finally {
       Cache.spreadSprinting = oldSprinting;
+      Cache.maxSpreadDegrees = oldCap;
     }
   }
 
@@ -433,7 +436,7 @@ class ProjectileShooterTest {
   }
 
   @Test
-  void falloffDoesNotReduceVehicleOrRocketDamage() throws Exception {
+  void falloffDoesNotReduceRocketDamage() throws Exception {
     Cache.falloffStartDistance = 0;
     Cache.falloffMinMultiplier = 0.1;
     var near = mock(LivingEntity.class);
@@ -446,6 +449,26 @@ class ProjectileShooterTest {
     assertTrue(hitsFrom(ammo("ROCKET"), 20, new Location(world, 0, 0, -99), 100.0));
     // Rocket at the hit point: 10 x 2 at distance 0, unaffected by the far muzzle.
     verify(near).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void falloffDoesNotReduceBulletHitsOnVehicles() throws Exception {
+    Cache.falloffStartDistance = 0;
+    Cache.falloffMinMultiplier = 0.1;
+    MockBukkit.createMockPlugin("VehicleFramework");
+    var hitbox = mock(org.bukkit.entity.Interaction.class);
+    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+    when(manager.get(hitbox)).thenReturn(vehicle);
+    try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+      framework
+          .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+          .thenReturn(manager);
+      when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+          .thenReturn(new RayTraceResult(new Vector(0, 0, 1), hitbox));
+      assertTrue(hitsFrom(ammo(), 1, new Location(world, 0, 0, -99), 100.0));
+      verify(vehicle).damage("PROJECTILE", 10.0);
+    }
   }
 
   @Test
