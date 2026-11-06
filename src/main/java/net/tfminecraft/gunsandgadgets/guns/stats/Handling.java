@@ -5,6 +5,7 @@ import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.Input;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -95,6 +96,9 @@ public final class Handling {
         Vector velocity = seat.getVelocity();
         if (velocity.getX() * velocity.getX() + velocity.getZ() * velocity.getZ() > MOVING_SEAT_SPEED_SQUARED) {
             return true;
+        }
+        if (!(seat instanceof Boat)) {
+            return false;
         }
         List<Entity> passengers = seat.getPassengers();
         if (passengers.isEmpty() || !(passengers.get(0) instanceof Player driver)) {

@@ -119,7 +119,8 @@ handling:
     assertEquals(0.0, Cache.falloffStartDistance);
     assertEquals(1.0, Cache.falloffMinMultiplier);
     // The shipped config.yml carries the tuned values (a typo or indent slip would fall back).
-    loader.loadConfig(java.nio.file.Path.of("src/main/resources/config.yml").toFile());
+    loader.loadConfig(
+        java.nio.file.Path.of(getClass().getResource("/config.yml").toURI()).toFile());
     assertEquals(1.25, Cache.headshotMultiplier);
     assertEquals(0.8, Cache.spreadSneaking);
     assertEquals(2.0, Cache.spreadMoving);

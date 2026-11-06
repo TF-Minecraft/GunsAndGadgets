@@ -134,6 +134,17 @@ class HandlingTest {
     }
 
     @Test
+    void onlyBoatsReadTheDriversKeys() {
+      // A chair or a stuck minecart doesn't move because someone holds W.
+      var minecart = seat(org.bukkit.entity.Minecart.class, 0, 0, 0);
+      when(player.getVehicle()).thenReturn(minecart);
+      var forward = input(true, false, false, false);
+      when(player.getCurrentInput()).thenReturn(forward);
+      when(minecart.getPassengers()).thenReturn(java.util.List.of(player));
+      assertEquals(1.0, Handling.spreadMultiplier(player));
+    }
+
+    @Test
     void vehicleFrameworkRidersHaveNoBukkitVehicleAndFollowTheAccessPanelSpeed() {
       // Live servers seat VehicleFramework riders through ModelEngine: no Bukkit vehicle at all.
       when(player.isInsideVehicle()).thenReturn(false);
