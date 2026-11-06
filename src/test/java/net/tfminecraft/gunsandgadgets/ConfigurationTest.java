@@ -31,8 +31,22 @@ station: v.anvil
 block-damage: true
 rocket-sound: boom
 stat_refresh_debug: true
+handling:
+  headshot-multiplier: 1.25
+  spread-multipliers: {sneaking: 0.8, moving: 1.5, sprinting: 3, airborne: 4, mounted: 2}
+  max-spread-degrees: 30
+  falloff: {start-distance: 24, min-multiplier: 0.5}
 """)
             .toFile());
+    assertEquals(1.25, Cache.headshotMultiplier);
+    assertEquals(0.8, Cache.spreadSneaking);
+    assertEquals(1.5, Cache.spreadMoving);
+    assertEquals(3.0, Cache.spreadSprinting);
+    assertEquals(4.0, Cache.spreadAirborne);
+    assertEquals(2.0, Cache.spreadMounted);
+    assertEquals(30.0, Cache.maxSpreadDegrees);
+    assertEquals(24.0, Cache.falloffStartDistance);
+    assertEquals(0.5, Cache.falloffMinMultiplier);
     assertEquals("v.bow", Cache.outputItems.get(GunType.RIFLE));
     assertEquals(List.of("barrel"), Cache.requiredParts.get(GunType.RIFLE));
     assertEquals(5, Cache.outputSlot);
@@ -51,6 +65,39 @@ stat_refresh_debug: true
     assertTrue(Cache.requiredParts.isEmpty());
     assertTrue(Cache.requireInput);
     assertEquals(15, Cache.outputSlot);
+    // Without a handling section every value keeps the behaviour from before it existed.
+    assertEquals(1.5, Cache.headshotMultiplier);
+    assertEquals(1.0, Cache.spreadSneaking);
+    assertEquals(1.0, Cache.spreadMoving);
+    assertEquals(1.0, Cache.spreadSprinting);
+    assertEquals(1.0, Cache.spreadAirborne);
+    assertEquals(1.0, Cache.spreadMounted);
+    assertEquals(45.0, Cache.maxSpreadDegrees);
+    assertEquals(0.0, Cache.falloffStartDistance);
+    assertEquals(1.0, Cache.falloffMinMultiplier);
+    loader.loadConfig(
+        file(
+                "bounds.yml",
+                """
+handling:
+  headshot-multiplier: -1
+  spread-multipliers: {sneaking: -1, moving: -1, sprinting: -1, airborne: -1, mounted: -1}
+  max-spread-degrees: 0
+  falloff: {start-distance: -5, min-multiplier: 3}
+""")
+            .toFile());
+    assertEquals(0.0, Cache.headshotMultiplier);
+    assertEquals(0.0, Cache.spreadSneaking);
+    assertEquals(0.0, Cache.spreadMoving);
+    assertEquals(0.0, Cache.spreadSprinting);
+    assertEquals(0.0, Cache.spreadAirborne);
+    assertEquals(0.0, Cache.spreadMounted);
+    assertEquals(0.02, Cache.maxSpreadDegrees);
+    assertEquals(0.0, Cache.falloffStartDistance);
+    assertEquals(1.0, Cache.falloffMinMultiplier);
+    loader.loadConfig(file("negative-falloff.yml", "handling: {falloff: {min-multiplier: -2}}").toFile());
+    assertEquals(0.0, Cache.falloffMinMultiplier);
+    loader.loadConfig(file("empty2.yml", "{}").toFile());
     loader.loadConfig(temp.resolve("missing").toFile());
     loader.loadConfig(file("bad.yml", "x: [").toFile());
   }

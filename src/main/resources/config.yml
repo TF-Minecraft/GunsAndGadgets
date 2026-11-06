@@ -16,6 +16,30 @@ rocket-sound: minecraft:block.lava.extinguish
 
 stat_refresh_debug: false
 
+# Shot handling. Leaving a key out keeps the behaviour from before this section
+# existed (headshot 1.5, every spread multiplier 1, no falloff).
+handling:
+    # Damage multiplier for hits in the top quarter of a player's hitbox.
+    headshot-multiplier: 1.25
+    # Spread multiplier for the shooter's stance when the shot fires. Riding an
+    # animal uses mounted and other seats (chairs, vehicle seats) count as still;
+    # otherwise airborne beats sprinting, sprinting beats moving, and sneaking
+    # scales the ground value (still or moving).
+    spread-multipliers:
+        sneaking: 0.8
+        moving: 1.5
+        sprinting: 3.0
+        airborne: 4.0
+        mounted: 1.5
+    # Upper limit for the final spread in degrees.
+    max-spread-degrees: 45
+    # Bullets do full damage up to start-distance blocks from the muzzle, then
+    # drop linearly to min-multiplier at the shot's maximum range. Rockets and
+    # vehicle hits are not affected. min-multiplier 1 turns falloff off.
+    falloff:
+        start-distance: 24
+        min-multiplier: 0.5
+
 attributes:
     charisma:
         accuracy-per-level: 1.0

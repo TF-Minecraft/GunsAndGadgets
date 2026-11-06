@@ -13,6 +13,7 @@ import net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption;
+import net.tfminecraft.gunsandgadgets.guns.stats.Handling;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.util.ImpactVfx;
@@ -184,7 +185,9 @@ public class ProjectileShooter {
         int ammoAcc = ammo.getStats().getOrDefault("accuracy", 0);
 
         int totalAcc = gunAcc + ammoAcc;
-        double spreadDegrees = Math.max(0.02, StatCalculator.calculateAccuracy(totalAcc)*AttributeReader.getAccuracyMultFromAttributes(player));
+        double spreadDegrees = Handling.clampSpread(StatCalculator.calculateAccuracy(totalAcc)
+                * AttributeReader.getAccuracyMultFromAttributes(player)
+                * Handling.spreadMultiplier(player));
 
         int salt = meta.getPersistentDataContainer().getOrDefault(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "accuracy_salt"),
@@ -341,7 +344,7 @@ public class ProjectileShooter {
                 }
 
                 // 🔍 Check for hits
-                if (handleHits(player, ammo, prev, loc, damage, pierceStat, ticks)) {
+                if (handleHits(player, ammo, start, maxDistance, prev, loc, damage, pierceStat, ticks)) {
                     cancel();
                     return;
                 }
@@ -378,7 +381,7 @@ public class ProjectileShooter {
     }
 
 
-    private static boolean handleHits(Player player, Ammunition ammo, Location from, Location to, double damage, int pierceStat, int ticks) {
+    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, Location from, Location to, double damage, int pierceStat, int ticks) {
         Vector direction = to.toVector().subtract(from.toVector()).normalize();
         double distance = from.distance(to);
 
@@ -471,9 +474,9 @@ public class ProjectileShooter {
                 return true;
             }
 
-            double finalDamage = damage;
+            double finalDamage = damage * Handling.falloffMultiplier(muzzle.distance(hitPoint), maxDistance);
             if (isHeadshot(target, hitPoint)) {
-                finalDamage *= 1.5; // 🔥 1.5x multiplier for headshots
+                finalDamage *= Cache.headshotMultiplier;
             }
             applyDamage(player, target, finalDamage, pierceStat);
             if(target instanceof Player) {
