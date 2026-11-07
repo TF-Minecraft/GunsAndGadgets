@@ -54,24 +54,24 @@ public enum Stats {
         return sb.toString();
     }
 
-    /** What the stat does, in a few words, for the gun's lore. */
+    /** What the stat measures, in a few words, for the gun's lore (true for any sign). */
     public String getHint() {
         return switch (this) {
-            case ACCURACY -> "tighter aim";
-            case SPEED -> "faster shot";
-            case RELOAD -> "quicker reload";
-            case FIRE_RATE -> "quicker follow-up shots";
+            case ACCURACY -> "how tight shots group";
+            case SPEED -> "bullet speed";
+            case RELOAD -> "reload speed";
+            case FIRE_RATE -> "follow-up shot speed";
             case CAPACITY -> "shots per load";
             case DAMAGE -> "damage per hit";
-            case SPREAD -> "pellet cone";
-            case RANGE -> "reach";
-            case PIERCE -> "gets through armour";
-            case DAMAGE_PERCENT -> "damage bonus";
-            case FALLOFF -> "full damage further out";
-            case MOVING -> "less spread on the move";
-            case MOUNTED -> "less spread riding";
-            case SNEAKING -> "less spread crouched";
-            case DRAW -> "quicker to ready";
+            case SPREAD -> "pellet cone width";
+            case RANGE -> "how far shots reach";
+            case PIERCE -> "armour piercing";
+            case DAMAGE_PERCENT -> "damage bonus or penalty";
+            case FALLOFF -> "how far full damage holds";
+            case MOVING -> "aim while moving";
+            case MOUNTED -> "aim while riding";
+            case SNEAKING -> "aim while crouched";
+            case DRAW -> "how fast it readies";
         };
     }
 
