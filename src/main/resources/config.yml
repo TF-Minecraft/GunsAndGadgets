@@ -45,6 +45,14 @@ handling:
     falloff:
         start-distance: 24
         min-multiplier: 0.5
+    # Rocket blasts hurt others by the distance the rocket flew: min-multiplier up to
+    # safe-distance (a rocket fired at the ground at your feet barely hurts anyone else),
+    # rising to full damage at full-damage-distance. The shooter always takes their own blast
+    # in full. Left out (or full-damage-distance 0), blasts arm over the first second of flight.
+    rockets:
+        safe-distance: 4
+        min-multiplier: 0.1
+        full-damage-distance: 40
     # Accuracy above 5 tightens spread by 5% a point. Off (or left out), spread
     # follows the old line that reaches 1.2 degrees at 20 and 0.07 at 30.
     smooth-accuracy: true

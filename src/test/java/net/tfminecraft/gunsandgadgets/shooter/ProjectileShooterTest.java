@@ -732,16 +732,69 @@ class ProjectileShooterTest {
         .thenReturn(List.of(near, far, otherPlayer, player, mock(Entity.class)));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         10.0,
         20,
-        10);
+        10,
+        0.0);
     verify(near).damage(eq(7.5), any(org.bukkit.damage.DamageSource.class));
     verify(far, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
     verify(otherPlayer).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
     verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void rocketBlastsGrowWithDistanceFlownAndSpareOthersPointBlank() throws Exception {
+    double safe = net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance;
+    double min = net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier;
+    double full = net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance;
+    try {
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance = 4;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier = 0.1;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = 40;
+      assertEquals(0.1, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 2));
+      assertEquals(0.55, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 22), 1e-9);
+      assertEquals(1.0, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 60));
+      var near = mock(LivingEntity.class);
+      when(near.getLocation()).thenReturn(new Location(world, 0, 0, 0));
+      when(near.getHealth()).thenReturn(100.0);
+      when(player.getLocation()).thenReturn(new Location(world, 0, 0, 0));
+      when(player.getHealth()).thenReturn(1000.0);
+      when(world.getNearbyEntities(any(Location.class), anyDouble(), anyDouble(), anyDouble()))
+          .thenReturn(List.of(near, player));
+      // fired at the ground at one's feet: others take a tenth, the shooter all of it
+      call(
+          "explode",
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          player,
+          new Location(world, 0, 0, 0),
+          10.0,
+          20,
+          1,
+          1.0);
+      verify(near).damage(eq(2.0), any(org.bukkit.damage.DamageSource.class));
+      verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+      // a long shot hits in full, however fast the rocket flew
+      call(
+          "explode",
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          player,
+          new Location(world, 0, 0, 0),
+          10.0,
+          20,
+          3,
+          50.0);
+      verify(near).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+      // a full distance inside the safe distance arms at once past it
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = 2;
+      assertEquals(1.0, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 3));
+    } finally {
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance = safe;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier = min;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = full;
+    }
   }
 
   @Test
@@ -752,22 +805,24 @@ class ProjectileShooterTest {
     for (int ticks : new int[] {0, 10, 30}) {
       call(
           "explode",
-          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
           player,
           new Location(world, 0, 0, 0),
           10.0,
           20,
-          ticks);
+          ticks,
+        0.0);
     }
     verify(player, times(3)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         20.0,
         20,
-        10);
+        10,
+        0.0);
     verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
   }
 

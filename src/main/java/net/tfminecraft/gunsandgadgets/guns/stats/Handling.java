@@ -227,6 +227,27 @@ public final class Handling {
         return 1.0 - t * (1.0 - min);
     }
 
+    /**
+     * How much of a rocket's blast lands on others (the shooter always takes it in full). With
+     * handling.rockets set it grows with the distance flown, so a rocket fired at the ground at
+     * one's feet barely hurts anyone else and long shots hit hardest; without it, the old arming
+     * time (a fifth of damage per second of flight, full after one second).
+     */
+    public static double rocketMultiplier(int ticks, double flown) {
+        if (Cache.rocketFullDistance <= 0) {
+            return ticks <= 20 ? ticks / 20.0 : 1.0;
+        }
+        double min = Cache.rocketMinMultiplier;
+        double safe = Math.min(Cache.rocketSafeDistance, Cache.rocketFullDistance);
+        if (flown <= safe) {
+            return min;
+        }
+        if (flown >= Cache.rocketFullDistance) {
+            return 1.0;
+        }
+        return min + (1.0 - min) * (flown - safe) / (Cache.rocketFullDistance - safe);
+    }
+
     /** The gun's full-damage distance: the configured start plus its parts' falloff stat. */
     public static double falloffStart(int falloffStat) {
         return Math.max(0.0, Cache.falloffStartDistance + falloffStat);

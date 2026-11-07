@@ -60,6 +60,13 @@ public class Cache {
     public static int scopeSettleTicks = 0;
     /** Spread multiplier for shots fired without aiming (handling.spread-multipliers.hip; aiming on only). */
     public static double spreadHip = 1.0;
+    /**
+     * Rocket blasts by distance flown (handling.rockets): the multiplier up to safe-distance, rising
+     * to full damage at full-damage-distance. A full distance of 0 keeps the old arming time.
+     */
+    public static double rocketSafeDistance = 4.0;
+    public static double rocketMinMultiplier = 0.1;
+    public static double rocketFullDistance = 0.0;
     /** Item model prefix for the gun type buttons (type-icons): <prefix><type>_carry, a steel build. */
     public static String typeIconPrefix = "";
 

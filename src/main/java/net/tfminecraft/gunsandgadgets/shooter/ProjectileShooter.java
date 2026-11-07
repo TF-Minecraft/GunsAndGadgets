@@ -247,10 +247,10 @@ public class ProjectileShooter {
                 PersistentDataType.INTEGER, 0);
     }
 
-    private static void explode(Player shooter, Location loc, double damage, int pierceStat, int ticks) {
+    private static void explode(Player shooter, Location loc, double damage, int pierceStat, int ticks, double flown) {
         loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 10, 0, 0, 0, 0, null, true);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 8f, 1f);
-        double timeScale = (ticks <= 20) ? (ticks / 20.0) : 1.0;
+        double timeScale = Handling.rocketMultiplier(ticks, flown);
         (new LightEffect()).createTemporaryLight(loc, 10);
         new BukkitRunnable() {
             @Override
@@ -351,7 +351,7 @@ public class ProjectileShooter {
                 // 🚀 Rocket wobble
                 if (ammo.hasOption(AmmoOption.ROCKET) && ticks > 5) {
                     if(ticks > 100) {
-                        explode(player, loc, damage, pierceStat, ticks);
+                        explode(player, loc, damage, pierceStat, ticks, loc.distance(start));
                         cancel();
                         return;
                     }
@@ -478,7 +478,7 @@ public class ProjectileShooter {
 
             // 💥 Real impact
             if (ammo.hasOption(AmmoOption.ROCKET)) {
-                explode(player, current, damage, pierceStat, ticks);
+                explode(player, current, damage, pierceStat, ticks, muzzle.distance(current));
             } else {
                 drawLine(ammo, from.clone(), current, 256, null);
                 Location impact = ImpactVfx.onBlockSurface(current, direction, block);
@@ -513,7 +513,7 @@ public class ProjectileShooter {
             }
             Location hitPoint = result.getHitPosition().toLocation(from.getWorld());
             if(ammo.hasOption(AmmoOption.ROCKET)) {
-                explode(player, hitPoint, damage, pierceStat, ticks);
+                explode(player, hitPoint, damage, pierceStat, ticks, muzzle.distance(hitPoint));
                 return true;
             }
 

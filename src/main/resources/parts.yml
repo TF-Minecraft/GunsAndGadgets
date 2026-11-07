@@ -19,8 +19,8 @@ smoothbore_barrel_long:
   tendencies:
     - accuracy 1
     - speed 10
-    - reload 1
-    - damage_percent -10
+    - damage_percent 12
+    - pierce -5
     - falloff -6
   sounds:
     - shoot gunsandgadgets:musket_shoot
@@ -29,12 +29,12 @@ smoothbore_barrel_long:
   name-impact:
     - Musket 2 10
   lore:
-    - "§7A plain long bore: a fast ball, quick to load."
+    - "§7A wide bore and a heavy ball: hits hard, armour stops it."
   metal-lore:
-    iron: "§7A rough iron bore: a fast ball, quick to load."
-    steel: "§7A clean steel bore: a fast ball, quick to load."
-    abyssalite: "§7A dense, dark bore that throws the ball far."
-    mythril: "§7A light mythril bore: the fastest ball of all."
+    iron: "§7A wide iron bore and a heavy ball. Armour stops it."
+    steel: "§7A wide bore and a heavy ball: hits hard, not deep."
+    abyssalite: "§7A dense wide bore that throws a crushing ball."
+    mythril: "§7A light wide bore: a heavy ball, fast and hard."
   class:
     - Musketeer
 
@@ -49,8 +49,9 @@ rifled_barrel_long:
   tendencies:
     - accuracy 4
     - speed 6
-    - reload -2
-    - pierce 2
+    - reload -1
+    - damage_percent -12
+    - pierce 8
     - falloff 8
     - draw -5
   sounds:
@@ -60,12 +61,12 @@ rifled_barrel_long:
   name-impact:
     - Rifle 2 10
   lore:
-    - "§7Grooved bore: true at range, slower to load."
+    - "§7Grooved bore: true at range, bites through armour."
   metal-lore:
-    iron: "§7Hand-cut iron grooves: true at range, slow to load."
-    steel: "§7Crisp steel rifling: true at range, slower to load."
-    abyssalite: "§7Deep-cut grooves that hold true at long range."
-    mythril: "§7Fine mythril rifling, true at range and quicker to load."
+    iron: "§7Hand-cut iron grooves that bite into armour."
+    steel: "§7Crisp steel rifling: true at range, through armour."
+    abyssalite: "§7Deep-cut grooves: true at range, deep through armour."
+    mythril: "§7Fine mythril rifling that pierces armour at range."
   class:
     - Musketeer
 
@@ -148,8 +149,8 @@ smoothbore_barrel_short:
   tendencies:
     - accuracy 4
     - speed 5
-    - reload 1
-    - damage_percent -10
+    - damage_percent 5
+    - pierce -5
     - falloff -4
     - moving 30
     - draw 10
@@ -160,12 +161,12 @@ smoothbore_barrel_short:
   name-impact:
     - Pistol 2 10
   lore:
-    - "§7A handy pistol bore, fine on the move."
+    - "§7A wide pistol bore: hits hard, armour stops it."
   metal-lore:
-    iron: "§7A plain iron pistol bore, fine on the move."
-    steel: "§7A handy steel pistol bore, fine on the move."
-    abyssalite: "§7A short, dark bore: handy and hard-hitting."
-    mythril: "§7A light mythril bore, quick in hand and on the move."
+    iron: "§7A wide iron pistol bore. Hits hard, not deep."
+    steel: "§7A wide pistol bore: a heavy ball, fine on the move."
+    abyssalite: "§7A dense wide bore that hits above its size."
+    mythril: "§7A light wide bore, quick in hand and hard-hitting."
   class:
     - Musketeer
 
@@ -181,7 +182,8 @@ rifled_barrel_short:
     - accuracy 7
     - speed 6
     - reload -2
-    - pierce 2
+    - damage_percent -18
+    - pierce 8
     - falloff 4
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
@@ -190,12 +192,12 @@ rifled_barrel_short:
   name-impact:
     - Pistol 2 10
   lore:
-    - "§7A grooved pistol bore for steadier shots."
+    - "§7A grooved pistol bore that bites through armour."
   metal-lore:
-    iron: "§7A grooved iron pistol bore, steadier than smooth."
-    steel: "§7A grooved steel pistol bore for steadier shots."
-    abyssalite: "§7Deep pistol grooves: the steadiest short bore."
-    mythril: "§7A light rifled bore that sends the ball fast."
+    iron: "§7A grooved iron pistol bore that bites into armour."
+    steel: "§7A grooved steel pistol bore that pierces armour."
+    abyssalite: "§7Deep pistol grooves that punch through armour."
+    mythril: "§7A light rifled bore, sharp through armour."
   class:
     - Musketeer
 
@@ -211,6 +213,7 @@ duelling_barrel:
     - accuracy 11
     - speed 10
     - reload -6
+    - damage_percent -10
     - pierce 2
     - falloff 12
     - moving -30
@@ -242,7 +245,7 @@ spread_barrel:
   ammo-family: spreadshot
   tendencies:
     - accuracy 4
-    - reload -4
+    - reload -2
     - range 2
   fixed:
     - spread 14
@@ -563,8 +566,8 @@ double_chamber:
   cost-amount: 2
   tendencies:
     - accuracy 1
-    - reload -4
-    - fire_rate -6
+    - reload -6
+    - fire_rate -14
     - draw -10
   fixed:
     - capacity 2
@@ -621,19 +624,19 @@ proof_chamber:
   ammo-filter: powered
   tendencies:
     - speed 4
-    - pierce 11
+    - pierce 10
+    - reload -3
     - draw -5
   fixed:
     - capacity 1
-    - damage_percent -20
   sound-pitch: 0.92
   sound-volume: 1.12
   name-impact:
     - Proof 0 5
   lore:
-    - "§7Proofed for powered shot that bites through armour."
+    - "§7Proofed for powered shot: through armour, slower to load."
   metal-lore:
-    iron: "§7Proofed iron walls for powered shot."
+    iron: "§7Proofed iron walls: powered shot through armour."
     steel: "§7Proofed for powered shot that bites through armour."
     abyssalite: "§7Dense proof walls: powered shot bites deepest."
     mythril: "§7Light proof walls for fast powered shot."
@@ -651,15 +654,16 @@ single_shot_launcher:
     - accuracy 5
     - speed 2
     - reload 2
+    - damage_percent 15
   fixed:
     - capacity 1
   lore:
-    - "§7One rocket per load."
+    - "§7One rocket per load, packed for a bigger blast."
   metal-lore:
-    iron: "§7An iron cradle: one rocket per load."
-    steel: "§7A steel cradle: one rocket per load."
-    abyssalite: "§7A heavy cradle that sends one rocket true."
-    mythril: "§7A light cradle: one rocket, quickly loaded."
+    iron: "§7An iron cradle: one rocket, packed for a bigger blast."
+    steel: "§7A steel cradle: one rocket, a bigger blast."
+    abyssalite: "§7A heavy cradle for one big, true rocket."
+    mythril: "§7A light cradle: one big rocket, quickly loaded."
   class:
     - Musketeer
 
@@ -675,8 +679,9 @@ multi_tube_chamber:
     - mythril
   cost-amount: 2
   tendencies:
-    - accuracy 2
+    - accuracy -4
     - speed 2
+    - damage_percent -25
     - draw -15
   fixed:
     - fire_rate -6
@@ -693,11 +698,11 @@ multi_tube_chamber:
   name-impact:
     - Salvo 0 10
   lore:
-    - "§7Several tubes fired as a salvo."
+    - "§7Several tubes: a wild salvo of lighter rockets."
   metal-lore:
-    steel: "§7Several steel tubes fired as a salvo."
-    abyssalite: "§7Dense tubes that loose a steadier salvo."
-    mythril: "§7Light tubes: a salvo you can still carry."
+    steel: "§7Several steel tubes: a wild salvo of lighter rockets."
+    abyssalite: "§7Dense tubes: a wild, heavy salvo."
+    mythril: "§7Light tubes: a wild salvo you can still carry."
   class:
     - Musketeer
 
@@ -776,8 +781,7 @@ steamlock:
   ammo-filter: plain
   tendencies:
     - accuracy 2
-    - speed -3
-    - damage_percent -10
+    - reload 1
     - fire_rate 4
     - draw -5
   options:
@@ -812,7 +816,7 @@ wheellock:
   tendencies:
     - accuracy 1
     - mounted 50
-    - moving 15
+    - moving 25
   sounds:
     - shoot minecraft:block.grindstone.use pitch=1.8 volume=0.35
   ignition: wheel
@@ -1031,7 +1035,7 @@ standard_grip:
   material: wood
   cost-amount: 2
   tendencies:
-    - accuracy 2
+    - accuracy 3
   lore:
     - "§7A plain pistol grip."
   metal-lore:

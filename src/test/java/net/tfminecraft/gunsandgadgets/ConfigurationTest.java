@@ -140,6 +140,9 @@ handling:
     assertEquals("tfmc_guns:", Cache.typeIconPrefix);
     assertEquals(12, Cache.scopeSettleTicks);
     assertEquals(1.75, Cache.spreadHip);
+    assertEquals(4.0, Cache.rocketSafeDistance);
+    assertEquals(0.1, Cache.rocketMinMultiplier);
+    assertEquals(40.0, Cache.rocketFullDistance);
     assertFalse(Cache.refundsEnabled);
     assertFalse(Cache.refundsAutomatic);
     // Bad draw entries: an unknown gun type is skipped, a non-number gives no draw time.
@@ -151,6 +154,7 @@ handling:
   draw:
     base-seconds: {rifle: .nan, pistol: -2, cannon: 3}
     stance: {moving: .nan, sprinting: 0}
+  rockets: {safe-distance: -1, min-multiplier: 3, full-damage-distance: -5}
 aiming: {enabled: true, slow: 5}
 refunds: {enabled: true, automatic: true}
 """)
@@ -162,6 +166,9 @@ refunds: {enabled: true, automatic: true}
     assertEquals(0.1, Cache.drawSprinting);
     assertEquals(0.9, Cache.aimSlow);
     assertTrue(Cache.refundsEnabled && Cache.refundsAutomatic);
+    assertEquals(0.0, Cache.rocketSafeDistance);
+    assertEquals(1.0, Cache.rocketMinMultiplier);
+    assertEquals(0.0, Cache.rocketFullDistance);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
     assertEquals(0, Cache.scopeSettleTicks);
     assertEquals(1.0, Cache.spreadHip);
