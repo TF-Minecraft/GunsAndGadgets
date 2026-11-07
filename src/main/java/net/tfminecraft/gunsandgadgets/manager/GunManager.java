@@ -851,7 +851,7 @@ public class GunManager implements Listener {
         return StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(ammo.getInput())).trim();
     }
 
-    private void sendActionBar(Player player, String legacyText) {
+    void sendActionBar(Player player, String legacyText) {
         // Hold MMOCore's stat bar back for two seconds so the message can be read; a null text only reserves it.
         if (!MMOPlayerData.get(player).getActionBar().show(ActionBarPriority.NORMAL, 40L, (String) null)) return;
         player.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(legacyText));

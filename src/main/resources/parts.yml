@@ -796,3 +796,66 @@ padded_stock:
     - draw -10
   class:
     - Musketeer
+
+standard_grip:
+  name: "§7Standard Grip"
+  part-type: stock
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=15)
+  material: wood
+  cost-amount: 2
+  tendencies:
+    - accuracy 2
+  class:
+    - Musketeer
+
+birdshead_grip:
+  name: "§7Bird's-head Grip"
+  part-type: stock
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=15)
+  material: wood
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+    - moving 10
+    - draw 30
+  class:
+    - Musketeer
+
+pommel_grip:
+  name: "§7Pommel Grip"
+  part-type: stock
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=15)
+  material: wood
+  cost-amount: 2
+  cost:
+    - v.copper_ingot(1)
+  tendencies:
+    - accuracy 4
+    - sneaking 30
+    - draw -20
+  class:
+    - Musketeer
+
+wrapped_grip:
+  name: "§7Wrapped Grip"
+  part-type: stock
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=15)
+  material: wood
+  cost-amount: 2
+  cost:
+    - v.string(2)
+  tendencies:
+    - accuracy 1
+    - moving 30
+    - mounted 30
+    - draw -5
+  class:
+    - Musketeer

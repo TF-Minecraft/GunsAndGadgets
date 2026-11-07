@@ -391,7 +391,7 @@ handling:
       assertNotNull(part.getPartType(), part.getId());
       assertFalse(part.getCost().isEmpty(), part.getId());
     }
-    assertEquals(33 * 4 - 1, PartLoader.getOrdered().size());
+    assertEquals(37 * 4 - 1, PartLoader.getOrdered().size()); // 37 parts (4 pistol grips), no iron multi-tube
   }
 
   @Test

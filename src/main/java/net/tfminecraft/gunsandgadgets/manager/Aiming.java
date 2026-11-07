@@ -55,10 +55,16 @@ public final class Aiming {
         }
     }
 
-    /** Ends the aim when the player stops crouching, changes item, or the gun runs empty. */
+    /**
+     * Ends the aim when the player stops crouching, changes item, or the gun runs empty; starts it
+     * while crouched with a loaded gun (crouching before the reload finished, then waiting, aims too).
+     */
     void tick(Player player) {
         String gunId = aimed.get(player.getUniqueId());
         if (gunId == null) {
+            if (player.isSneaking()) {
+                start(player);
+            }
             return;
         }
         ItemStack held = player.getInventory().getItemInMainHand();
@@ -83,6 +89,7 @@ public final class Aiming {
         ItemStack item = guns.applyModel(held, skin, SkinState.ADS);
         if (scoped(item)) {
             item.setType(Material.SPYGLASS);
+            guns.sendActionBar(player, "§7Hold right-click to look through the scope, release to fire.");
         }
         player.getInventory().setItemInMainHand(item);
     }

@@ -107,6 +107,7 @@ required-parts:
         - loader
         - chamber
         - action
+        - stock
     shotgun:
         - barrel
         - loader
