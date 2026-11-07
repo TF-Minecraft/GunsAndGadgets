@@ -3,7 +3,9 @@
 # written for steel (stocks: maplewood). 'fixed' stats never scale; 'by-metal' adds per
 # material; an 'ammo-family' barrel loads that family's shot up to its material's tier;
 # 'ammo-filter' (powered/plain) limits the gun's shot; 'skin-base' borrows a gun design.
-# Use disabled: true to retire a part from new crafts (do not delete ids).
+# Use disabled: true to retire a part from new crafts (do not delete ids). Old parts whose ids
+# forged parts now use go in retired-parts.yml: they load disabled so old guns still resolve,
+# and retire-disabled-part-guns in config.yml decides whether those guns still fire.
 
 # Barrels
 smoothbore_barrel_long:

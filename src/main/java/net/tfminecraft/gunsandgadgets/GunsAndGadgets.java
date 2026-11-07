@@ -111,6 +111,7 @@ public class GunsAndGadgets extends JavaPlugin {
 		metalLoader.load(new File(getDataFolder(), "metals.yml"));
 		partDataLoader.load(new File(getDataFolder(), "part-types.yml"));
 		partLoader.load(new File(getDataFolder(), "parts.yml"));
+		partLoader.loadRetired(new File(getDataFolder(), "retired-parts.yml"));
 		skinLoader.load(new File(getDataFolder(), "skins.yml"));
 	}
 

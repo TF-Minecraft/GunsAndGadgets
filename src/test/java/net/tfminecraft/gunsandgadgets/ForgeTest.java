@@ -13,6 +13,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.junit.jupiter.api.Test;
 
 class ForgeTest extends GunsTestSupport {
+  static final String NL = System.lineSeparator();
 
   static final String METALS =
       """
@@ -372,6 +373,28 @@ handling:
       assertFalse(part.getCost().isEmpty(), part.getId());
     }
     assertEquals(33 * 4 - 1, PartLoader.getOrdered().size());
+  }
+
+  @Test
+  void retiredPartsLoadDisabledBesideTheirForgedReplacements() throws Exception {
+    loadMetals();
+    var loader = new PartLoader();
+    loader.load(file("parts.yml", "matchlock: {tendencies: [accuracy 3]}" + NL + "kept: {stats: [damage 1]}").toFile());
+    loader.loadRetired(
+        file("retired-parts.yml", "matchlock: {stats: [accuracy 1]}" + NL + "kept: {stats: [damage 9]}" + NL + "loose: 3").toFile());
+    // The old id resolves for old guns, disabled; the forged variants are separate parts.
+    GunPart old = PartLoader.getByString("matchlock");
+    assertTrue(old.isDisabled());
+    assertFalse(old.isForged());
+    assertFalse(PartLoader.getByString("matchlock@iron").isDisabled());
+    // parts.yml wins over a retired part with the same id.
+    assertEquals(1, PartLoader.getByString("kept").getStats().get(Stats.DAMAGE));
+    assertFalse(PartLoader.getByString("kept").isDisabled());
+    assertNull(PartLoader.getByString("loose"));
+    int count = PartLoader.getOrdered().size();
+    loader.loadRetired(temp.resolve("absent.yml").toFile());
+    loader.loadRetired(file("broken-retired.yml", "x: [").toFile());
+    assertEquals(count, PartLoader.getOrdered().size());
   }
 
   java.io.File resource(String name) throws Exception {

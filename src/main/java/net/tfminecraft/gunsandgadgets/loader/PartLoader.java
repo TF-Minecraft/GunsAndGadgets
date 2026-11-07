@@ -61,6 +61,32 @@ public class PartLoader implements LoaderInterface{
 		}
 	}
 
+	/**
+	 * Old parts kept only so guns built from them still resolve (retired-parts.yml). They load
+	 * disabled: nobody can craft them, and retire-disabled-part-guns decides whether their guns
+	 * still fire. An id parts.yml already defines is skipped.
+	 */
+	public void loadRetired(File configFile) {
+		if (!configFile.isFile()) {
+			return;
+		}
+		FileConfiguration config = new YamlConfiguration();
+		try {
+			config.load(configFile);
+		} catch (IOException | InvalidConfigurationException e) {
+			e.printStackTrace();
+			return;
+		}
+		for (String key : config.getKeys(false)) {
+			ConfigurationSection section = config.getConfigurationSection(key);
+			if (section == null || oList.containsKey(key)) {
+				continue;
+			}
+			section.set("disabled", true);
+			add(key, section);
+		}
+	}
+
 	private static void add(String key, ConfigurationSection section) {
 		GunPart o = new GunPart(key, section);
 		String hash = RevisionTracker.sha256(o.buildRevisionContent());
