@@ -11,6 +11,7 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 - **Ammunition compatibility** — choose supported ammunition for the next reload, with the selection saved on the gun.
 - **Reloading and handling** — timed reloads, progress feedback, character attribute effects, and loaded or unloaded appearances communicate weapon state.
 - **Projectile combat** — shot trajectories, impacts, sounds, and visual effects support firearm and launcher attacks.
+- **Shot handling** — spread grows while moving, sprinting, airborne or mounted and tightens while crouched; bullet damage can fall off with distance; the headshot bonus is configurable.
 - **Weapon appearances** — skin support keeps custom gun designs connected to their firing and reload states.
 - **Maintained weapons** — existing guns pick up changed part stats when players join, open world storage, or handle their inventory.
 - **Staff provisioning** — give completed weapons using the same part and design validation as normal assembly.

@@ -43,6 +43,9 @@ class ProjectileShooterTest {
   io.lumine.mythic.lib.MythicLib mythic;
   boolean oldBlockDamage;
   String oldRocketSound;
+  double oldHeadshot;
+  double oldFalloffStart;
+  double oldFalloffMin;
 
   @BeforeEach
   void setup() {
@@ -91,6 +94,9 @@ class ProjectileShooterTest {
     putInt("stat_value_damage", 10);
     oldBlockDamage = Cache.blockDamage;
     oldRocketSound = Cache.rocketSound;
+    oldHeadshot = Cache.headshotMultiplier;
+    oldFalloffStart = Cache.falloffStartDistance;
+    oldFalloffMin = Cache.falloffMinMultiplier;
     Cache.blockDamage = false;
     Cache.rocketSound = "rocket";
   }
@@ -107,6 +113,9 @@ class ProjectileShooterTest {
     plugins.close();
     Cache.blockDamage = oldBlockDamage;
     Cache.rocketSound = oldRocketSound;
+    Cache.headshotMultiplier = oldHeadshot;
+    Cache.falloffStartDistance = oldFalloffStart;
+    Cache.falloffMinMultiplier = oldFalloffMin;
     MockBukkit.unmock();
   }
 
@@ -157,12 +166,30 @@ class ProjectileShooterTest {
   }
 
   boolean hits(Ammunition ammo, int ticks) throws Exception {
+    return hitsFrom(ammo, ticks, new Location(world, 0, 0, 0), 100.0);
+  }
+
+  boolean hitsFrom(Ammunition ammo, int ticks, Location muzzle, double maxDistance)
+      throws Exception {
+    return hitsFrom(ammo, ticks, muzzle, maxDistance, null);
+  }
+
+  boolean hitsFrom(
+      Ammunition ammo,
+      int ticks,
+      Location muzzle,
+      double maxDistance,
+      net.tfminecraft.vehicleframework.vehicles.ActiveVehicle ownVehicle)
+      throws Exception {
     return (boolean)
         call(
             "handleHits",
             new Class<?>[] {
               Player.class,
               Ammunition.class,
+              Location.class,
+              double.class,
+              net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
               Location.class,
               Location.class,
               double.class,
@@ -171,6 +198,9 @@ class ProjectileShooterTest {
             },
             player,
             ammo,
+            muzzle,
+            maxDistance,
+            ownVehicle,
             new Location(world, 0, 0, 0),
             new Location(world, 0, 0, 2),
             10.0,
@@ -343,6 +373,149 @@ class ProjectileShooterTest {
     verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     verify(player, times(2))
         .playSound(any(Location.class), eq(Sound.ENTITY_ARROW_HIT_PLAYER), eq(1f), eq(1f));
+  }
+
+  @Test
+  void shooterStanceWidensSpread() {
+    double oldSprinting = Cache.spreadSprinting;
+    double oldCap = Cache.maxSpreadDegrees;
+    try {
+      Cache.maxSpreadDegrees = 45.0;
+      var config = new YamlConfiguration();
+      config.set("amount", 20);
+      putInt("stat_value_range", 1);
+      when(player.isOnGround()).thenReturn(true);
+      when(player.isSprinting()).thenReturn(true);
+      var directions = ArgumentCaptor.forClass(Vector.class);
+      // Accuracy 30 gives 0.07 degrees; a 1.0 multiplier keeps every pellet within that.
+      Cache.spreadSprinting = 1.0;
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      for (Vector d : directions.getAllValues()) {
+        assertTrue(d.angle(new Vector(0, 0, 1)) < Math.toRadians(0.2));
+      }
+      // A huge sprint multiplier reaches the 45 degree cap, so some pellet leaves the 2 degree cone.
+      server.getScheduler().cancelTasks(plugin);
+      clearInvocations(world);
+      Cache.spreadSprinting = 1000.0;
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      directions = ArgumentCaptor.forClass(Vector.class);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      double widest = 0;
+      for (Vector d : directions.getAllValues()) {
+        double angle = d.angle(new Vector(0, 0, 1));
+        widest = Math.max(widest, angle);
+        assertTrue(angle <= Math.toRadians(45 * Math.sqrt(2) + 1));
+      }
+      assertTrue(widest > Math.toRadians(2));
+    } finally {
+      Cache.spreadSprinting = oldSprinting;
+      Cache.maxSpreadDegrees = oldCap;
+    }
+  }
+
+  @Test
+  void headshotUsesConfiguredMultiplier() throws Exception {
+    Cache.headshotMultiplier = 1.25;
+    var target = mock(Player.class);
+    when(target.getHealth()).thenReturn(20.0);
+    when(target.getBoundingBox()).thenReturn(new BoundingBox(0, 0, 0, 1, 2, 1));
+    when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+        .thenReturn(new RayTraceResult(new Vector(0, 1.6, 1), target));
+    assertTrue(hits(ammo(), 1));
+    verify(target).damage(eq(12.5), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void bulletDamageFallsOffWithDistanceFromTheMuzzle() throws Exception {
+    Cache.falloffStartDistance = 20;
+    Cache.falloffMinMultiplier = 0.5;
+    var target = mock(LivingEntity.class);
+    when(target.getHealth()).thenReturn(100.0);
+    when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+        .thenReturn(new RayTraceResult(new Vector(0, 0, 1), target));
+    // Hit point (0,0,1) is 61 blocks from this muzzle: 41 of the 80 falloff blocks to range 100.
+    assertTrue(hitsFrom(ammo(), 1, new Location(world, 0, 0, -60), 100.0));
+    var amount = ArgumentCaptor.forClass(Double.class);
+    verify(target).damage(amount.capture(), any(org.bukkit.damage.DamageSource.class));
+    assertEquals(10.0 * (1 - 41.0 / 80.0 * 0.5), amount.getValue(), 1e-9);
+    // Within the start distance the hit keeps full damage.
+    clearInvocations(target);
+    assertTrue(hitsFrom(ammo(), 1, new Location(world, 0, 0, -10), 100.0));
+    verify(target).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void falloffDoesNotReduceRocketDamage() throws Exception {
+    Cache.falloffStartDistance = 0;
+    Cache.falloffMinMultiplier = 0.1;
+    var near = mock(LivingEntity.class);
+    when(near.getLocation()).thenReturn(new Location(world, 0, 0, 1));
+    when(near.getHealth()).thenReturn(100.0);
+    when(world.getNearbyEntities(any(Location.class), anyDouble(), anyDouble(), anyDouble()))
+        .thenReturn(List.of(near));
+    when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+        .thenReturn(new RayTraceResult(new Vector(0, 0, 1), near));
+    assertTrue(hitsFrom(ammo("ROCKET"), 20, new Location(world, 0, 0, -99), 100.0));
+    // Rocket at the hit point: 10 x 2 at distance 0, unaffected by the far muzzle.
+    verify(near).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void falloffDoesNotReduceBulletHitsOnVehicles() throws Exception {
+    Cache.falloffStartDistance = 0;
+    Cache.falloffMinMultiplier = 0.1;
+    MockBukkit.createMockPlugin("VehicleFramework");
+    var hitbox = mock(org.bukkit.entity.Interaction.class);
+    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+    when(manager.get(hitbox)).thenReturn(vehicle);
+    try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+      framework
+          .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+          .thenReturn(manager);
+      when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+          .thenReturn(new RayTraceResult(new Vector(0, 0, 1), hitbox));
+      assertTrue(hitsFrom(ammo(), 1, new Location(world, 0, 0, -99), 100.0));
+      verify(vehicle).damage("PROJECTILE", 10.0);
+    }
+  }
+
+  @Test
+  void shootersOwnVehicleNeverStopsTheirBullets() throws Exception {
+    MockBukkit.createMockPlugin("VehicleFramework");
+    var ownBase = mock(org.bukkit.entity.ArmorStand.class);
+    var otherBase = mock(org.bukkit.entity.ArmorStand.class);
+    var own = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var other = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+    when(manager.get(ownBase)).thenReturn(own);
+    when(manager.get(otherBase)).thenReturn(other);
+    var bystander = mock(LivingEntity.class);
+    try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+      framework
+          .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+          .thenReturn(manager);
+      var filters = new ArrayList<Predicate<Entity>>();
+      when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+          .thenAnswer(
+              i -> {
+                filters.add(i.getArgument(4));
+                return null;
+              });
+      assertFalse(hitsFrom(ammo(), 1, new Location(world, 0, 0, 0), 100.0, own));
+      assertFalse(hitsFrom(ammo(), 1, new Location(world, 0, 0, 0), 100.0, null));
+      var seated = filters.get(0);
+      var onFoot = filters.get(1);
+      // From inside a vehicle: its own base is skipped; other vehicles and people still stop the bullet.
+      assertFalse(seated.test(ownBase));
+      assertTrue(seated.test(otherBase));
+      assertTrue(seated.test(bystander));
+      // On foot every vehicle counts, including the one the shooter isn't in.
+      assertTrue(onFoot.test(ownBase));
+    }
   }
 
   @Test
@@ -587,6 +760,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           int.class,
+          net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
         },
         player,
@@ -597,6 +771,7 @@ class ProjectileShooterTest {
         100000.0,
         10.0,
         20,
+        null,
         (java.util.function.DoubleSupplier) () -> 0.5);
     server.getScheduler().performTicks(106);
     verify(world).playSound(any(Location.class), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));
@@ -657,6 +832,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           int.class,
+          net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
         },
         player,
@@ -667,6 +843,7 @@ class ProjectileShooterTest {
         100000.0,
         10.0,
         20,
+        null,
         random);
     server.getScheduler().performTicks(106);
     var locations = ArgumentCaptor.forClass(Location.class);
