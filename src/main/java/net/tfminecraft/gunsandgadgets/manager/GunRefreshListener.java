@@ -19,6 +19,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
+import net.tfminecraft.gunsandgadgets.cache.Cache;
+import net.tfminecraft.gunsandgadgets.utils.GunRefunder;
 import net.tfminecraft.gunsandgadgets.utils.GunStatRefresher;
 
 public class GunRefreshListener implements Listener {
@@ -47,9 +49,9 @@ public class GunRefreshListener implements Listener {
         int slot = event.getSlot();
         Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> {
             if (clicked != null) {
-                tryRefresh(clicked.getItem(slot), item -> clicked.setItem(slot, item));
+                tryRefresh(player, clicked.getItem(slot), item -> clicked.setItem(slot, item));
             }
-            tryRefresh(player.getItemOnCursor(), player::setItemOnCursor);
+            tryRefresh(player, player.getItemOnCursor(), player::setItemOnCursor);
         });
     }
 
@@ -59,7 +61,7 @@ public class GunRefreshListener implements Listener {
         int slot = event.getNewSlot();
         Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> {
             ItemStack held = player.getInventory().getItem(slot);
-            tryRefresh(held, item -> player.getInventory().setItem(slot, item));
+            tryRefresh(player, held, item -> player.getInventory().setItem(slot, item));
         });
     }
 
@@ -71,19 +73,20 @@ public class GunRefreshListener implements Listener {
             if (!player.isOnline()) {
                 return;
             }
-            sweep(player.getInventory());
-            sweep(player.getEnderChest());
+            sweep(player, player.getInventory());
+            sweep(player, player.getEnderChest());
         });
     }
 
-    /** Chests, barrels and storage entities are checked when opened; plugin menus are left alone. */
+    /** Chests, barrels and storage entities are checked when opened (refunds go to the opener); plugin menus are left alone. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
         Inventory inventory = event.getInventory();
         if (!isWorldStorage(inventory.getHolder(false))) {
             return;
         }
-        Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> sweep(inventory));
+        Player player = event.getPlayer() instanceof Player opener ? opener : null;
+        Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> sweep(player, inventory));
     }
 
     /** Players are entities too, but a menu owned by a player is not storage. */
@@ -92,16 +95,20 @@ public class GunRefreshListener implements Listener {
                 || (holder instanceof Entity && !(holder instanceof HumanEntity));
     }
 
-    private void sweep(Inventory inventory) {
+    private void sweep(Player player, Inventory inventory) {
         ItemStack[] contents = inventory.getContents();
         for (int slot = 0; slot < contents.length; slot++) {
             int target = slot;
-            tryRefresh(contents[slot], item -> inventory.setItem(target, item));
+            tryRefresh(player, contents[slot], item -> inventory.setItem(target, item));
         }
     }
 
-    private void tryRefresh(ItemStack item, ItemConsumer writer) {
+    /** Brings a gun up to date; with automatic refunds an old gun is taken apart for {@code player}. */
+    private void tryRefresh(Player player, ItemStack item, ItemConsumer writer) {
         if (item == null || item.getType().isAir() || !GunStatRefresher.isManaged(item)) {
+            return;
+        }
+        if (Cache.refundsAutomatic && player != null && GunRefunder.takeApart(player, item, () -> writer.accept(null))) {
             return;
         }
         GunStatRefresher.RefreshResult result = GunStatRefresher.refreshIfOutdated(item);

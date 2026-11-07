@@ -26,6 +26,7 @@ import net.tfminecraft.gunsandgadgets.manager.inventory.AssemblyHolder;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.manager.inventory.TypeSelectionManager;
 import net.tfminecraft.gunsandgadgets.util.CostFormatter;
+import net.tfminecraft.gunsandgadgets.utils.GunRefunder;
 
 public class CraftingManager implements Listener {
 
@@ -41,9 +42,22 @@ public class CraftingManager implements Listener {
         if (event.getClickedBlock() == null) return;
 
         if(!TLibs.getBlockAPI().getChecker().checkBlock(event.getClickedBlock(), Cache.station)) return;
-        if (event.getPlayer().isSneaking()) return;
-        event.setCancelled(true);
         Player player = event.getPlayer();
+        // An old gun clicked on the station is taken apart for its materials instead.
+        if (Cache.refundsEnabled) {
+            ItemStack hand = player.getInventory().getItemInMainHand();
+            if (GunRefunder.takeApart(player, hand, () -> player.getInventory().setItemInMainHand(null))) {
+                event.setCancelled(true);
+                return;
+            }
+            if (GunRefunder.isOld(hand)) {
+                event.setCancelled(true);
+                player.sendMessage("§cThis old gun can't be taken apart here. Ask staff about it.");
+                return;
+            }
+        }
+        if (player.isSneaking()) return;
+        event.setCancelled(true);
         inv.openCraftingInventory(player);
     }
 

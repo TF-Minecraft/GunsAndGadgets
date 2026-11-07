@@ -39,6 +39,12 @@ public class Cache {
 
     // Guns stamped with a disabled or missing part refuse to fire or reload.
     public static boolean retireDisabledPartGuns = false;
+    /** Old guns are taken apart for their materials (refunds.enabled). */
+    public static boolean refundsEnabled = false;
+    /** ...also on join, hotbar select, inventory clicks and opening storage, not just at the station. */
+    public static boolean refundsAutomatic = false;
+    /** Guns crafted for free give back their parts' costs (refunds.free-guns: part-costs) instead of being kept. */
+    public static boolean refundFreeGuns = false;
 
     /** Draw time per gun type in ticks (handling.draw.base-seconds); empty = no draw time. */
     public static Map<GunType, Integer> drawBaseTicks = new HashMap<>();

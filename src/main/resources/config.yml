@@ -90,6 +90,17 @@ aiming:
 # is written to the gun, so turning this off makes them usable again.
 retire-disabled-part-guns: false
 
+# Old guns (built with a retired or removed part) are taken apart for their materials: what
+# their crafting took (recorded since 2.0.6), or for older guns the costs of their parts. The
+# gun is removed and the materials go to the player. Right-clicking the gun station with one
+# does it; automatic also does it on join, on selecting it in the hotbar, clicking it in an
+# inventory or opening storage that holds it (the materials go to whoever opened it).
+# free-guns: guns crafted for free (staff bypass, /gg give): keep (left alone) or part-costs.
+refunds:
+    enabled: false
+    automatic: false
+    free-guns: keep
+
 # Item model prefix for forged part icons in the gunsmithing menus: <prefix><part> in the part
 # list, <prefix><part>_<material> once a material is chosen (the pack's tfmc_guns icons).
 # Leave blank to show each part's own item.

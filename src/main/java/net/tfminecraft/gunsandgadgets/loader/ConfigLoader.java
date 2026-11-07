@@ -70,6 +70,9 @@ public class ConfigLoader {
         Cache.coneMinFactor =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.pellet-cone.min-factor", 0.4)));
         Cache.retireDisabledPartGuns = config.getBoolean("retire-disabled-part-guns", false);
+        Cache.refundsEnabled = config.getBoolean("refunds.enabled", false);
+        Cache.refundsAutomatic = config.getBoolean("refunds.automatic", false);
+        Cache.refundFreeGuns = "part-costs".equalsIgnoreCase(config.getString("refunds.free-guns", "keep").trim());
         Cache.partIconPrefix = config.getString("part-icons", "").trim();
 
         // Draw time: seconds per gun type, slowed by stance. Left out = guns are ready at once.
