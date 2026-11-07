@@ -35,7 +35,7 @@ public final class GgCommand implements CommandExecutor, TabCompleter {
 				return true;
 			}
 			GunsAndGadgets.getInstance().reload();
-			sender.sendMessage("§a[GunsAndGadgets] Reloaded configs (skins, parts, ammunition, config).");
+			sender.sendMessage("§a[GunsAndGadgets] Reloaded configs (skins, parts, metals, ammunition, config).");
 			return true;
 		}
 		if (sub.equals("refresh")) {
