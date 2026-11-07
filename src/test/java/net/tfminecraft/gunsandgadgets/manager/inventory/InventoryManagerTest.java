@@ -752,6 +752,12 @@ class InventoryManagerTest {
     assertEquals(Material.BARRIER, output(action, barrel, chamber).getType());
     when(action.getCaliberOverrides()).thenReturn(List.of("ball"));
     assertEquals(Material.BARRIER, output(action, chamber).getType());
+    // A forged barrel whose shot family matched no ammunition is refused as well.
+    when(action.getCaliberOverrides()).thenReturn(null);
+    when(chamber.getAmmoFilter()).thenReturn(null);
+    when(barrel.declaresAmmoFamily()).thenReturn(true);
+    assertEquals(Material.BARRIER, output(action, barrel, chamber).getType());
+    when(barrel.declaresAmmoFamily()).thenReturn(false);
     // Parts that declare no shot at all still build a gun, as before.
     when(action.getCaliberOverrides()).thenReturn(null);
     when(chamber.getAmmoFilter()).thenReturn(null);

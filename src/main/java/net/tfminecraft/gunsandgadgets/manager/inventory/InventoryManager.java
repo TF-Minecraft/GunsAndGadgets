@@ -680,7 +680,7 @@ public class InventoryManager implements Listener {
      */
     private static boolean declaresShot(Collection<GunPart> parts) {
         for (GunPart part : parts) {
-            if (!part.getCalibers().isEmpty() || part.getAmmoFilter() != null
+            if (!part.getCalibers().isEmpty() || part.getAmmoFilter() != null || part.declaresAmmoFamily()
                     || (part.getCaliberOverrides() != null && !part.getCaliberOverrides().isEmpty())) {
                 return true;
             }

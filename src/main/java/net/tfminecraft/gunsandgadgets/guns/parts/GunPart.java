@@ -49,6 +49,7 @@ public class GunPart {
     private final AmmoFilter ammoFilter;
     private final String skinBase;
     private final String materialPermission;
+    private final boolean declaresAmmoFamily;
 
     public GunPart(String key, ConfigurationSection config) {
         this.id = key;
@@ -166,6 +167,7 @@ public class GunPart {
         this.ammoFilter = AmmoFilter.parse(config.getString("ammo-filter", null));
         this.skinBase = config.getString("skin-base", null);
         this.materialPermission = config.getString("forge.permission", null);
+        this.declaresAmmoFamily = config.contains("forge.ammo-family");
 
         // Parse normal sounds
         parseSoundSection(config.getStringList("sounds"), sounds);
@@ -265,6 +267,9 @@ public class GunPart {
 
     /** A forged part's material permission, required on top of any of the part's own permissions. */
     public String getMaterialPermission() { return materialPermission; }
+
+    /** A forged barrel that loads a shot family, even when ammunition.yml has none of it. */
+    public boolean declaresAmmoFamily() { return declaresAmmoFamily; }
 
     /** The id gun designs are matched against when no skin-impact names one: skin-base, else the base id. */
     public String getSkinBase() { return skinBase != null ? skinBase : getBaseId(); }

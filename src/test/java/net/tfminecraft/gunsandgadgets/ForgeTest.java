@@ -191,7 +191,10 @@ stock:
     assertEquals("a@b", PartForge.variantId("a", "b"));
     // A family with no ammunition, or no material to forge from, still loads (with a warning).
     var nothing = yaml("n: {ammo-family: none, metals: [iron], tendencies: [speed 1]}").getConfigurationSection("n");
-    assertEquals(List.of(), PartForge.expand("n", nothing).get("n@iron").getStringList("caliber"));
+    var empty = PartForge.expand("n", nothing).get("n@iron");
+    assertEquals(List.of(), empty.getStringList("caliber"));
+    assertEquals("none", empty.getString("forge.ammo-family"));
+    assertTrue(new GunPart("n@iron", empty).declaresAmmoFamily());
     var orphan = yaml("o: {metals: [unobtainium], tendencies: [speed 1]}").getConfigurationSection("o");
     assertTrue(PartForge.expand("o", orphan).isEmpty());
   }
@@ -241,6 +244,7 @@ legacy:
     assertEquals("legacy", legacy.getSkinBase());
     assertNull(legacy.getMetalId());
     assertNull(legacy.getMaterialPermission());
+    assertFalse(legacy.declaresAmmoFamily());
     assertNull(legacy.getAmmoFilter()); // an unknown filter is ignored
     assertTrue(legacy.getTendencies().isEmpty());
     assertFalse(legacy.buildRevisionContent().contains("ammo-filter"));

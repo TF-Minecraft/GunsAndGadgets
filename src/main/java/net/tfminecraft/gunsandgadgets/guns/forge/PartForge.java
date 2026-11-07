@@ -89,6 +89,8 @@ public final class PartForge {
                         + family + "' up to tier " + metal.getTier() + "; check family/tier in ammunition.yml");
             }
             calibers.addAll(shot);
+            // Kept so a gun with this barrel is refused when the family matches nothing.
+            variant.set("forge.ammo-family", family.toLowerCase());
         }
         variant.set("caliber", calibers);
 
