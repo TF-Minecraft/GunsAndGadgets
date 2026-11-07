@@ -19,7 +19,7 @@ smoothbore_barrel_long:
   tendencies:
     - accuracy 1
     - speed 10
-    - damage_percent 12
+    - damage_percent 8
     - pierce -5
     - falloff -6
   sounds:
@@ -149,7 +149,6 @@ smoothbore_barrel_short:
   tendencies:
     - accuracy 4
     - speed 5
-    - damage_percent 5
     - pierce -5
     - falloff -4
     - moving 30
@@ -571,6 +570,7 @@ double_chamber:
     - draw -10
   fixed:
     - capacity 2
+    - damage_percent -10
   name-impact:
     - Double 0 10
   lore:
