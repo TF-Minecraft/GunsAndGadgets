@@ -283,7 +283,7 @@ tight:
     assertEquals(
         List.of(
             "■ Holds 6 shots",
-            "■ Pellet spread: Wide",
+            "■ Pellet Spread: Wide",
             // in iron: smaller upsides, harsher downsides
             "■ Accuracy: ▲",
             "■ Speed: ▼▼▼",
@@ -303,37 +303,37 @@ tight:
         wide);
     List<String> medium = strip(ForgeLore.lines(PartLoader.getByString("medium@iron")));
     assertEquals(
-        List.of("■ Pellet spread: Medium", "■ Accuracy: ▲", "■ Loads plain shot only"), medium);
+        List.of("■ Pellet Spread: Medium", "■ Accuracy: ▲", "■ Loads plain shot only"), medium);
     // A cone that sums to nothing and an empty magazine show neither line.
     List<String> tight = strip(ForgeLore.lines(PartLoader.getByString("tight@iron")));
     assertEquals(List.of("■ Accuracy: ▲"), tight);
     new PartLoader().load(file("tight.yml", "t: {tendencies: [], fixed: [spread 7]}").toFile());
-    assertEquals(List.of("■ Pellet spread: Tight"), strip(ForgeLore.lines(PartLoader.getByString("t@iron"))));
+    assertEquals(List.of("■ Pellet Spread: Tight"), strip(ForgeLore.lines(PartLoader.getByString("t@iron"))));
   }
 
   @Test
-  void theMaterialLineSaysWhatTheMaterialDoesToThisPart() throws Exception {
+  void eachMaterialCanHaveItsOwnLoreAndStatNotesStartWithACapital() throws Exception {
     loadMetals();
     GunPart part = org.mockito.Mockito.mock(GunPart.class);
     org.mockito.Mockito.when(part.getTendencies())
-        .thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of(Stats.ACCURACY, 2.0, Stats.RELOAD, -3.0)));
-    assertEquals("", ForgeLore.materialLine(part));
+        .thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of(Stats.ACCURACY, 2.0)));
     assertEquals(1, ForgeLore.lines(part).stream().filter(l -> l.contains("Accuracy")).count());
-    org.mockito.Mockito.when(part.getMetalId()).thenReturn("gone");
-    assertEquals("", ForgeLore.materialLine(part));
-    org.mockito.Mockito.when(part.getMetalId()).thenReturn("iron");
-    assertEquals("§7Iron§7: weaker accuracy; harsher reload", ForgeLore.materialLine(part));
-    org.mockito.Mockito.when(part.getMetalId()).thenReturn("mythril");
-    assertEquals("§bMythril§7: stronger accuracy; milder reload", ForgeLore.materialLine(part));
-    org.mockito.Mockito.when(part.getMetalId()).thenReturn("oak");
-    assertEquals("Oak§7: as designed", ForgeLore.materialLine(part));
-    Metal mythril = MetalLoader.getByString("mythril");
-    assertEquals(1.6, mythril.factor("SPEED", true));
-    assertEquals(0.5, mythril.factor("reload", false));
-    assertEquals("", mythril.getColor());
+    assertEquals("", MetalLoader.getByString("mythril").getColor());
     for (Stats stat : Stats.values()) {
-      assertFalse(stat.getHint().isBlank());
+      assertTrue(Character.isUpperCase(stat.getHint().charAt(0)), stat.name());
     }
+    new PartLoader().load(file("lore.yml", """
+tube:
+  tendencies: [accuracy 1]
+  lore: ["§7A tube."]
+  metal-lore: {iron: "§7A crude iron tube."}
+""").toFile());
+    GunPart iron = PartLoader.getByString("tube@iron");
+    assertEquals(List.of("§7A crude iron tube."), iron.getLore());
+    assertEquals(List.of("§7A tube."), iron.getBaseLore());
+    assertEquals(List.of("§7A tube."), PartLoader.getByString("tube@mythril").getLore());
+    new PartLoader().load(file("plain.yml", "rod: {lore: [\"§7A rod.\"]}").toFile());
+    assertEquals(List.of("§7A rod."), PartLoader.getByString("rod").getBaseLore());
   }
 
   static List<String> strip(List<String> lines) {

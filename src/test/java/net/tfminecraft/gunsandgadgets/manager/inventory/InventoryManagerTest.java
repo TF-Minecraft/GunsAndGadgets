@@ -716,7 +716,7 @@ class InventoryManagerTest {
     new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
     try {
       var iron = forged("heavy", "iron", "action");
-      when(iron.getLore()).thenReturn(List.of("Old design"));
+      when(iron.getBaseLore()).thenReturn(List.of("Old design"));
       forged("heavy", "steel", "action");
       var locked = forged("heavy", "mythril", "action");
       when(locked.getMaterialPermission()).thenReturn("professions.mythril_smith");
@@ -746,7 +746,7 @@ class InventoryManagerTest {
       assertEquals("heavy", holder.getBaseId());
       assertNull(holder.getInventory());
       assertEquals("heavy@iron", string(top.getItem(0), "part_id"));
-      assertTrue(top.getItem(0).getItemMeta().getLore().stream().anyMatch(l -> l.startsWith("Iron§7: ")));
+      assertTrue(top.getItem(0).getItemMeta().getLore().stream().noneMatch(l -> l.startsWith("Iron§7: ")));
       assertEquals("heavy@steel", string(top.getItem(1), "part_id"));
       assertNull(top.getItem(2));
       assertEquals(Material.ARROW, top.getItem(8).getType());
@@ -785,7 +785,7 @@ class InventoryManagerTest {
     when(chamber.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.POWERED);
     var refused = output(action, barrel, chamber);
     assertEquals(Material.BARRIER, refused.getType());
-    assertEquals("§cThese parts load no shot", refused.getItemMeta().getDisplayName());
+    assertEquals("§cThese parts don't make a gun", refused.getItemMeta().getDisplayName());
     // A filter alone, and an override filtered down to nothing, are refused too.
     when(barrel.getCalibers()).thenReturn(List.of());
     assertEquals(Material.BARRIER, output(action, barrel, chamber).getType());

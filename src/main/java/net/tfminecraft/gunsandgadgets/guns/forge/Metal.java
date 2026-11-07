@@ -91,12 +91,6 @@ public final class Metal {
         return Double.isFinite(value) && value >= 0 ? value : 1.0;
     }
 
-    /** How strongly this material scales a stat's upside (or downside). */
-    public double factor(String stat, boolean upside) {
-        String key = stat.toLowerCase();
-        return upside ? better.getOrDefault(key, betterDefault) : worse.getOrDefault(key, worseDefault);
-    }
-
     /** A reference tendency forged in this material. */
     public double scale(String stat, double value) {
         String key = stat.toLowerCase();

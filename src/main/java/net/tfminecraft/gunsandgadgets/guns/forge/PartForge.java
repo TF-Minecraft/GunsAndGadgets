@@ -29,7 +29,8 @@ public final class PartForge {
     /** Keys the forge computes or consumes; everything else is copied to each variant as is. */
     private static final Set<String> FORGE_KEYS = Set.of(
             "name", "tier", "stats", "cost", "permissions", "caliber", "caliber-override",
-            "tendencies", "fixed", "by-metal", "metals", "material", "cost-amount", "ammo-family");
+            "tendencies", "fixed", "by-metal", "metals", "material", "cost-amount", "ammo-family",
+            "metal-lore");
 
     private PartForge() {}
 
@@ -96,6 +97,12 @@ public final class PartForge {
         }
         variant.set("caliber", calibers);
 
+        // Lore written for this material, if any; the part's own lore stays for the part list.
+        String metalLore = definition.getString("metal-lore." + metal.getId(), "");
+        if (!metalLore.isEmpty()) {
+            variant.set("lore", List.of(metalLore));
+        }
+        variant.set("forge.lore", definition.getStringList("lore"));
         variant.set("forge.base", key);
         variant.set("forge.metal", metal.getId());
         variant.set("forge.name", baseName);

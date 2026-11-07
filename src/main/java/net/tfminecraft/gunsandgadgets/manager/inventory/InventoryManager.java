@@ -213,7 +213,7 @@ public class InventoryManager implements Listener {
         m.setDisplayName(part.getBaseName());
         m.getPersistentDataContainer().set(forgeBaseKey(), PersistentDataType.STRING, part.getBaseId());
         List<String> lore = new ArrayList<>();
-        for (String line : part.getLore()) {
+        for (String line : part.getBaseLore()) {
             lore.add(StringFormatter.formatHex(line));
         }
         if (!lore.isEmpty()) lore.add("");
@@ -448,7 +448,8 @@ public class InventoryManager implements Listener {
         if (calibers.isEmpty() && declaresShot(parts)) {
             ItemStack barrier = new ItemStack(Material.BARRIER);
             ItemMeta bm = barrier.getItemMeta();
-            bm.setDisplayName("§cThese parts load no shot");
+            bm.setDisplayName("§cThese parts don't make a gun");
+            bm.setLore(List.of("§7No shot fits all of them."));
             barrier.setItemMeta(bm);
             return barrier;
         }
@@ -799,11 +800,6 @@ public class InventoryManager implements Listener {
 
         if (part.isForged()) {
             // What the part does, not by how much: the material sets the numbers on the gun.
-            String material = ForgeLore.materialLine(part);
-            if (!material.isEmpty()) {
-                lore.add("");
-                lore.add(material);
-            }
             lore.add("");
             lore.addAll(ForgeLore.lines(part));
         } else if (!part.getStats().isEmpty()) {

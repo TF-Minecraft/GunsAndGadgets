@@ -30,6 +30,11 @@ smoothbore_barrel_long:
     - Musket 2 10
   lore:
     - "§7A plain long bore: a fast ball, quick to load."
+  metal-lore:
+    iron: "§7A rough iron bore: a fast ball, quick to load."
+    steel: "§7A clean steel bore: a fast ball, quick to load."
+    abyssalite: "§7A dense, dark bore that throws the ball far."
+    mythril: "§7A light mythril bore: the fastest ball of all."
   class:
     - Musketeer
 
@@ -56,6 +61,11 @@ rifled_barrel_long:
     - Rifle 2 10
   lore:
     - "§7Grooved bore: true at range, slower to load."
+  metal-lore:
+    iron: "§7Hand-cut iron grooves: true at range, slow to load."
+    steel: "§7Crisp steel rifling: true at range, slower to load."
+    abyssalite: "§7Deep-cut grooves that hold true at long range."
+    mythril: "§7Fine mythril rifling, true at range and quicker to load."
   class:
     - Musketeer
 
@@ -84,6 +94,11 @@ carbine_barrel:
     - Carbine 2 20
   lore:
     - "§7Short and light, made for riders and skirmishers."
+  metal-lore:
+    iron: "§7A short iron barrel for riders. Crude, but handy."
+    steel: "§7Short and light, made for riders and skirmishers."
+    abyssalite: "§7A short, dense barrel that holds its aim in the saddle."
+    mythril: "§7Feather-light, made for shooting at a gallop."
   class:
     - Musketeer
 
@@ -114,6 +129,11 @@ heavy_barrel:
     - Longrifle 2 20
   lore:
     - "§7A marksman's barrel: best braced and still."
+  metal-lore:
+    iron: "§7A thick iron barrel for marksmen: brace it well."
+    steel: "§7A marksman's barrel: best braced and still."
+    abyssalite: "§7Deadly when braced, a burden on the move."
+    mythril: "§7A marksman's barrel, light enough to carry far."
   class:
     - Musketeer
 
@@ -141,6 +161,11 @@ smoothbore_barrel_short:
     - Pistol 2 10
   lore:
     - "§7A handy pistol bore, fine on the move."
+  metal-lore:
+    iron: "§7A plain iron pistol bore, fine on the move."
+    steel: "§7A handy steel pistol bore, fine on the move."
+    abyssalite: "§7A short, dark bore: handy and hard-hitting."
+    mythril: "§7A light mythril bore, quick in hand and on the move."
   class:
     - Musketeer
 
@@ -166,6 +191,11 @@ rifled_barrel_short:
     - Pistol 2 10
   lore:
     - "§7A grooved pistol bore for steadier shots."
+  metal-lore:
+    iron: "§7A grooved iron pistol bore, steadier than smooth."
+    steel: "§7A grooved steel pistol bore for steadier shots."
+    abyssalite: "§7Deep pistol grooves: the steadiest short bore."
+    mythril: "§7A light rifled bore that sends the ball fast."
   class:
     - Musketeer
 
@@ -194,6 +224,11 @@ duelling_barrel:
     - Duelling Pistol 2 20
   lore:
     - "§7Made for one careful shot, standing still."
+  metal-lore:
+    iron: "§7An iron duelling barrel for one careful shot."
+    steel: "§7Made for one careful shot, standing still."
+    abyssalite: "§7One shot, perfectly placed. Stand still to make it."
+    mythril: "§7A fine mythril barrel: one fast, sure shot."
   class:
     - Musketeer
 
@@ -221,6 +256,11 @@ spread_barrel:
     - blunderbuss 10
   lore:
     - "§7A flared mouth that throws a wide cone of shot."
+  metal-lore:
+    iron: "§7A flared iron mouth that throws a wide cone."
+    steel: "§7A flared mouth that throws a wide cone of shot."
+    abyssalite: "§7A heavy flared mouth whose cone carries further."
+    mythril: "§7A light flared mouth, quicker to reload."
   class:
     - Musketeer
 
@@ -251,6 +291,11 @@ sawn_off_barrel:
     - blunderbuss 10
   lore:
     - "§7Cut short: a brutal cone up close."
+  metal-lore:
+    iron: "§7Iron hacked short: a brutal cone up close."
+    steel: "§7Cut short: a brutal cone up close."
+    abyssalite: "§7Dark metal cut short: brutal at arm's length."
+    mythril: "§7Light and cut short: quick from the hip."
   class:
     - Musketeer
 
@@ -280,6 +325,11 @@ fowling_barrel:
     - blunderbuss 10
   lore:
     - "§7Long and narrow: a tight cone that carries."
+  metal-lore:
+    iron: "§7A long iron fowler: a tight cone, slow to load."
+    steel: "§7Long and narrow: a tight cone that carries."
+    abyssalite: "§7A long, dense fowler whose cone reaches far."
+    mythril: "§7A light fowler: a tight cone without the weight."
   class:
     - Musketeer
 
@@ -310,6 +360,11 @@ launcher_barrel:
     - launcher 10
   lore:
     - "§7An iron tube for rockets."
+  metal-lore:
+    iron: "§7A plain iron tube for rockets."
+    steel: "§7A sturdy steel tube for rockets."
+    abyssalite: "§7A dense tube: its rockets punch through armour."
+    mythril: "§7A light, bright tube for rockets."
   class:
     - Musketeer
 
@@ -342,6 +397,11 @@ short_launch_tube:
     - launcher 10
   lore:
     - "§7A short tube, easy to carry on the move."
+  metal-lore:
+    iron: "§7A short iron tube, easy to carry."
+    steel: "§7A short tube, easy to carry on the move."
+    abyssalite: "§7A short, dark tube, easy to carry into battle."
+    mythril: "§7A short mythril tube you can run with."
   class:
     - Musketeer
 
@@ -375,6 +435,11 @@ long_launch_tube:
     - launcher 10
   lore:
     - "§7A long rail: straighter, harder-hitting rockets."
+  metal-lore:
+    iron: "§7A long iron rail for straighter rockets."
+    steel: "§7A long rail: straighter, harder-hitting rockets."
+    abyssalite: "§7A long, dense rail: the straightest rockets."
+    mythril: "§7A long rail, light enough to carry with ease."
   class:
     - Musketeer
 
@@ -399,6 +464,11 @@ muzzle_loader:
     - reload gunsandgadgets:muzzle_reload
   lore:
     - "§7Powder and ball rammed down the muzzle."
+  metal-lore:
+    iron: "§7An iron rod rams powder and ball down the muzzle."
+    steel: "§7Powder and ball rammed down the muzzle."
+    abyssalite: "§7Rammed from the muzzle; the heavy breech holds it true."
+    mythril: "§7Rammed from the muzzle with a light mythril rod."
   class:
     - Musketeer
 
@@ -422,6 +492,11 @@ breech_loader:
     - reload minecraft:block.iron_trapdoor.close pitch=1.4 volume=0.5
   lore:
     - "§7Loads from the back: quicker shot to shot."
+  metal-lore:
+    iron: "§7A crude iron breech: quicker shot to shot."
+    steel: "§7Loads from the back: quicker shot to shot."
+    abyssalite: "§7A dense breech that seals tight behind the ball."
+    mythril: "§7A smooth mythril breech: the quickest to reload."
   class:
     - Musketeer
 
@@ -443,6 +518,11 @@ patch_ramrod:
     - reload minecraft:block.wood.place pitch=0.7 volume=0.6
   lore:
     - "§7A greased patch for a snug, accurate ball."
+  metal-lore:
+    iron: "§7An iron rod and greased patch: a snug ball."
+    steel: "§7A greased patch for a snug, accurate ball."
+    abyssalite: "§7A heavy rod seats the patch tight: true, but slow."
+    mythril: "§7A light rod and greased patch, quicker to seat."
   class:
     - Musketeer
 
@@ -464,6 +544,11 @@ single_shot:
     - capacity 1
   lore:
     - "§7One shot per load."
+  metal-lore:
+    iron: "§7A plain iron chamber: one shot per load."
+    steel: "§7A steel chamber: one shot per load."
+    abyssalite: "§7A dense chamber: one well-sealed shot per load."
+    mythril: "§7A light chamber: one quick shot per load."
   class:
     - Musketeer
 
@@ -487,6 +572,11 @@ double_chamber:
     - Double 0 10
   lore:
     - "§7Two shots per load, slower to fill."
+  metal-lore:
+    iron: "§7Two iron chambers: two shots, slow to fill."
+    steel: "§7Two shots per load, slower to fill."
+    abyssalite: "§7Two dense chambers: two shots, slowest to fill."
+    mythril: "§7Two light chambers: two shots, quicker to fill."
   class:
     - Musketeer
 
@@ -512,6 +602,11 @@ revolver:
     - Revolving 0 10
   lore:
     - "§7A turning cylinder of lighter shots."
+  metal-lore:
+    iron: "§7A turning iron cylinder of lighter shots."
+    steel: "§7A turning cylinder of lighter shots."
+    abyssalite: "§7A heavy cylinder of lighter shots, slow to refill."
+    mythril: "§7A smooth mythril cylinder, quicker to refill."
   class:
     - Musketeer
 
@@ -537,6 +632,11 @@ proof_chamber:
     - Proof 0 5
   lore:
     - "§7Proofed for powered shot that bites through armour."
+  metal-lore:
+    iron: "§7Proofed iron walls for powered shot."
+    steel: "§7Proofed for powered shot that bites through armour."
+    abyssalite: "§7Dense proof walls: powered shot bites deepest."
+    mythril: "§7Light proof walls for fast powered shot."
   class:
     - Musketeer
 
@@ -555,6 +655,11 @@ single_shot_launcher:
     - capacity 1
   lore:
     - "§7One rocket per load."
+  metal-lore:
+    iron: "§7An iron cradle: one rocket per load."
+    steel: "§7A steel cradle: one rocket per load."
+    abyssalite: "§7A heavy cradle that sends one rocket true."
+    mythril: "§7A light cradle: one rocket, quickly loaded."
   class:
     - Musketeer
 
@@ -589,6 +694,10 @@ multi_tube_chamber:
     - Salvo 0 10
   lore:
     - "§7Several tubes fired as a salvo."
+  metal-lore:
+    steel: "§7Several steel tubes fired as a salvo."
+    abyssalite: "§7Dense tubes that loose a steadier salvo."
+    mythril: "§7Light tubes: a salvo you can still carry."
   class:
     - Musketeer
 
@@ -616,6 +725,11 @@ matchlock:
     - launcher 1
   lore:
     - "§7A slow match lowered into the pan. Simple and steady."
+  metal-lore:
+    iron: "§7A slow match in an iron lock. Simple and steady."
+    steel: "§7A slow match lowered into the pan. Simple and steady."
+    abyssalite: "§7A heavy matchlock: slow to ready, rock steady."
+    mythril: "§7A light matchlock: steady, and quicker to ready."
   class:
     - Musketeer
 
@@ -643,6 +757,11 @@ flintlock:
     - launcher 1
   lore:
     - "§7Flint on steel: quick and reliable."
+  metal-lore:
+    iron: "§7Flint on iron: quick, if rough."
+    steel: "§7Flint on steel: quick and reliable."
+    abyssalite: "§7Flint on dark metal: quick and sure."
+    mythril: "§7Flint on mythril: the quickest spark."
   class:
     - Musketeer
 
@@ -672,7 +791,12 @@ steamlock:
   skin-impact:
     - steamlock 10
   lore:
-    - "§7Steam-driven: quiet and smokeless, plain shot only."
+    - "§7Steam-driven: quiet and smokeless."
+  metal-lore:
+    iron: "§7An iron steam valve: quiet and smokeless."
+    steel: "§7Steam-driven: quiet, with no smoke to give you away."
+    abyssalite: "§7A dense steam valve: silent and steady."
+    mythril: "§7A fine mythril valve: silent and quick to fire."
   class:
     - Musketeer
 
@@ -701,6 +825,11 @@ wheellock:
   skin-base: flintlock
   lore:
     - "§7A spring wheel that sparks even in the saddle."
+  metal-lore:
+    iron: "§7An iron spring wheel that sparks in the saddle."
+    steel: "§7A spring wheel that sparks even in the saddle."
+    abyssalite: "§7A dense wheel that sparks every time."
+    mythril: "§7A light wheel, made for shooting at a gallop."
   class:
     - Musketeer
 
@@ -731,7 +860,12 @@ arclock:
   skin-impact:
     - arclock 10
   lore:
-    - "§7An arc of charge fires the shot. Scoped: accurate and fast, slow to reload."
+    - "§7An arc of charge fires the shot. Scoped and precise."
+  metal-lore:
+    iron: "§7A crude arc of charge fires the shot. Scoped."
+    steel: "§7An arc of charge fires the shot. Scoped and precise."
+    abyssalite: "§7A dark arc of charge: the most precise scoped shot."
+    mythril: "§7A bright arc of charge: scoped, quicker to reload."
   class:
     - Musketeer
 
@@ -754,6 +888,11 @@ rocketlock:
     - launcher 10
   lore:
     - "§7Lights the rocket from the side."
+  metal-lore:
+    iron: "§7An iron lock that lights the rocket from the side."
+    steel: "§7A steel lock that lights the rocket from the side."
+    abyssalite: "§7A heavy lock that lights the rocket true."
+    mythril: "§7A light lock that lights the rocket fast."
   class:
     - Musketeer
 
@@ -776,6 +915,11 @@ fuse_igniter:
     - launcher 10
   lore:
     - "§7A lit fuse: crude, slow to ready."
+  metal-lore:
+    iron: "§7A lit fuse in an iron cup: crude and slow."
+    steel: "§7A lit fuse: crude, slow to ready."
+    abyssalite: "§7A dense fuse cup: crude, but steady."
+    mythril: "§7A mythril fuse cup: crude, but quicker to ready."
   class:
     - Musketeer
 
@@ -793,6 +937,11 @@ standard_stock:
     - accuracy 4
   lore:
     - "§7A plain shoulder stock."
+  metal-lore:
+    barkwood: "§7A rough barkwood shoulder stock."
+    maplewood: "§7A plain maplewood shoulder stock."
+    elderwood: "§7A seasoned elderwood stock that holds the aim."
+    demonwood: "§7A red demonwood stock, strong and light."
   class:
     - Musketeer
 
@@ -814,6 +963,11 @@ saddle_stock:
     - draw 25
   lore:
     - "§7Short and strapped, for riding."
+  metal-lore:
+    barkwood: "§7A rough stock, short and strapped for riding."
+    maplewood: "§7Short and strapped, made for riding."
+    elderwood: "§7A steady saddle stock of seasoned elderwood."
+    demonwood: "§7A light demonwood stock for shooting at a gallop."
   class:
     - Musketeer
 
@@ -835,6 +989,11 @@ cheek_rest_stock:
     - draw -15
   lore:
     - "§7Raised comb for a careful, crouched aim."
+  metal-lore:
+    barkwood: "§7A rough raised comb for a crouched aim."
+    maplewood: "§7A raised comb for a careful, crouched aim."
+    elderwood: "§7An elderwood comb: the steadiest crouched aim."
+    demonwood: "§7A light raised comb that steadies a crouched aim."
   class:
     - Musketeer
 
@@ -855,6 +1014,11 @@ padded_stock:
     - draw -10
   lore:
     - "§7Soaks the kick for quicker follow-ups."
+  metal-lore:
+    barkwood: "§7A padded barkwood stock that soaks some kick."
+    maplewood: "§7Soaks the kick for quicker follow-ups."
+    elderwood: "§7A padded elderwood stock: steady follow-ups."
+    demonwood: "§7Padded demonwood: the quickest follow-ups."
   class:
     - Musketeer
 
@@ -870,6 +1034,11 @@ standard_grip:
     - accuracy 2
   lore:
     - "§7A plain pistol grip."
+  metal-lore:
+    barkwood: "§7A plain barkwood pistol grip."
+    maplewood: "§7A plain maplewood pistol grip."
+    elderwood: "§7A seasoned elderwood grip that holds the aim."
+    demonwood: "§7A strong, light demonwood grip."
   class:
     - Musketeer
 
@@ -887,6 +1056,11 @@ birdshead_grip:
     - draw 30
   lore:
     - "§7A curved grip, quick from the belt."
+  metal-lore:
+    barkwood: "§7A rough curved grip, quick from the belt."
+    maplewood: "§7A curved grip, quick from the belt."
+    elderwood: "§7A curved elderwood grip, quick and sure."
+    demonwood: "§7A curved demonwood grip, quickest from the belt."
   class:
     - Musketeer
 
@@ -906,6 +1080,11 @@ pommel_grip:
     - draw -20
   lore:
     - "§7A capped pommel for a firm, steady hold."
+  metal-lore:
+    barkwood: "§7A capped barkwood pommel for a firm hold."
+    maplewood: "§7A capped pommel for a firm, steady hold."
+    elderwood: "§7An elderwood pommel: the steadiest crouched hold."
+    demonwood: "§7A capped demonwood pommel, firm and light."
   class:
     - Musketeer
 
@@ -926,5 +1105,10 @@ wrapped_grip:
     - draw -5
   lore:
     - "§7Cord-wrapped for a sure hold on the move."
+  metal-lore:
+    barkwood: "§7Cord on rough barkwood: a sure hold on the move."
+    maplewood: "§7Cord-wrapped for a sure hold on the move."
+    elderwood: "§7Cord on seasoned elderwood: steady on the move."
+    demonwood: "§7Cord on demonwood: sure at a run or a gallop."
   class:
     - Musketeer

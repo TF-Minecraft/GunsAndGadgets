@@ -22,6 +22,7 @@ public class GunPart {
     private List<String> caliberOverrides;
     private final EnumSet<PartOption> options = EnumSet.noneOf(PartOption.class);
     private List<String> lore = new ArrayList<>();
+    private List<String> baseLore;
     private final boolean isTwoHanded;
 
     private final Map<SoundType, List<PartSound>> sounds = new HashMap<>();
@@ -172,6 +173,9 @@ public class GunPart {
         this.forgeBase = config.getString("forge.base", null);
         this.forgeMetal = config.getString("forge.metal", null);
         this.forgeName = StringFormatter.formatHex(config.getString("forge.name", name));
+        this.baseLore = config.contains("forge.lore")
+                ? config.getStringList("forge.lore").stream().map(StringFormatter::formatHex).toList()
+                : lore;
         this.tendencies = PartForge.parse(config.getStringList("forge.tendencies"));
         this.fixedStats = PartForge.parse(config.getStringList("forge.fixed"));
         this.ammoFilter = AmmoFilter.parse(config.getString("ammo-filter", null));
@@ -210,6 +214,9 @@ public class GunPart {
     public List<String> getCaliberOverrides() { return caliberOverrides; }
     public boolean hasOption(PartOption option) { return options.contains(option); }
     public List<String> getLore() { return lore; }
+
+    /** The part's lore before a material is chosen (a forged variant's own lore is per material). */
+    public List<String> getBaseLore() { return baseLore; }
     public Set<GunType> getGunTypes() { return gunTypes; }
     public Map<String, Integer> getCost() { return cost; }
     public boolean hasCost() { return cost.size() > 0; }

@@ -36,10 +36,10 @@ steel:
   worse: 1
 
 abyssalite:
-  name: "#7d8f91Abyssalite"
+  name: "#5a7299Abyssalite"
   kind: metal
   tier: 3
-  color: "7d8f91"
+  color: "5a7299"
   cost: m.materials.abyssalite_ingot
   permission: professions.abyssalite_smith
   description:
@@ -88,10 +88,10 @@ mythril:
   worse: 0.75
 
 barkwood:
-  name: "#8a6236Barkwood"
+  name: "#7d5a33Barkwood"
   kind: wood
   tier: 1
-  color: "8a6236"
+  color: "7d5a33"
   cost: m.materials.refined_barkwood
   permission: professions.iron_smith
   description:
@@ -101,10 +101,10 @@ barkwood:
   worse: 1.25
 
 maplewood:
-  name: "#b3ad71Maplewood"
+  name: "#a8975fMaplewood"
   kind: wood
   tier: 2
-  color: "b3ad71"
+  color: "a8975f"
   cost: m.materials.refined_maplewood
   permission: professions.steel_smith
   description:

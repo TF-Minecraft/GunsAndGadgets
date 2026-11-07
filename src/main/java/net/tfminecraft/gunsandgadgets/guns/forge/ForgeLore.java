@@ -25,11 +25,11 @@ public final class ForgeLore {
         Map<Stats, Double> fixed = part.getFixedStats();
         Double capacity = fixed.get(Stats.CAPACITY);
         if (capacity != null && capacity > 1) {
-            lines.add(format("§7■ #c2b48aHolds §f" + Math.round(capacity) + " #c2b48ashots"));
+            lines.add(format("§7■ #c2b48aHolds " + Math.round(capacity) + " shots"));
         }
         Double cone = fixed.get(Stats.SPREAD);
         if (cone != null && cone > 0) {
-            lines.add(format("§7■ #c2b48aPellet spread§e: §f" + coneWord(cone)));
+            lines.add(format("§7■ #c2b48aPellet Spread§e: §f" + coneWord(cone)));
         }
         // In the part's own material: a mythril upside can show more arrows than an iron one.
         Metal metal = part.getMetalId() == null ? null : MetalLoader.getByString(part.getMetalId());
@@ -45,39 +45,13 @@ public final class ForgeLore {
             }
         }
         if (part.getAmmoFilter() != null) {
-            lines.add(format("§7■ #c2b48aLoads §f" + (part.getAmmoFilter() == GunPart.AmmoFilter.POWERED
-                    ? "powered" : "plain") + " #c2b48ashot only"));
+            lines.add(format("§7■ #c2b48aLoads " + (part.getAmmoFilter() == GunPart.AmmoFilter.POWERED
+                    ? "powered" : "plain") + " shot only"));
         }
         if (part.hasOption(GunPart.PartOption.SMOKELESS)) {
             lines.add(format("§7■ #c2b48aSilent: no smoke or muzzle flash"));
         }
         return lines;
-    }
-
-    /**
-     * What the material does to this part, in words: its upsides "stronger" or "weaker", its
-     * downsides "milder" or "harsher" than the reference material. Empty without a material.
-     */
-    public static String materialLine(GunPart part) {
-        Metal metal = part.getMetalId() == null ? null : MetalLoader.getByString(part.getMetalId());
-        if (metal == null) {
-            return "";
-        }
-        List<String> stronger = new ArrayList<>(), weaker = new ArrayList<>(), milder = new ArrayList<>(), harsher = new ArrayList<>();
-        for (Map.Entry<Stats, Double> tendency : part.getTendencies().entrySet()) {
-            boolean upside = tendency.getValue() >= 0;
-            double f = metal.factor(tendency.getKey().getKey(), upside);
-            String stat = tendency.getKey().getDisplayName().toLowerCase();
-            if (f >= 1.1) (upside ? stronger : harsher).add(stat);
-            else if (f <= 0.9) (upside ? weaker : milder).add(stat);
-        }
-        List<String> parts = new ArrayList<>();
-        if (!stronger.isEmpty()) parts.add("stronger " + String.join(", ", stronger));
-        if (!weaker.isEmpty()) parts.add("weaker " + String.join(", ", weaker));
-        if (!milder.isEmpty()) parts.add("milder " + String.join(", ", milder));
-        if (!harsher.isEmpty()) parts.add("harsher " + String.join(", ", harsher));
-        String effect = parts.isEmpty() ? "as designed" : String.join("; ", parts);
-        return format(metal.getName() + "§7: " + effect);
     }
 
     static String arrowLine(Stats stat, double value) {
