@@ -1,12 +1,15 @@
 package net.tfminecraft.gunsandgadgets.manager;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -14,6 +17,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.ItemStack;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption;
@@ -25,7 +30,8 @@ import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
  * Aiming (config.yml {@code aiming}): crouching with a loaded, drawn gun raises it to the eye. The
  * gun shows its aiming pose and the player walks slower, which also narrows the field of view (the
  * zoom). A scoped gun (a part with the {@code scoped} option, the arclock) becomes a spyglass while
- * aimed: hold right-click to look through the scope, release to fire.
+ * aimed: hold right-click to look through the scope, and release once it is steady
+ * ({@code aiming.scope-settle-seconds}) to fire; an earlier release lowers it without a shot.
  */
 public final class Aiming {
 
@@ -33,6 +39,8 @@ public final class Aiming {
 
     private final GunManager guns;
     private final Map<UUID, String> aimed = new HashMap<>();
+    /** Players told their scope is steady during this hold. */
+    private final Set<UUID> steadied = new HashSet<>();
 
     Aiming(GunManager guns) {
         this.guns = guns;
@@ -70,6 +78,20 @@ public final class Aiming {
         ItemStack held = player.getInventory().getItemInMainHand();
         if (!player.isSneaking() || !gunId.equals(DrawTimer.gunId(held)) || guns.loadedBullets(held) <= 0) {
             stop(player);
+            return;
+        }
+        settle(player, held);
+    }
+
+    /** Once per hold, a click and a word when the scope has been up long enough to fire on release. */
+    void settle(Player player, ItemStack held) {
+        if (!isScoped(player, held) || !player.isHandRaised()) {
+            steadied.remove(player.getUniqueId());
+            return;
+        }
+        if (player.getActiveItemUsedTime() >= Cache.scopeSettleTicks && steadied.add(player.getUniqueId())) {
+            player.playSound(player.getLocation(), Sound.BLOCK_TRIPWIRE_CLICK_ON, 0.6f, 1.6f);
+            guns.sendActionBar(player, "§aSteady. §7Release to fire.");
         }
     }
 
@@ -89,13 +111,16 @@ public final class Aiming {
         ItemStack item = guns.applyModel(held, skin, SkinState.ADS);
         if (scoped(item)) {
             item.setType(Material.SPYGLASS);
-            guns.sendActionBar(player, "§7Hold right-click to look through the scope, release to fire.");
+            guns.sendActionBar(player, Component.text("Hold ", NamedTextColor.GRAY)
+                    .append(Component.keybind("key.use", NamedTextColor.YELLOW))
+                    .append(Component.text(" to look through the scope, release when steady to fire.", NamedTextColor.GRAY)));
         }
         player.getInventory().setItemInMainHand(item);
     }
 
     void stop(Player player) {
         String gunId = aimed.remove(player.getUniqueId());
+        steadied.remove(player.getUniqueId());
         if (gunId == null) {
             return;
         }

@@ -206,7 +206,8 @@ public class ProjectileShooter {
         ActiveVehicle ownVehicle = Handling.vehicleFrameworkSeat(player);
         Handling.Steadiness steadiness = Handling.Steadiness.of(
                 gunStat(meta, "moving"), gunStat(meta, "mounted"), gunStat(meta, "sneaking"));
-        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player, ownVehicle, steadiness));
+        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player, ownVehicle, steadiness)
+                * Handling.hipMultiplier(aimed(player)));
 
         int salt = meta.getPersistentDataContainer().getOrDefault(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "accuracy_salt"),
@@ -284,6 +285,12 @@ public class ProjectileShooter {
         }
     }
 
+
+    /** Whether the shooter has the gun raised to the eye (crouch aiming). */
+    static boolean aimed(Player player) {
+        net.tfminecraft.gunsandgadgets.manager.GunManager guns = GunsAndGadgets.getInstance().getGunManager();
+        return guns != null && guns.getAiming().isAiming(player);
+    }
 
     private static Vector applySpread(Vector direction, double degrees, java.util.Random rand) {
         // Convert degrees to radians

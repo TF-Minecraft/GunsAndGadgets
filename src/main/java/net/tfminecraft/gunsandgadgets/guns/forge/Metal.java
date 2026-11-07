@@ -34,6 +34,8 @@ public final class Metal {
     private final double worseDefault;
     // Presentation: a barrel forged from this material colours the muzzle flash and the trail,
     // pitches and loudens the report, and may add sound layers (mythril's ring).
+    // The material's colour (its ingot or refined wood), for part names and the gun name by tier.
+    private final String color;
     private final Color flash;
     private final Color trail;
     private final double soundPitch;
@@ -52,6 +54,7 @@ public final class Metal {
         }
         this.betterDefault = readFactors(config, "better", better);
         this.worseDefault = readFactors(config, "worse", worse);
+        this.color = color(config.getString("color", null)) == null ? "" : "#" + config.getString("color").trim().replace("#", "");
         this.flash = color(config.getString("flash", null));
         this.trail = color(config.getString("trail", null));
         this.soundPitch = GunPart.factor(config.getDouble("sound-pitch", 1.0));
@@ -88,6 +91,12 @@ public final class Metal {
         return Double.isFinite(value) && value >= 0 ? value : 1.0;
     }
 
+    /** How strongly this material scales a stat's upside (or downside). */
+    public double factor(String stat, boolean upside) {
+        String key = stat.toLowerCase();
+        return upside ? better.getOrDefault(key, betterDefault) : worse.getOrDefault(key, worseDefault);
+    }
+
     /** A reference tendency forged in this material. */
     public double scale(String stat, double value) {
         String key = stat.toLowerCase();
@@ -102,6 +111,8 @@ public final class Metal {
     public String getCost() { return cost; }
     public String getPermission() { return permission; }
     public List<String> getDescription() { return description; }
+    /** "#rrggbb" or empty: the colour this material's names are written in. */
+    public String getColor() { return color; }
     public Color getFlash() { return flash; }
     public Color getTrail() { return trail; }
     public double getSoundPitch() { return soundPitch; }

@@ -52,6 +52,12 @@ public class Cache {
     /** Crouch to aim (aiming.enabled), and how much aiming slows walking (aiming.slow, which zooms). */
     public static boolean aimingEnabled = false;
     public static double aimSlow = 0.0;
+    /** How long right-click must be held in a scope before releasing fires (aiming.scope-settle-seconds). */
+    public static int scopeSettleTicks = 0;
+    /** Spread multiplier for shots fired without aiming (handling.spread-multipliers.hip; aiming on only). */
+    public static double spreadHip = 1.0;
+    /** Item model prefix for the gun type buttons (type-icons): <prefix><type>_carry, a steel build. */
+    public static String typeIconPrefix = "";
 
     /** Item model prefix for forged part icons in the menus (part-icons); blank = the part's own item. */
     public static String partIconPrefix = "";

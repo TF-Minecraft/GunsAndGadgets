@@ -68,7 +68,7 @@ public class StatApplier {
 
             String statColor = "#c2b48a";
 
-            String line = "§7■ " + statColor + stat.getDisplayName() + "§e: " + valueColor + value;
+            String line = "§7■ " + statColor + stat.getDisplayName() + "§e: " + valueColor + value + " §8· " + stat.getHint();
             line = StringFormatter.formatHex(line);
 
             lore.add(line);

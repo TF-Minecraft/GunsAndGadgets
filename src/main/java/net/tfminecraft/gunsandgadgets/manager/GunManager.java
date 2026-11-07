@@ -62,6 +62,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import io.lumine.mythic.lib.api.item.NBTItem;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.message.actionbar.ActionBarPriority;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.tlibs.character.Characters;
@@ -206,12 +208,18 @@ public class GunManager implements Listener {
     /** Releasing right-click while looking through a scope fires. */
     @EventHandler
     public void onStopUsing(PlayerStopUsingItemEvent event) {
-        if (aiming.isScoped(event.getPlayer(), event.getItem())) {
-            handleGunUse(event.getPlayer(), RELEASE, true);
+        if (!aiming.isScoped(event.getPlayer(), event.getItem())) {
+            return;
         }
+        // A quick tap lowers the scope without firing: the shot needs a steady scope.
+        if (event.getTicksHeldFor() < Cache.scopeSettleTicks) {
+            sendActionBar(event.getPlayer(), "§7Hold the scope until it steadies to fire.");
+            return;
+        }
+        handleGunUse(event.getPlayer(), RELEASE, true);
     }
 
-    /** The swap-hands key (F) with a gun in hand picks the next shot instead of swapping hands. */
+    /** The swap-hands key with a gun in hand picks the next shot instead of swapping hands. */
     @EventHandler
     public void onSwapHands(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
@@ -357,8 +365,8 @@ public class GunManager implements Listener {
 
         if (taken.equals("none")) {
             if (selected != null) {
-                sendActionBar(player, "§cYou have no " + getAmmoName(selected)
-                        + "§c left. Swap hands (F) to choose another.");
+                sendActionBar(player, LegacyComponentSerializer.legacySection().deserialize("§cYou have no "
+                        + getAmmoName(selected) + "§c left. ").append(SWAP_KEY_HINT));
             }
             reloading.remove(id);
             return;
@@ -852,10 +860,19 @@ public class GunManager implements Listener {
     }
 
     void sendActionBar(Player player, String legacyText) {
+        sendActionBar(player, LegacyComponentSerializer.legacySection().deserialize(legacyText));
+    }
+
+    void sendActionBar(Player player, Component text) {
         // Hold MMOCore's stat bar back for two seconds so the message can be read; a null text only reserves it.
         if (!MMOPlayerData.get(player).getActionBar().show(ActionBarPriority.NORMAL, 40L, (String) null)) return;
-        player.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(legacyText));
+        player.sendActionBar(text);
     }
+
+    /** "Press [the player's own swap-hands key] to choose another.", whatever key they bound. */
+    static final Component SWAP_KEY_HINT = Component.text("Press ", NamedTextColor.RED)
+            .append(Component.keybind("key.swapOffhand", NamedTextColor.YELLOW))
+            .append(Component.text(" to choose another.", NamedTextColor.RED));
 
 
     /**

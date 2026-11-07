@@ -282,7 +282,7 @@ class InventoryManagerTest {
             new net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition("known", config));
     var multi = output(action);
     assertEquals("known;unknown", string(multi, "calibers"));
-    assertTrue(multi.getItemMeta().getLore().contains("§8Swap hands (F) to change shot"));
+    assertTrue(multi.getItemMeta().getLore().contains("§8Swap hands to change shot"));
     when(barrel.getCaliberOverrides()).thenReturn(List.of("override1", "override2"));
     assertEquals("override1;override2", string(output(action, barrel), "calibers"));
     when(action.getCaliberOverrides()).thenReturn(List.of("first"));
@@ -320,6 +320,18 @@ class InventoryManagerTest {
         item.getItemMeta()
             .getPersistentDataContainer()
             .get(key("gg_majority_tier"), PersistentDataType.INTEGER));
+  }
+
+  @Test
+  void typeButtonsShowSteelGunsWhenTypeIconsAreSet() {
+    try (var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class)) {
+      looks.when(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook::typeIconsOn).thenReturn(true);
+      manager.openTypeSelection(player);
+      assertEquals(org.bukkit.Material.STONE_HOE, player.getOpenInventory().getTopInventory().getItem(0).getType());
+      manager.openCraftingInventory(player);
+      assertEquals(org.bukkit.Material.STONE_HOE, player.getOpenInventory().getTopInventory().getItem(0).getType());
+      looks.verify(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.applyTypeIcon(any(), any()), atLeast(2));
+    }
   }
 
   @Test
@@ -734,7 +746,7 @@ class InventoryManagerTest {
       assertEquals("heavy", holder.getBaseId());
       assertNull(holder.getInventory());
       assertEquals("heavy@iron", string(top.getItem(0), "part_id"));
-      assertTrue(top.getItem(0).getItemMeta().getLore().contains("Crude metal"));
+      assertTrue(top.getItem(0).getItemMeta().getLore().stream().anyMatch(l -> l.startsWith("Iron§7: ")));
       assertEquals("heavy@steel", string(top.getItem(1), "part_id"));
       assertNull(top.getItem(2));
       assertEquals(Material.ARROW, top.getItem(8).getType());

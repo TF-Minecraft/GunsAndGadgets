@@ -62,6 +62,23 @@ class HandlingTest {
   }
 
   @Test
+  void shotsWithoutAimingSpreadWiderOnlyWhileAimingIsOn() {
+    boolean wasOn = Cache.aimingEnabled;
+    double oldHip = Cache.spreadHip;
+    try {
+      Cache.spreadHip = 1.75;
+      Cache.aimingEnabled = false;
+      assertEquals(1.0, Handling.hipMultiplier(false));
+      Cache.aimingEnabled = true;
+      assertEquals(1.0, Handling.hipMultiplier(true));
+      assertEquals(1.75, Handling.hipMultiplier(false));
+    } finally {
+      Cache.aimingEnabled = wasOn;
+      Cache.spreadHip = oldHip;
+    }
+  }
+
+  @Test
   void ridingAnAnimalUsesTheMountedMultiplier() {
     var player = mock(Player.class);
     var horse = mock(org.bukkit.entity.Horse.class);

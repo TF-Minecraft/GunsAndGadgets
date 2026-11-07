@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets;
 
+import net.tfminecraft.gunsandgadgets.guns.stats.Stats;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
@@ -282,17 +284,18 @@ tight:
         List.of(
             "■ Holds 6 shots",
             "■ Pellet spread: Wide",
-            "■ Accuracy: ▲▲",
+            // in iron: smaller upsides, harsher downsides
+            "■ Accuracy: ▲",
             "■ Speed: ▼▼▼",
             "■ Pierce: ▲",
             "■ Reload: ▲",
-            "■ Fire Rate: ▼",
-            "■ Range: ▲▲▲",
+            "■ Fire Rate: ▼▼",
+            "■ Range: ▲▲",
             "■ Full Damage Range: ▲",
-            "■ Damage %: ▼",
+            "■ Damage %: ▼▼",
             "■ Steady on the Move: ▲",
             "■ Steady Mounted: ▼▼▼",
-            "■ Steady Crouched: ▲▲▲",
+            "■ Steady Crouched: ▲▲",
             "■ Capacity: ▲▲",
             "■ Reload: ▼▼▼",
             "■ Loads powered shot only",
@@ -306,6 +309,31 @@ tight:
     assertEquals(List.of("■ Accuracy: ▲"), tight);
     new PartLoader().load(file("tight.yml", "t: {tendencies: [], fixed: [spread 7]}").toFile());
     assertEquals(List.of("■ Pellet spread: Tight"), strip(ForgeLore.lines(PartLoader.getByString("t@iron"))));
+  }
+
+  @Test
+  void theMaterialLineSaysWhatTheMaterialDoesToThisPart() throws Exception {
+    loadMetals();
+    GunPart part = org.mockito.Mockito.mock(GunPart.class);
+    org.mockito.Mockito.when(part.getTendencies())
+        .thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of(Stats.ACCURACY, 2.0, Stats.RELOAD, -3.0)));
+    assertEquals("", ForgeLore.materialLine(part));
+    assertEquals(1, ForgeLore.lines(part).stream().filter(l -> l.contains("Accuracy")).count());
+    org.mockito.Mockito.when(part.getMetalId()).thenReturn("gone");
+    assertEquals("", ForgeLore.materialLine(part));
+    org.mockito.Mockito.when(part.getMetalId()).thenReturn("iron");
+    assertEquals("§7Iron§7: weaker accuracy; harsher reload", ForgeLore.materialLine(part));
+    org.mockito.Mockito.when(part.getMetalId()).thenReturn("mythril");
+    assertEquals("§bMythril§7: stronger accuracy; milder reload", ForgeLore.materialLine(part));
+    org.mockito.Mockito.when(part.getMetalId()).thenReturn("oak");
+    assertEquals("Oak§7: as designed", ForgeLore.materialLine(part));
+    Metal mythril = MetalLoader.getByString("mythril");
+    assertEquals(1.6, mythril.factor("SPEED", true));
+    assertEquals(0.5, mythril.factor("reload", false));
+    assertEquals("", mythril.getColor());
+    for (Stats stat : Stats.values()) {
+      assertFalse(stat.getHint().isBlank());
+    }
   }
 
   static List<String> strip(List<String> lines) {

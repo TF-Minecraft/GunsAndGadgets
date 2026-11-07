@@ -70,7 +70,9 @@ public final class PartForge {
             }
         }
         String baseName = definition.getString("name", key);
-        variant.set("name", metal.getName() + " " + baseName);
+        // A coloured material writes the whole name in its colour: "Steel Long Rifled Barrel".
+        variant.set("name", metal.getName() + " "
+                + (metal.getColor().isEmpty() ? baseName : baseName.replaceFirst("^(§[0-9a-fk-or])+", "")));
         variant.set("tier", metal.getTier());
         variant.set("stats", stats(definition, metal));
         variant.set("cost", cost(definition, metal));

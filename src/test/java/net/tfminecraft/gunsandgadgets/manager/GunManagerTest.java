@@ -362,7 +362,31 @@ class GunManagerTest {
         Cancellable click = use();
         verify(click, never()).setCancelled(true);
         shooter.verifyNoInteractions();
-        // releasing it fires
+        int oldSettle = Cache.scopeSettleTicks;
+        try {
+          Cache.scopeSettleTicks = 12;
+          // a quick tap lowers the scope without a shot
+          manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 5));
+          shooter.verifyNoInteractions();
+          // the steady cue comes once per hold, when the scope has been up long enough
+          var looker = mock(org.bukkit.entity.Player.class);
+          when(looker.getUniqueId()).thenReturn(player.getUniqueId());
+          when(looker.getLocation()).thenReturn(player.getLocation());
+          aim.settle(looker, held);
+          when(looker.isHandRaised()).thenReturn(true);
+          when(looker.getActiveItemUsedTime()).thenReturn(4);
+          aim.settle(looker, held);
+          when(looker.getActiveItemUsedTime()).thenReturn(12);
+          aim.settle(looker, held);
+          aim.settle(looker, held);
+          verify(looker, times(1)).playSound(any(org.bukkit.Location.class), eq(org.bukkit.Sound.BLOCK_TRIPWIRE_CLICK_ON), anyFloat(), anyFloat());
+          aim.settle(looker, gun);
+          aim.settle(looker, held);
+          verify(looker, times(2)).playSound(any(org.bukkit.Location.class), eq(org.bukkit.Sound.BLOCK_TRIPWIRE_CLICK_ON), anyFloat(), anyFloat());
+        } finally {
+          Cache.scopeSettleTicks = oldSettle;
+        }
+        // releasing it once steady fires
         manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 20));
         shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()));
         // releasing anything else does nothing
@@ -1524,7 +1548,7 @@ class GunManagerTest {
     player.getInventory().setItemInMainHand(gun);
     use();
     assertTrue(
-        actionBar().matches("You have no .*Gold.* left\\. Swap hands \\(F\\) to choose another\\."));
+        actionBar().matches("You have no .*Gold.* left\\. Press .+ to choose another\\."));
     assertEquals(5, player.getInventory().getItem(1).getAmount());
     assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
     // The refusal must not leave the player stuck in a reload.

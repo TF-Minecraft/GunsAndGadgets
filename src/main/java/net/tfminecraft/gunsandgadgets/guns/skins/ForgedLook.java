@@ -9,7 +9,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 
+import java.util.Map;
+
 import net.tfminecraft.gunsandgadgets.cache.Cache;
+import net.tfminecraft.gunsandgadgets.guns.GunType;
+import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
+import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 
@@ -90,6 +95,39 @@ public final class ForgedLook {
                 ? part.getBaseId() + "_" + part.getMetalId()
                 : part.getBaseId();
         return NamespacedKey.fromString(prefix + id);
+    }
+
+    /** A steel build of each gun type, for its button in the gunsmith (type-icons). */
+    static final Map<GunType, List<String>> TYPE_BUILDS = Map.of(
+            GunType.RIFLE, List.of("rifled_barrel_long", "steel", "muzzle_loader", "steel", "single_shot", "steel", "flintlock", "steel", "standard_stock", "maplewood"),
+            GunType.PISTOL, List.of("smoothbore_barrel_short", "steel", "muzzle_loader", "steel", "single_shot", "steel", "flintlock", "steel", "standard_grip", "maplewood"),
+            GunType.SHOTGUN, List.of("spread_barrel", "steel", "muzzle_loader", "steel", "single_shot", "steel", "flintlock", "steel", "standard_stock", "maplewood"),
+            GunType.LAUNCHER, List.of("launcher_barrel", "steel", "muzzle_loader", "steel", "single_shot_launcher", "steel", "rocketlock", "steel", NONE, DEFAULT_WOOD));
+
+    public static boolean typeIconsOn() {
+        return Cache.typeIconPrefix != null && !Cache.typeIconPrefix.isBlank();
+    }
+
+    /** Draws a gun type's button as a steel gun of that type (type-icons); false when off. */
+    public static boolean applyTypeIcon(ItemMeta meta, GunType type) {
+        if (!typeIconsOn()) {
+            return false;
+        }
+        meta.setItemModel(NamespacedKey.fromString(Cache.typeIconPrefix + type.name().toLowerCase() + "_carry"));
+        CustomModelDataComponent component = meta.getCustomModelDataComponent();
+        component.setStrings(TYPE_BUILDS.get(type));
+        meta.setCustomModelDataComponent(component);
+        return true;
+    }
+
+    /** The colour of the metal of this tier (metals.yml color), or plain grey. */
+    public static String tierColor(int tier) {
+        for (Metal metal : MetalLoader.ofKind("metal")) {
+            if (metal.getTier() == tier && !metal.getColor().isEmpty()) {
+                return metal.getColor();
+            }
+        }
+        return "§7";
     }
 
     /** Shows the part's pack icon on a menu item when part-icons is set. */

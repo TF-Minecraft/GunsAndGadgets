@@ -35,6 +35,8 @@ handling:
         sprinting: 4.0
         airborne: 5.0
         mounted: 2.0
+        # Shots fired without aiming (crouch to aim), only while aiming is enabled.
+        hip: 1.75
     # Upper limit for the final spread in degrees (no limit if left out).
     max-spread-degrees: 45
     # Bullets do full damage up to start-distance blocks from the muzzle, then
@@ -75,11 +77,14 @@ handling:
 # the player walks slower, which narrows the field of view (the zoom; players who
 # turned FOV effects off only get the slowdown). slow is the share of walking speed
 # taken away (0 to 0.9). A scoped gun (the arclock) becomes a spyglass while aimed:
-# hold right-click to look through the scope, release to fire. The swap-hands key
-# (F) with a gun in hand picks the next shot.
+# hold right-click to look through the scope and release once it is steady to fire.
+# scope-settle-seconds is how long the scope must be up first; an earlier release
+# lowers it without a shot. The swap-hands key with a gun in hand picks the next shot.
+# Shots fired without aiming spread wider: handling.spread-multipliers.hip.
 aiming:
     enabled: true
     slow: 0.5
+    scope-settle-seconds: 0.6
 
 # Guns stamped with a disabled (retired) part refuse to fire or reload. Nothing
 # is written to the gun, so turning this off makes them usable again.
@@ -89,6 +94,10 @@ retire-disabled-part-guns: false
 # list, <prefix><part>_<material> once a material is chosen (the pack's tfmc_guns icons).
 # Leave blank to show each part's own item.
 part-icons: "tfmc_guns:part/"
+
+# Item model prefix for the gun type buttons in the gunsmith: <prefix><type>_carry, drawn
+# as a steel gun of that type. Leave blank for paper.
+type-icons: "tfmc_guns:"
 
 attributes:
     charisma:

@@ -9,7 +9,7 @@
 
 # Barrels
 smoothbore_barrel_long:
-  name: "§7Smoothbore Barrel (Long)"
+  name: "§7Long Smoothbore Barrel"
   part-type: barrel
   type:
     - rifle
@@ -27,12 +27,14 @@ smoothbore_barrel_long:
   smoke: 1
   smoke-cone: 0.25
   name-impact:
-    - Musket 1 10
+    - Musket 2 10
+  lore:
+    - "§7A plain long bore: a fast ball, quick to load."
   class:
     - Musketeer
 
 rifled_barrel_long:
-  name: "§7Rifled Barrel (Long)"
+  name: "§7Long Rifled Barrel"
   part-type: barrel
   type:
     - rifle
@@ -51,7 +53,9 @@ rifled_barrel_long:
   smoke: 0.85
   smoke-cone: 0.15
   name-impact:
-    - Rifle 1 10
+    - Rifle 2 10
+  lore:
+    - "§7Grooved bore: true at range, slower to load."
   class:
     - Musketeer
 
@@ -77,7 +81,9 @@ carbine_barrel:
   smoke: 0.55
   smoke-cone: 0.2
   name-impact:
-    - Carbine 1 20
+    - Carbine 2 20
+  lore:
+    - "§7Short and light, made for riders and skirmishers."
   class:
     - Musketeer
 
@@ -105,12 +111,14 @@ heavy_barrel:
   smoke: 1.6
   smoke-cone: 0.12
   name-impact:
-    - Longrifle 1 20
+    - Longrifle 2 20
+  lore:
+    - "§7A marksman's barrel: best braced and still."
   class:
     - Musketeer
 
 smoothbore_barrel_short:
-  name: "§7Smoothbore Barrel (Short)"
+  name: "§7Short Smoothbore Barrel"
   part-type: barrel
   type:
     - pistol
@@ -130,12 +138,14 @@ smoothbore_barrel_short:
   smoke: 0.5
   smoke-cone: 0.3
   name-impact:
-    - Pistol 1 10
+    - Pistol 2 10
+  lore:
+    - "§7A handy pistol bore, fine on the move."
   class:
     - Musketeer
 
 rifled_barrel_short:
-  name: "§7Rifled Barrel (Short)"
+  name: "§7Short Rifled Barrel"
   part-type: barrel
   type:
     - pistol
@@ -153,7 +163,9 @@ rifled_barrel_short:
   smoke: 0.45
   smoke-cone: 0.2
   name-impact:
-    - Pistol 1 10
+    - Pistol 2 10
+  lore:
+    - "§7A grooved pistol bore for steadier shots."
   class:
     - Musketeer
 
@@ -179,7 +191,9 @@ duelling_barrel:
   smoke: 0.6
   smoke-cone: 0.12
   name-impact:
-    - Duelling-Pistol 1 20
+    - Duelling Pistol 2 20
+  lore:
+    - "§7Made for one careful shot, standing still."
   class:
     - Musketeer
 
@@ -202,9 +216,11 @@ spread_barrel:
   smoke: 1.3
   smoke-cone: 0.7
   name-impact:
-    - Blunderbuss -1 100
+    - Blunderbuss 2 100
   skin-impact:
     - blunderbuss 10
+  lore:
+    - "§7A flared mouth that throws a wide cone of shot."
   class:
     - Musketeer
 
@@ -230,9 +246,11 @@ sawn_off_barrel:
   smoke: 1.5
   smoke-cone: 1
   name-impact:
-    - Sawn-off -1 100
+    - Sawn-off 2 100
   skin-impact:
     - blunderbuss 10
+  lore:
+    - "§7Cut short: a brutal cone up close."
   class:
     - Musketeer
 
@@ -257,9 +275,11 @@ fowling_barrel:
   smoke: 1
   smoke-cone: 0.35
   name-impact:
-    - Fowler -1 100
+    - Fowler 2 100
   skin-impact:
     - blunderbuss 10
+  lore:
+    - "§7Long and narrow: a tight cone that carries."
   class:
     - Musketeer
 
@@ -284,10 +304,12 @@ launcher_barrel:
   smoke-cone: 0.3
   backblast: true
   name-impact:
-    - "#3a3e4dRocket 0 100"
-    - Launcher 1 100
+    - Rocket 1 100
+    - Launcher 2 100
   skin-impact:
     - launcher 10
+  lore:
+    - "§7An iron tube for rockets."
   class:
     - Musketeer
 
@@ -314,10 +336,12 @@ short_launch_tube:
   smoke-cone: 0.4
   backblast: true
   name-impact:
-    - "#3a3e4dRocket 0 100"
-    - Tube 1 100
+    - Rocket 1 100
+    - Tube 2 100
   skin-impact:
     - launcher 10
+  lore:
+    - "§7A short tube, easy to carry on the move."
   class:
     - Musketeer
 
@@ -345,10 +369,12 @@ long_launch_tube:
   smoke-cone: 0.2
   backblast: true
   name-impact:
-    - "#3a3e4dRocket 0 100"
-    - Rail-Launcher 1 100
+    - Rocket 1 100
+    - Rail Launcher 2 100
   skin-impact:
     - launcher 10
+  lore:
+    - "§7A long rail: straighter, harder-hitting rockets."
   class:
     - Musketeer
 
@@ -371,6 +397,8 @@ muzzle_loader:
     - fire_rate 2
   sounds:
     - reload gunsandgadgets:muzzle_reload
+  lore:
+    - "§7Powder and ball rammed down the muzzle."
   class:
     - Musketeer
 
@@ -392,6 +420,8 @@ breech_loader:
   sounds:
     - reload vehicleframework:gun_reload
     - reload minecraft:block.iron_trapdoor.close pitch=1.4 volume=0.5
+  lore:
+    - "§7Loads from the back: quicker shot to shot."
   class:
     - Musketeer
 
@@ -411,6 +441,8 @@ patch_ramrod:
   sounds:
     - reload gunsandgadgets:muzzle_reload pitch=0.85
     - reload minecraft:block.wood.place pitch=0.7 volume=0.6
+  lore:
+    - "§7A greased patch for a snug, accurate ball."
   class:
     - Musketeer
 
@@ -430,6 +462,8 @@ single_shot:
     - reload 1
   fixed:
     - capacity 1
+  lore:
+    - "§7One shot per load."
   class:
     - Musketeer
 
@@ -450,7 +484,9 @@ double_chamber:
   fixed:
     - capacity 2
   name-impact:
-    - (Double) 2 10
+    - Double 0 10
+  lore:
+    - "§7Two shots per load, slower to fill."
   class:
     - Musketeer
 
@@ -473,7 +509,9 @@ revolver:
   sounds:
     - shoot minecraft:block.tripwire.click_on pitch=1.4 volume=0.4
   name-impact:
-    - (Revolver) 2 10
+    - Revolving 0 10
+  lore:
+    - "§7A turning cylinder of lighter shots."
   class:
     - Musketeer
 
@@ -496,7 +534,9 @@ proof_chamber:
   sound-pitch: 0.92
   sound-volume: 1.12
   name-impact:
-    - (Proof) 2 5
+    - Proof 0 5
+  lore:
+    - "§7Proofed for powered shot that bites through armour."
   class:
     - Musketeer
 
@@ -513,6 +553,8 @@ single_shot_launcher:
     - reload 2
   fixed:
     - capacity 1
+  lore:
+    - "§7One rocket per load."
   class:
     - Musketeer
 
@@ -544,7 +586,9 @@ multi_tube_chamber:
       - capacity 4
       - reload -8
   name-impact:
-    - (Salvo) 2 10
+    - Salvo 0 10
+  lore:
+    - "§7Several tubes fired as a salvo."
   class:
     - Musketeer
 
@@ -565,11 +609,13 @@ matchlock:
     - shoot minecraft:block.fire.extinguish pitch=1.6 volume=0.25
   ignition: ember
   name-impact:
-    - Matchlock 0 10
+    - Matchlock 1 10
   skin-impact:
     - matchlock 10
     - blunderbuss 1
     - launcher 1
+  lore:
+    - "§7A slow match lowered into the pan. Simple and steady."
   class:
     - Musketeer
 
@@ -590,11 +636,13 @@ flintlock:
     - shoot minecraft:item.flintandsteel.use
   ignition: flint
   name-impact:
-    - Flintlock 0 10
+    - Flintlock 1 10
   skin-impact:
     - flintlock 10
     - blunderbuss 1
     - launcher 1
+  lore:
+    - "§7Flint on steel: quick and reliable."
   class:
     - Musketeer
 
@@ -620,9 +668,11 @@ steamlock:
     - shoot gunsandgadgets:steamlock_shoot
   ignition: steam
   name-impact:
-    - Steamlock 0 10
+    - Steamlock 1 10
   skin-impact:
     - steamlock 10
+  lore:
+    - "§7Steam-driven: quiet and smokeless, plain shot only."
   class:
     - Musketeer
 
@@ -643,12 +693,14 @@ wheellock:
     - shoot minecraft:block.grindstone.use pitch=1.8 volume=0.35
   ignition: wheel
   name-impact:
-    - Wheellock 0 10
+    - Wheellock 1 10
   skin-impact:
     - wheellock 10
     - blunderbuss 1
     - launcher 1
   skin-base: flintlock
+  lore:
+    - "§7A spring wheel that sparks even in the saddle."
   class:
     - Musketeer
 
@@ -675,14 +727,11 @@ arclock:
     - shoot minecraft:block.beacon.power_select pitch=2 volume=0.5
   ignition: arc
   name-impact:
-    - §5Arclock 0 10
+    - Arclock 1 10
   skin-impact:
     - arclock 10
   lore:
-    - "§7Unlike the arclocks used in larger weapons like mounted heavy rifles"
-    - "§7the experimental handheld arclocks cannot reproduce their rapid"
-    - "§7rate of fire. Instead the focus is shifted to accuracy and speed,"
-    - "§7at the cost of a long, manual reload."
+    - "§7An arc of charge fires the shot. Scoped: accurate and fast, slow to reload."
   class:
     - Musketeer
 
@@ -703,6 +752,8 @@ rocketlock:
   ignition: flint
   skin-impact:
     - launcher 10
+  lore:
+    - "§7Lights the rocket from the side."
   class:
     - Musketeer
 
@@ -723,6 +774,8 @@ fuse_igniter:
   ignition: fuse
   skin-impact:
     - launcher 10
+  lore:
+    - "§7A lit fuse: crude, slow to ready."
   class:
     - Musketeer
 
@@ -738,6 +791,8 @@ standard_stock:
   cost-amount: 2
   tendencies:
     - accuracy 4
+  lore:
+    - "§7A plain shoulder stock."
   class:
     - Musketeer
 
@@ -757,6 +812,8 @@ saddle_stock:
     - moving 30
     - mounted 40
     - draw 25
+  lore:
+    - "§7Short and strapped, for riding."
   class:
     - Musketeer
 
@@ -776,6 +833,8 @@ cheek_rest_stock:
     - sneaking 50
     - moving -30
     - draw -15
+  lore:
+    - "§7Raised comb for a careful, crouched aim."
   class:
     - Musketeer
 
@@ -794,6 +853,8 @@ padded_stock:
     - accuracy 2
     - fire_rate 4
     - draw -10
+  lore:
+    - "§7Soaks the kick for quicker follow-ups."
   class:
     - Musketeer
 
@@ -807,6 +868,8 @@ standard_grip:
   cost-amount: 2
   tendencies:
     - accuracy 2
+  lore:
+    - "§7A plain pistol grip."
   class:
     - Musketeer
 
@@ -822,6 +885,8 @@ birdshead_grip:
     - accuracy 1
     - moving 10
     - draw 30
+  lore:
+    - "§7A curved grip, quick from the belt."
   class:
     - Musketeer
 
@@ -839,6 +904,8 @@ pommel_grip:
     - accuracy 4
     - sneaking 30
     - draw -20
+  lore:
+    - "§7A capped pommel for a firm, steady hold."
   class:
     - Musketeer
 
@@ -857,5 +924,7 @@ wrapped_grip:
     - moving 30
     - mounted 30
     - draw -5
+  lore:
+    - "§7Cord-wrapped for a sure hold on the move."
   class:
     - Musketeer

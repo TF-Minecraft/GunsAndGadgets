@@ -94,6 +94,9 @@ public class ConfigLoader {
 
         Cache.aimingEnabled = config.getBoolean("aiming.enabled", false);
         Cache.aimSlow = Math.max(0.0, Math.min(0.9, finite(config, "aiming.slow", 0.0)));
+        Cache.scopeSettleTicks = (int) Math.round(Math.max(0.0, finite(config, "aiming.scope-settle-seconds", 0.0)) * 20);
+        Cache.spreadHip = Math.max(0.0, finite(config, "handling.spread-multipliers.hip", 1.0));
+        Cache.typeIconPrefix = config.getString("type-icons", "").trim();
 
         section = config.getConfigurationSection("required-parts");
         if (section != null) {

@@ -313,4 +313,43 @@ old: {part-type: barrel, type: [rifle], smoke: .nan}
       Cache.partIconPrefix = before;
     }
   }
+
+  @Test
+  void typeButtonsAreSteelGunsAndNamesTakeTheirTiersColour() throws Exception {
+    String before = Cache.typeIconPrefix;
+    try {
+      Cache.typeIconPrefix = null;
+      assertFalse(ForgedLook.typeIconsOn());
+      Cache.typeIconPrefix = " ";
+      var meta = mock(org.bukkit.inventory.meta.ItemMeta.class);
+      assertFalse(ForgedLook.applyTypeIcon(meta, GunType.RIFLE));
+      verifyNoInteractions(meta);
+      Cache.typeIconPrefix = "tfmc_guns:";
+      var component = mock(org.bukkit.inventory.meta.components.CustomModelDataComponent.class);
+      when(meta.getCustomModelDataComponent()).thenReturn(component);
+      for (GunType type : GunType.values()) {
+        assertTrue(ForgedLook.applyTypeIcon(meta, type));
+        verify(meta).setItemModel(NamespacedKey.fromString("tfmc_guns:" + type.name().toLowerCase() + "_carry"));
+      }
+      verify(component).setStrings(List.of("launcher_barrel", "steel", "muzzle_loader", "steel", "single_shot_launcher", "steel", "rocketlock", "steel", "none", "barkwood"));
+    } finally {
+      Cache.typeIconPrefix = before;
+    }
+    new MetalLoader().load(file("tiers.yml", """
+iron: {name: "#d8d8d8Iron", tier: 1, color: "#d8d8d8"}
+steel: {name: Steel, tier: 2}
+maple: {name: Maple, kind: wood, tier: 1, color: b3ad71}
+bad: {name: Bad, tier: 3, color: nope}
+""").toFile());
+    assertEquals("#d8d8d8", ForgedLook.tierColor(1));
+    assertEquals("§7", ForgedLook.tierColor(2));
+    assertEquals("§7", ForgedLook.tierColor(3));
+    assertEquals("#b3ad71", MetalLoader.getByString("maple").getColor());
+    // a coloured material writes the whole part name in its colour
+    new PartLoader().load(file("named.yml", """
+tube: {name: "§7Long Tube", part-type: barrel, type: [rifle], tendencies: [accuracy 1]}
+""").toFile());
+    assertTrue(PartLoader.getByString("tube@iron").getName().endsWith("Iron Long Tube"));
+    assertEquals("Steel §7Long Tube", PartLoader.getByString("tube@steel").getName());
+  }
 }

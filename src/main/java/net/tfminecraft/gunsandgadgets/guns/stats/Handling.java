@@ -44,6 +44,11 @@ public final class Handling {
         return spreadMultiplier(player, seat, Steadiness.NONE);
     }
 
+    /** Shots fired without aiming spread wider (handling.spread-multipliers.hip), when aiming is on. */
+    public static double hipMultiplier(boolean aimed) {
+        return !Cache.aimingEnabled || aimed ? 1.0 : Cache.spreadHip;
+    }
+
     /**
      * As {@link #spreadMultiplier(Player, ActiveVehicle)}, with the gun's parts deciding how much of
      * each stance's penalty or bonus applies.

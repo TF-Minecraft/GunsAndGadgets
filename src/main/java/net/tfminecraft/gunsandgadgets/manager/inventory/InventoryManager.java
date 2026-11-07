@@ -116,8 +116,9 @@ public class InventoryManager implements Listener {
         Inventory typeInv = Bukkit.createInventory(new TypeSelectionHolder(), 9, "§6Select Gun Type");
         int slot = 0;
         for (GunType type : GunType.values()) {
-            ItemStack item = new ItemStack(Material.PAPER);
+            ItemStack item = new ItemStack(ForgedLook.typeIconsOn() ? Material.STONE_HOE : Material.PAPER);
             ItemMeta meta = item.getItemMeta();
+            ForgedLook.applyTypeIcon(meta, type);
             meta.setDisplayName("§e" + type.getDisplayName());
             meta.setLore(List.of("§7Click to choose this type"));
             item.setItemMeta(meta);
@@ -278,8 +279,9 @@ public class InventoryManager implements Listener {
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     private ItemStack createWeaponTypeButton(GunType type) {
-        ItemStack item = new ItemStack(Material.NETHER_STAR); // placeholder icon
+        ItemStack item = new ItemStack(ForgedLook.typeIconsOn() ? Material.STONE_HOE : Material.NETHER_STAR);
         ItemMeta meta = item.getItemMeta();
+        ForgedLook.applyTypeIcon(meta, type);
         meta.setDisplayName("§6Select Type: §e" + type.getDisplayName());
         List<String> lore = new ArrayList<>();
         lore.add("§7Click to change weapon type");
@@ -298,7 +300,7 @@ public class InventoryManager implements Listener {
 
                 if (idx == -1) {
                     // override everything
-                    return "§7" + ni.getFragment();
+                    return StringFormatter.formatHex(ForgedLook.tierColor(MajorityTierResolver.resolve(parts))) + ni.getFragment();
                 }
 
                 GunPart.NameImpact existing = chosen.get(idx);
@@ -312,7 +314,8 @@ public class InventoryManager implements Listener {
         List<Integer> order = new ArrayList<>(chosen.keySet());
         Collections.sort(order);
 
-        StringBuilder sb = new StringBuilder("§7");
+        // the name is written in the colour of the gun's final tier
+        StringBuilder sb = new StringBuilder(StringFormatter.formatHex(ForgedLook.tierColor(MajorityTierResolver.resolve(parts))));
         for (int idx : order) {
             sb.append(chosen.get(idx).getFragment()).append(" ");
         }
@@ -531,7 +534,7 @@ public class InventoryManager implements Listener {
                     }
                 }
                 if (calibers.size() > 1) {
-                    lore.add("§8Swap hands (F) to change shot");
+                    lore.add("§8Swap hands to change shot");
                 }
 
                 // ✅ Save calibers in PDC
@@ -796,10 +799,10 @@ public class InventoryManager implements Listener {
 
         if (part.isForged()) {
             // What the part does, not by how much: the material sets the numbers on the gun.
-            Metal metal = MetalLoader.getByString(part.getMetalId());
-            if (metal != null && !metal.getDescription().isEmpty()) {
+            String material = ForgeLore.materialLine(part);
+            if (!material.isEmpty()) {
                 lore.add("");
-                lore.addAll(metal.getDescription());
+                lore.add(material);
             }
             lore.add("");
             lore.addAll(ForgeLore.lines(part));

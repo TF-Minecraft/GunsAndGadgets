@@ -137,6 +137,9 @@ handling:
     assertTrue(Cache.aimingEnabled);
     assertEquals(0.5, Cache.aimSlow);
     assertEquals("tfmc_guns:part/", Cache.partIconPrefix);
+    assertEquals("tfmc_guns:", Cache.typeIconPrefix);
+    assertEquals(12, Cache.scopeSettleTicks);
+    assertEquals(1.75, Cache.spreadHip);
     // Bad draw entries: an unknown gun type is skipped, a non-number gives no draw time.
     loader.loadConfig(
         file(
@@ -156,6 +159,9 @@ aiming: {enabled: true, slow: 5}
     assertEquals(0.1, Cache.drawSprinting);
     assertEquals(0.9, Cache.aimSlow);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
+    assertEquals(0, Cache.scopeSettleTicks);
+    assertEquals(1.0, Cache.spreadHip);
+    assertEquals("", Cache.typeIconPrefix);
     assertTrue(Cache.drawBaseTicks.isEmpty());
     assertFalse(Cache.aimingEnabled);
     loader.loadConfig(temp.resolve("missing").toFile());

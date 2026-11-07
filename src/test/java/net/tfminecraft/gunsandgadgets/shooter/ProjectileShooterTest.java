@@ -211,6 +211,16 @@ class ProjectileShooterTest {
   }
 
   @Test
+  void aimedAsksTheGunManagerWhenThereIsOne() {
+    assertFalse(ProjectileShooter.aimed(player));
+    var guns = mock(net.tfminecraft.gunsandgadgets.manager.GunManager.class, RETURNS_DEEP_STUBS);
+    when(plugin.getGunManager()).thenReturn(guns);
+    assertFalse(ProjectileShooter.aimed(player));
+    when(guns.getAiming().isAiming(player)).thenReturn(true);
+    assertTrue(ProjectileShooter.aimed(player));
+  }
+
+  @Test
   void invalidGunInputsDoNotScheduleShots() {
     new ProjectileShooter();
     ProjectileShooter.shoot(player, null, ammo());
