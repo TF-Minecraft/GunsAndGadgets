@@ -173,11 +173,11 @@ class GunRefreshTest extends GunsTestSupport {
     GunBrokenMarker.notifyBroken(player, null, null, List.of("barrel"));
     GunBrokenMarker.notifyBroken(player, null, id, List.of("barrel"));
     GunBrokenMarker.notifyBroken(player, null, id, List.of("barrel"));
-    verify(player).sendMessage(contains("weapon is broken"));
+    verify(player).sendMessage(contains("gun is broken"));
     GunBrokenMarker.clearWarningSession(null);
     GunBrokenMarker.clearWarningSession(id);
     GunBrokenMarker.notifyBroken(player, null, id, List.of("barrel"));
-    verify(player, times(2)).sendMessage(contains("weapon is broken"));
+    verify(player, times(2)).sendMessage(contains("gun is broken"));
     GunBrokenMarker.clearWarningSession(id);
   }
 

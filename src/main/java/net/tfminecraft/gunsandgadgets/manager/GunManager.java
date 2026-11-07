@@ -287,7 +287,7 @@ public class GunManager implements Listener {
             return;
         }
         if (!draw.isReady(player, gunId)) {
-            sendActionBar(player, "§7Still drawing your weapon.");
+            sendActionBar(player, "§7Still drawing your gun.");
             return;
         }
         reloading.put(id, true);
@@ -832,7 +832,7 @@ public class GunManager implements Listener {
             if (countStacks(findAmmo(player, ammo)) > 0) carried.add(ammo);
         }
         if (carried.isEmpty()) {
-            sendActionBar(player, "§cYou carry no shot this weapon can fire.");
+            sendActionBar(player, "§cYou carry no shot this gun can fire.");
             return;
         }
 

@@ -97,7 +97,7 @@ public class InventoryManager implements Listener {
                 // ❌ No valid part (permission or none exist) → barrier
                 ItemStack barrier = new ItemStack(Material.BARRIER);
                 ItemMeta bm = barrier.getItemMeta();
-                bm.setDisplayName("§cNo Part");
+                bm.setDisplayName("§cNo part available");
                 barrier.setItemMeta(bm);
                 inv.setItem(slot, barrier);
             }
@@ -143,13 +143,13 @@ public class InventoryManager implements Listener {
         }
 
         int size = Math.max(9, Math.min(54, ((options.size() + 8) / 9) * 9));
-        Inventory inv = Bukkit.createInventory(new PartSelectionHolder(partCategoryId), size, "§6Select " + partCategoryId);
+        Inventory inv = Bukkit.createInventory(new PartSelectionHolder(partCategoryId), size, "§6Select " + categoryName(partCategoryId, chosen));
 
         if (options.isEmpty()) {
             // ❌ No available parts → show barrier
             ItemStack barrier = new ItemStack(Material.BARRIER);
             ItemMeta bm = barrier.getItemMeta();
-            bm.setDisplayName("§cNo Part");
+            bm.setDisplayName("§cNo part available");
             barrier.setItemMeta(bm);
             inv.setItem(size / 2, barrier);
         } else {
@@ -172,7 +172,7 @@ public class InventoryManager implements Listener {
         GunType chosen = TypeSelectionManager.getSelectedType(player);
         List<GunPart> variants = selectable(player, partCategoryId, chosen, baseId);
         int size = Math.max(9, Math.min(54, ((variants.size() + 1 + 8) / 9) * 9));
-        Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Forge from");
+        Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Select Material");
         for (GunPart variant : variants) {
             inv.addItem(createPartItem(variant));
         }
@@ -223,6 +223,15 @@ public class InventoryManager implements Listener {
         m.setLore(lore);
         i.setItemMeta(m);
         return i;
+    }
+
+    /** A part category as a screen title shows it: "Barrel", and "Grip" for a pistol's stock. */
+    static String categoryName(String partCategoryId, GunType type) {
+        if (partCategoryId.equalsIgnoreCase("stock") && type == GunType.PISTOL) {
+            return "Grip";
+        }
+        String name = partCategoryId.replace('_', ' ');
+        return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
     private static NamespacedKey forgeBaseKey() {
@@ -282,9 +291,9 @@ public class InventoryManager implements Listener {
         ItemStack item = new ItemStack(ForgedLook.typeIconsOn() ? Material.STONE_HOE : Material.NETHER_STAR);
         ItemMeta meta = item.getItemMeta();
         ForgedLook.applyTypeIcon(meta, type);
-        meta.setDisplayName("§6Select Type: §e" + type.getDisplayName());
+        meta.setDisplayName("§6Gun Type: §e" + type.getDisplayName());
         List<String> lore = new ArrayList<>();
-        lore.add("§7Click to change weapon type");
+        lore.add("§7Click to change gun type");
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
@@ -523,7 +532,7 @@ public class InventoryManager implements Listener {
 
             if (!calibers.isEmpty()) {
                 lore.add("");
-                lore.add("§6§lCaliber:");
+                lore.add("§6§lShot:");
                 for (String ammoKey : calibers) {
                     Ammunition ammo = AmmunitionLoader.getByString(ammoKey);
                     if (ammo != null) {

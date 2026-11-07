@@ -70,7 +70,7 @@ public final class GunBrokenMarker {
                         + (player != null ? " (holder: " + player.getName() + ")" : ""));
         if (player != null && gunId != null && !WARNED_GUN_IDS.contains(gunId)) {
             WARNED_GUN_IDS.add(gunId);
-            player.sendMessage("§cThis weapon is broken (missing parts: " + missing + "). It cannot be used.");
+            player.sendMessage("§cThis gun is broken (missing parts: " + missing + "). It cannot be used.");
         }
     }
 

@@ -114,7 +114,7 @@ class CraftingManagerTest {
     }
     verify(inventory, never()).addItem(any(ItemStack.class));
     verify(player, never()).closeInventory();
-    verify(player, times(3)).sendMessage(contains("could not be created"));
+    verify(player, times(3)).sendMessage(contains("could not be made"));
   }
 
   @Test
@@ -145,7 +145,7 @@ class CraftingManagerTest {
     manager.onCraft(click);
     assertEquals(2, material.getAmount());
     verify(inventory, never()).addItem(any(ItemStack.class));
-    verify(player).sendMessage("§cYou lack the materials for this weapon.");
+    verify(player).sendMessage("§cYou lack the materials for this gun.");
   }
 
   @Test

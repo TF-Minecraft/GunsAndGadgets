@@ -335,6 +335,15 @@ class InventoryManagerTest {
   }
 
   @Test
+  void partScreensAreTitledByCategory() {
+    assertEquals("Barrel", InventoryManager.categoryName("barrel", GunType.RIFLE));
+    assertEquals("Stock", InventoryManager.categoryName("stock", GunType.RIFLE));
+    assertEquals("Grip", InventoryManager.categoryName("STOCK", GunType.PISTOL));
+    assertEquals("Fire pin", InventoryManager.categoryName("fire_pin", GunType.PISTOL));
+    assertEquals("", InventoryManager.categoryName("", GunType.RIFLE));
+  }
+
+  @Test
   void typeMenuContainsEveryGunType() {
     manager.openTypeSelection(player);
     var top = player.getOpenInventory().getTopInventory();

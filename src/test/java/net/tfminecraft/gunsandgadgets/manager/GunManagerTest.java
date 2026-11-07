@@ -157,7 +157,7 @@ class GunManagerTest {
       verify(p).setCooldown(any(ItemStack.class), eq(5));
       assertFalse(manager.isDrawn(player, "same-id"));
       use();
-      assertEquals("Still drawing your weapon.", actionBar());
+      assertEquals("Still drawing your gun.", actionBar());
       assertEquals(5, player.getInventory().getItem(1).getAmount());
       for (int i = 0; i < 4; i++) timer.tick(p);
       verify(p).setCooldown(any(ItemStack.class), eq(1)); // the sweep refreshes every few ticks
@@ -1527,7 +1527,7 @@ class GunManagerTest {
     threeCalibers();
     player.getInventory().setItem(1, null);
     swap();
-    assertEquals("You carry no shot this weapon can fire.", actionBar());
+    assertEquals("You carry no shot this gun can fire.", actionBar());
     assertNull(selected());
   }
 

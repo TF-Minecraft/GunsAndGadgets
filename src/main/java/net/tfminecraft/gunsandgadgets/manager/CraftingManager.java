@@ -88,13 +88,13 @@ public class CraftingManager implements Listener {
             // Rebuild the final item (no GUI lines)
             ItemStack crafted = inv.createOutputItem(chosenType, parts, false);
             if (crafted == null || crafted.getType().isAir() || crafted.getType() == Material.BARRIER) {
-                player.sendMessage("§cThis weapon could not be created. Your materials were preserved.");
+                player.sendMessage("§cThis gun could not be made. Your materials were kept.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
 
             if(!hasInputs(player, parts)) {
-                player.sendMessage("§cYou lack the materials for this weapon.");
+                player.sendMessage("§cYou lack the materials for this gun.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }

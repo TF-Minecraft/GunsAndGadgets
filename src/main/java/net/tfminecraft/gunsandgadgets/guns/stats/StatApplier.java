@@ -95,7 +95,7 @@ public class StatApplier {
                 lore.addAll(CostFormatter.getCostsFormatted(cost));
                 lore.add("");
             }
-            lore.add("§e§lClick to Craft");
+            lore.add("§e§lClick to craft");
         }
         Multimap<Attribute, AttributeModifier> empty = HashMultimap.create();
         meta.setAttributeModifiers(empty);
