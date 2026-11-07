@@ -142,12 +142,13 @@ public class GunPart {
 
         // Parse name-impacts
         for (String s : config.getStringList("name-impact")) {
-            String[] split = s.split(" ");
+            // "<fragment> <index> <weight>": the fragment may have spaces ("Rail Launcher 2 100").
+            String[] split = s.trim().split(" ");
             if (split.length >= 3) {
                 try {
-                    String fragment = StringFormatter.formatHex(split[0]);
-                    int index = Integer.parseInt(split[1]);
-                    int weight = Integer.parseInt(split[2]);
+                    int index = Integer.parseInt(split[split.length - 2]);
+                    int weight = Integer.parseInt(split[split.length - 1]);
+                    String fragment = StringFormatter.formatHex(String.join(" ", java.util.Arrays.copyOf(split, split.length - 2)));
                     nameImpacts.add(new NameImpact(fragment, index, weight));
                 } catch (NumberFormatException e) {
                     System.out.println("Invalid name-impact entry for part " + key + ": " + s);

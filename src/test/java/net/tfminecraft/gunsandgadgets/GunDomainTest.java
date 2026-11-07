@@ -58,7 +58,7 @@ caliber: [medium, small]
 caliber-override: [large]
 options: [smokeless, no_light, invalid]
 lore: [First, Second]
-name-impact: ['Barrel 1 2', 'broken x 3', 'short']
+name-impact: ['Barrel 1 2', 'broken x 3', 'short', 'Rail Launcher 2 100']
 skin-impact: ['STEEL 3', 'broken x', 'short']
 sounds: ['shoot a,b(rifle)', 'reload c', 'bad c', 'shoot d(unknown)', 'shoot e(unclosed', 'short', 'shoot , ,']
 sound-overrides: ['shoot override(pistol)']
@@ -91,6 +91,8 @@ sound-overrides: ['shoot override(pistol)']
     assertEquals("Barrel", name.getFragment());
     assertEquals(1, name.getIndex());
     assertEquals(2, name.getWeight());
+    assertEquals("Rail Launcher", part.getNameImpacts().getLast().getFragment());
+    assertEquals(2, part.getNameImpacts().size());
     var skin = part.getSkinImpacts().getFirst();
     assertEquals("steel", skin.getSkinId());
     assertEquals(3, skin.getWeight());
