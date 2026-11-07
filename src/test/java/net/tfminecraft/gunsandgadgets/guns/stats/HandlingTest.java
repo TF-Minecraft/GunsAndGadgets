@@ -212,6 +212,66 @@ class HandlingTest {
   }
 
   @Test
+  void drawingSlowsByStance() {
+    double[] old = {Cache.drawMoving, Cache.drawSprinting, Cache.drawAirborne, Cache.drawMounted, Cache.drawSneaking};
+    try {
+      Cache.drawMoving = 1.4;
+      Cache.drawSprinting = 2.0;
+      Cache.drawAirborne = 2.5;
+      Cache.drawMounted = 1.5;
+      Cache.drawSneaking = 0.8;
+      var player = grounded();
+      assertEquals(1.0, Handling.drawMultiplier(player));
+      when(player.isSneaking()).thenReturn(true);
+      assertEquals(0.8, Handling.drawMultiplier(player), 1e-9);
+      when(player.isSneaking()).thenReturn(false);
+      var forward = input(true, false, false, false);
+      when(player.getCurrentInput()).thenReturn(forward);
+      assertEquals(1.4, Handling.drawMultiplier(player), 1e-9);
+      when(player.isSprinting()).thenReturn(true);
+      assertEquals(2.0, Handling.drawMultiplier(player), 1e-9);
+      when(player.isOnGround()).thenReturn(false);
+      assertEquals(2.5, Handling.drawMultiplier(player), 1e-9);
+
+      var rider = mock(Player.class);
+      when(rider.isInsideVehicle()).thenReturn(true);
+      var horse = mock(org.bukkit.entity.Horse.class);
+      when(rider.getVehicle()).thenReturn(horse);
+      assertEquals(1.5, Handling.drawMultiplier(rider), 1e-9);
+      var stand = mock(org.bukkit.entity.ArmorStand.class);
+      when(stand.getVelocity()).thenReturn(new org.bukkit.util.Vector());
+      when(rider.getVehicle()).thenReturn(stand);
+      assertEquals(1.0, Handling.drawMultiplier(rider), 1e-9);
+      var cart = mock(org.bukkit.entity.Minecart.class);
+      when(cart.getVelocity()).thenReturn(new org.bukkit.util.Vector(0.4, 0, 0));
+      when(rider.getVehicle()).thenReturn(cart);
+      assertEquals(1.5, Handling.drawMultiplier(rider), 1e-9);
+      when(cart.getVelocity()).thenReturn(new org.bukkit.util.Vector());
+      assertEquals(1.0, Handling.drawMultiplier(rider), 1e-9);
+
+      var seated = grounded();
+      org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
+      var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+      var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+      var panel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
+      when(vehicle.getAccessPanel()).thenReturn(panel);
+      when(manager.getByPassenger(seated)).thenReturn(vehicle);
+      try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+        framework.when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager).thenReturn(manager);
+        assertEquals(1.0, Handling.drawMultiplier(seated), 1e-9);
+        when(panel.getSpeed()).thenReturn(0.5);
+        assertEquals(1.5, Handling.drawMultiplier(seated), 1e-9);
+      }
+    } finally {
+      Cache.drawMoving = old[0];
+      Cache.drawSprinting = old[1];
+      Cache.drawAirborne = old[2];
+      Cache.drawMounted = old[3];
+      Cache.drawSneaking = old[4];
+    }
+  }
+
+  @Test
   void leavingTheGroundUsesTheAirborneMultiplier() {
     assertEquals(4.0, Handling.spreadMultiplier(mock(Player.class)));
   }

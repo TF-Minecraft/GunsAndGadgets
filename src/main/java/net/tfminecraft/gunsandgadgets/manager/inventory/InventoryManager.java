@@ -531,7 +531,7 @@ public class InventoryManager implements Listener {
                     }
                 }
                 if (calibers.size() > 1) {
-                    lore.add("§8Crouch and right-click to change shot");
+                    lore.add("§8Swap hands (F) to change shot");
                 }
 
                 // ✅ Save calibers in PDC

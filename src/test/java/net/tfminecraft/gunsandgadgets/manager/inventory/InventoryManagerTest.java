@@ -282,7 +282,7 @@ class InventoryManagerTest {
             new net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition("known", config));
     var multi = output(action);
     assertEquals("known;unknown", string(multi, "calibers"));
-    assertTrue(multi.getItemMeta().getLore().contains("§8Crouch and right-click to change shot"));
+    assertTrue(multi.getItemMeta().getLore().contains("§8Swap hands (F) to change shot"));
     when(barrel.getCaliberOverrides()).thenReturn(List.of("override1", "override2"));
     assertEquals("override1;override2", string(output(action, barrel), "calibers"));
     when(action.getCaliberOverrides()).thenReturn(List.of("first"));

@@ -16,7 +16,9 @@ public enum Stats {
     FALLOFF("falloff", "Full Damage Range"),
     MOVING("moving", "Steady on the Move"),
     MOUNTED("mounted", "Steady Mounted"),
-    SNEAKING("sneaking", "Steady Crouched");
+    SNEAKING("sneaking", "Steady Crouched"),
+    // Percent quicker (positive) or slower to draw when the gun is taken into the hand.
+    DRAW("draw", "Draw Speed");
 
     private final String key;
     private final String displayName;

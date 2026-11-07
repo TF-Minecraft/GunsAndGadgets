@@ -167,7 +167,7 @@ public class GunPart {
                 }
             }
         }
-        
+
         this.forgeBase = config.getString("forge.base", null);
         this.forgeMetal = config.getString("forge.metal", null);
         this.forgeName = StringFormatter.formatHex(config.getString("forge.name", name));
@@ -402,7 +402,9 @@ public class GunPart {
      * smoke and flash live here rather than on a shot type.
      */
     public enum PartOption {
-        SMOKELESS, NO_LIGHT
+        SMOKELESS, NO_LIGHT,
+        /** Aiming looks through a scope (spyglass zoom): hold right-click to scope in, release to fire. */
+        SCOPED
     }
 
     /** A part that only loads powered shot (a proofed chamber) or plain shot (an airgun lock). */

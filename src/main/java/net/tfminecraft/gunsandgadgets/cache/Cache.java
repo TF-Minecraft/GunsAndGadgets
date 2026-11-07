@@ -40,6 +40,19 @@ public class Cache {
     // Guns stamped with a disabled or missing part refuse to fire or reload.
     public static boolean retireDisabledPartGuns = false;
 
+    /** Draw time per gun type in ticks (handling.draw.base-seconds); empty = no draw time. */
+    public static Map<GunType, Integer> drawBaseTicks = new HashMap<>();
+    /** How much longer drawing takes by stance (handling.draw.stance). */
+    public static double drawMoving = 1.0;
+    public static double drawSprinting = 1.0;
+    public static double drawAirborne = 1.0;
+    public static double drawMounted = 1.0;
+    public static double drawSneaking = 1.0;
+
+    /** Crouch to aim (aiming.enabled), and how much aiming slows walking (aiming.slow, which zooms). */
+    public static boolean aimingEnabled = false;
+    public static double aimSlow = 0.0;
+
     /** Item model prefix for forged part icons in the menus (part-icons); blank = the part's own item. */
     public static String partIconPrefix = "";
 
@@ -52,6 +65,7 @@ public class Cache {
     /** Drop YAML-backed registries so a reload does not append. */
     public static void clear() {
         outputItems.clear();
+        drawBaseTicks.clear();
         requiredParts.clear();
         attributes.clear();
     }

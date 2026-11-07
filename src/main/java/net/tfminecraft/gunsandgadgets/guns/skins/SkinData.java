@@ -20,6 +20,7 @@ public class SkinData {
     private final String carry;
     private final String reload;
     private final String aim;
+    private final String ads;
     private final List<String> types;
     private final List<String> options;
     // Forged guns: the item model prefix; the pose is appended (_carry, _reload, _aim).
@@ -31,6 +32,7 @@ public class SkinData {
         this.carry = config.getString("carry", "");
         this.reload = config.getString("reload", "");
         this.aim = config.getString("aim", "");
+        this.ads = config.getString("ads", aim);
 
         this.types = new ArrayList<>(config.getStringList("types"));
         this.options = config.contains("options")
@@ -84,6 +86,7 @@ public class SkinData {
     public ItemStack parseModel(SkinState state) {
         String path = switch (state) {
             case AIM -> aim;
+            case ADS -> ads;
             case CARRY -> carry;
             case RELOAD -> reload;
         };

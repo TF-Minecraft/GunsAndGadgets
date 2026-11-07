@@ -130,7 +130,34 @@ handling:
     assertEquals(45.0, Cache.maxSpreadDegrees);
     assertEquals(24.0, Cache.falloffStartDistance);
     assertEquals(0.5, Cache.falloffMinMultiplier);
+    assertEquals(26, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE));
+    assertEquals(12, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.PISTOL));
+    assertEquals(2.0, Cache.drawSprinting);
+    assertEquals(0.8, Cache.drawSneaking);
+    assertTrue(Cache.aimingEnabled);
+    assertEquals(0.5, Cache.aimSlow);
+    assertEquals("tfmc_guns:part/", Cache.partIconPrefix);
+    // Bad draw entries: an unknown gun type is skipped, a non-number gives no draw time.
+    loader.loadConfig(
+        file(
+                "draw.yml",
+                """
+handling:
+  draw:
+    base-seconds: {rifle: .nan, pistol: -2, cannon: 3}
+    stance: {moving: .nan, sprinting: 0}
+aiming: {enabled: true, slow: 5}
+""")
+            .toFile());
+    assertEquals(0, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE));
+    assertEquals(0, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.PISTOL));
+    assertEquals(2, Cache.drawBaseTicks.size());
+    assertEquals(1.0, Cache.drawMoving);
+    assertEquals(0.1, Cache.drawSprinting);
+    assertEquals(0.9, Cache.aimSlow);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
+    assertTrue(Cache.drawBaseTicks.isEmpty());
+    assertFalse(Cache.aimingEnabled);
     loader.loadConfig(temp.resolve("missing").toFile());
     loader.loadConfig(file("bad.yml", "x: [").toFile());
   }

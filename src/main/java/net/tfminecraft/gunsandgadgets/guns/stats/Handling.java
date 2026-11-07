@@ -167,6 +167,35 @@ public final class Handling {
         return input != null && (input.isForward() || input.isBackward() || input.isLeft() || input.isRight());
     }
 
+    /**
+     * How much longer drawing a gun takes in the player's stance (handling.draw.stance): riding a
+     * moving seat, airborne, sprinting or walking, and crouched (which may speed it up).
+     */
+    public static double drawMultiplier(Player player) {
+        ActiveVehicle seat = vehicleFrameworkSeat(player);
+        if (seat != null) {
+            return isTravelling(seat) ? Cache.drawMounted : 1.0;
+        }
+        if (player.isInsideVehicle()) {
+            Entity vehicle = player.getVehicle();
+            boolean animal = vehicle instanceof LivingEntity && !(vehicle instanceof ArmorStand);
+            return animal || isSeatMoving(vehicle) ? Cache.drawMounted : 1.0;
+        }
+        if (isAirborne(player)) {
+            return Cache.drawAirborne;
+        }
+        double multiplier = 1.0;
+        if (player.isSprinting()) {
+            multiplier = Cache.drawSprinting;
+        } else if (isMoving(player.getCurrentInput())) {
+            multiplier = Cache.drawMoving;
+        }
+        if (player.isSneaking()) {
+            multiplier *= Cache.drawSneaking;
+        }
+        return multiplier;
+    }
+
     /** Final launch spread in degrees: never below the old 0.02 floor, never above the configured cap. */
     public static double clampSpread(double degrees) {
         return Math.min(Cache.maxSpreadDegrees, Math.max(0.02, degrees));

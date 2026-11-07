@@ -63,6 +63,7 @@ public class GunsAndGadgets extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(craftingManager, this);
 		getServer().getPluginManager().registerEvents(new InventoryManager(), this);
 		getServer().getPluginManager().registerEvents(gunManager, this);
+		getServer().getScheduler().runTaskTimer(this, gunManager::tickPlayers, 1L, 1L);
 		getServer().getPluginManager().registerEvents(new GunRefreshListener(), this);
 		getServer().getPluginManager().registerEvents(new CharacterSessionListener(gunManager), this);
 	}

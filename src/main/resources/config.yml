@@ -52,6 +52,34 @@ handling:
     pellet-cone:
         tighten-per-accuracy: 0.03
         min-factor: 0.4
+    # Draw time: a gun taken into the hand can't fire or reload until it is drawn
+    # (the hotbar shows a cooldown sweep). Seconds per gun type; a part's draw stat
+    # makes it quicker (positive) or slower, within half to double. While drawing,
+    # the stance stretches the time: moving, sprinting, airborne (jumping, falling)
+    # and riding a moving seat; crouching can shorten it. Leave the section out for
+    # no draw time.
+    draw:
+        base-seconds:
+            pistol: 0.6
+            shotgun: 1.0
+            rifle: 1.3
+            launcher: 2.0
+        stance:
+            moving: 1.4
+            sprinting: 2.0
+            airborne: 2.0
+            mounted: 1.5
+            sneaking: 0.8
+
+# Crouch with a loaded, drawn gun to aim it: the gun shows its sights-up pose and
+# the player walks slower, which narrows the field of view (the zoom; players who
+# turned FOV effects off only get the slowdown). slow is the share of walking speed
+# taken away (0 to 0.9). A scoped gun (the arclock) becomes a spyglass while aimed:
+# hold right-click to look through the scope, release to fire. The swap-hands key
+# (F) with a gun in hand picks the next shot.
+aiming:
+    enabled: true
+    slow: 0.5
 
 # Guns stamped with a disabled (retired) part refuse to fire or reload. Nothing
 # is written to the gun, so turning this off makes them usable again.

@@ -47,6 +47,10 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
+
+import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CrossbowMeta;
@@ -133,7 +137,102 @@ public class GunManager implements Listener {
         return false;
     }
 
+    /** Draw times and aiming, ticked once a tick for every player (see {@link #tickPlayers()}). */
+    private final DrawTimer draw = new DrawTimer();
+    private final Aiming aiming = new Aiming(this);
+
+    /** Event stand-in for firing from the scope release, which has nothing to cancel. */
+    private static final Cancellable RELEASE = new Cancellable() {
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public void setCancelled(boolean cancel) {
+        }
+    };
+
+    public void tickPlayers() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            draw.tick(player);
+            aiming.tick(player);
+        }
+    }
+
+    public boolean isDrawn(Player player, String gunId) {
+        return draw.isReady(player, gunId);
+    }
+
+    public boolean isReloading(Player player) {
+        return reloading.getOrDefault(player.getUniqueId(), false);
+    }
+
+    public Aiming getAiming() {
+        return aiming;
+    }
+
+    DrawTimer drawTimer() {
+        return draw;
+    }
+
+    public int loadedBullets(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return 0;
+        return item.getItemMeta().getPersistentDataContainer().getOrDefault(bulletsKey, PersistentDataType.INTEGER, 0);
+    }
+
+    public SkinData skinOf(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        String skinId = item.getItemMeta().getPersistentDataContainer().get(skinKey, PersistentDataType.STRING);
+        return skinId == null ? null : SkinLoader.get().get(skinId);
+    }
+
+    /** Back to the loaded pose: the aim model, with the crossbow charged again. */
+    public ItemStack showLoaded(ItemStack item, SkinData skin) {
+        item = applyModel(item, skin, SkinState.AIM);
+        if (item.getType() == Material.CROSSBOW) {
+            String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+            chargeCrossbow(item, ammoId, loadedBullets(item));
+        }
+        return item;
+    }
+
+    /** Crouch aims; letting go lowers the gun. */
+    @EventHandler
+    public void onSneak(PlayerToggleSneakEvent event) {
+        aiming.onSneak(event.getPlayer(), event.isSneaking());
+    }
+
+    /** Releasing right-click while looking through a scope fires. */
+    @EventHandler
+    public void onStopUsing(PlayerStopUsingItemEvent event) {
+        if (aiming.isScoped(event.getPlayer(), event.getItem())) {
+            handleGunUse(event.getPlayer(), RELEASE, true);
+        }
+    }
+
+    /** The swap-hands key (F) with a gun in hand picks the next shot instead of swapping hands. */
+    @EventHandler
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (DrawTimer.gunId(item) == null) return;
+        event.setCancelled(true);
+        UUID id = player.getUniqueId();
+        if (reloading.getOrDefault(id, false)) return;
+        int tick = Bukkit.getCurrentTick();
+        Integer last = lastAmmoSwitchTick.get(id);
+        if (last == null || tick - last > AMMO_SWITCH_BURST_TICKS) {
+            lastAmmoSwitchTick.put(id, tick);
+            cycleAmmo(player, item);
+        }
+    }
+
     public void handleGunUse(Player player, Cancellable event) {
+        handleGunUse(player, event, false);
+    }
+
+    void handleGunUse(Player player, Cancellable event, boolean release) {
         //quick offhand check just cancel
         ItemStack item = player.getInventory().getItemInOffHand();
         if(item != null) {
@@ -166,6 +265,10 @@ public class GunManager implements Listener {
             event.setCancelled(true);
             return;
         }
+        // Looking through a scope: right-click scopes in (the spyglass), releasing it fires.
+        if (!release && aiming.isScoped(player, item)) {
+            return;
+        }
         event.setCancelled(true);
         var session = Characters.currentSession(player).orElse(null);
         if (session == null && Characters.available()) return;
@@ -174,13 +277,8 @@ public class GunManager implements Listener {
         if (reloading.getOrDefault(id, false)) {
             return;
         }
-        if (player.isSneaking()) {
-            int tick = Bukkit.getCurrentTick();
-            Integer last = lastAmmoSwitchTick.get(id);
-            if (last == null || tick - last > AMMO_SWITCH_BURST_TICKS) {
-                lastAmmoSwitchTick.put(id, tick);
-                cycleAmmo(player, item);
-            }
+        if (!draw.isReady(player, gunId)) {
+            sendActionBar(player, "§7Still drawing your weapon.");
             return;
         }
         reloading.put(id, true);
@@ -260,7 +358,7 @@ public class GunManager implements Listener {
         if (taken.equals("none")) {
             if (selected != null) {
                 sendActionBar(player, "§cYou have no " + getAmmoName(selected)
-                        + "§c left. Crouch and right-click to choose another.");
+                        + "§c left. Swap hands (F) to choose another.");
             }
             reloading.remove(id);
             return;
@@ -484,6 +582,8 @@ public class GunManager implements Listener {
     // Runs before the player is saved, so the ammunition goes back into the saved inventory.
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        aiming.stop(event.getPlayer());
+        draw.forget(event.getPlayer());
         cancelActiveReload(event.getPlayer());
     }
 
@@ -713,7 +813,7 @@ public class GunManager implements Listener {
     }
 
     /**
-     * Crouch + right-click: pick the next caliber the player carries for the next reload.
+     * The swap-hands key: pick the next caliber the player carries for the next reload.
      * Bullets already loaded stay loaded.
      */
     private void cycleAmmo(Player player, ItemStack item) {
