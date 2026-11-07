@@ -680,7 +680,10 @@ class InventoryManagerTest {
       when(iron.getLore()).thenReturn(List.of("Old design"));
       forged("heavy", "steel", "action");
       var locked = forged("heavy", "mythril", "action");
-      when(locked.getPermissions()).thenReturn(List.of("missing"));
+      when(locked.getMaterialPermission()).thenReturn("professions.mythril_smith");
+      var plug = MockBukkit.createMockPlugin();
+      player.addAttachment(plug, "professions.iron_smith", true);
+      when(iron.getMaterialPermission()).thenReturn("professions.iron_smith");
       forged("light", "copper", "action");
       manager.openPartSelection(player, "action");
       var top = player.getOpenInventory().getTopInventory();
@@ -729,6 +732,30 @@ class InventoryManagerTest {
       net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
       java.nio.file.Files.deleteIfExists(metals);
     }
+  }
+
+  @Test
+  void partsThatLeaveNoShotToLoadAreRefused() {
+    var barrel = part("long", "barrel", 2);
+    var chamber = part("proof", "chamber", 3);
+    var config = new YamlConfiguration();
+    AmmunitionLoader.get()
+        .put("ball", new net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition("ball", config));
+    // A plain-shot barrel with a powered-shot-only chamber: nothing to load, so no gun.
+    when(barrel.getCalibers()).thenReturn(List.of("ball"));
+    when(chamber.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.POWERED);
+    var refused = output(action, barrel, chamber);
+    assertEquals(Material.BARRIER, refused.getType());
+    assertEquals("§cThese parts load no shot", refused.getItemMeta().getDisplayName());
+    // A filter alone, and an override filtered down to nothing, are refused too.
+    when(barrel.getCalibers()).thenReturn(List.of());
+    assertEquals(Material.BARRIER, output(action, barrel, chamber).getType());
+    when(action.getCaliberOverrides()).thenReturn(List.of("ball"));
+    assertEquals(Material.BARRIER, output(action, chamber).getType());
+    // Parts that declare no shot at all still build a gun, as before.
+    when(action.getCaliberOverrides()).thenReturn(null);
+    when(chamber.getAmmoFilter()).thenReturn(null);
+    assertEquals(Material.STICK, output(action, barrel, chamber).getType());
   }
 
   @Test

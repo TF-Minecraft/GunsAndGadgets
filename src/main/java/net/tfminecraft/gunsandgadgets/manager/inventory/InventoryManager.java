@@ -436,6 +436,16 @@ public class InventoryManager implements Listener {
                 }
             }
         }
+        // A gun whose parts declare shot (or limit it) but leave none to load could never fire:
+        // e.g. a plain-shot-only lock with a powered-shot-only chamber.
+        List<String> calibers = resolveCalibers(parts);
+        if (calibers.isEmpty() && declaresShot(parts)) {
+            ItemStack barrier = new ItemStack(Material.BARRIER);
+            ItemMeta bm = barrier.getItemMeta();
+            bm.setDisplayName("§cThese parts load no shot");
+            barrier.setItemMeta(bm);
+            return barrier;
+        }
         // Resolve skin
         SkinResolver resolver = new SkinResolver(SkinLoader.get());
         SkinData skin = resolver.resolve(type, parts);
@@ -501,7 +511,6 @@ public class InventoryManager implements Listener {
             // ✅ Store accuracy salt — set above with gun_id when preserving runtime
 
             // ---------- Caliber section ----------
-            List<String> calibers = resolveCalibers(parts);
             List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
 
             if (!calibers.isEmpty()) {
@@ -669,6 +678,16 @@ public class InventoryManager implements Listener {
      * Finds the calibers for the selected parts.
      * If an override is present, the last part with one supplies every caliber.
      */
+    private static boolean declaresShot(Collection<GunPart> parts) {
+        for (GunPart part : parts) {
+            if (!part.getCalibers().isEmpty() || part.getAmmoFilter() != null
+                    || (part.getCaliberOverrides() != null && !part.getCaliberOverrides().isEmpty())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<String> resolveCalibers(Collection<GunPart> parts) {
         List<String> override = null;
         List<String> normal = new ArrayList<>();
@@ -908,6 +927,8 @@ public class InventoryManager implements Listener {
 
     private boolean hasPermissionForPart(Player player, GunPart part) {
         if(!Cache.requireInput) return true; //tutorial setup
+        String materialPermission = part.getMaterialPermission();
+        if (materialPermission != null && !player.hasPermission(materialPermission)) return false;
         if (part.getPermissions().isEmpty()) return true;
         for (String perm : part.getPermissions()) {
             if (player.hasPermission(perm)) return true;

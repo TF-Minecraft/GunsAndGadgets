@@ -43,6 +43,9 @@ public final class PartForge {
 
     /** One part section per material the definition can be forged from, keyed by variant id. */
     public static Map<String, ConfigurationSection> expand(String key, ConfigurationSection definition) {
+        if (definition.contains("caliber-override")) {
+            System.out.println("Forged part " + key + ": caliber-override is ignored; use ammo-family and ammo-filter");
+        }
         Map<String, ConfigurationSection> variants = new LinkedHashMap<>();
         String kind = definition.getString("material", "metal");
         List<String> only = definition.getStringList("metals");
@@ -51,6 +54,10 @@ public final class PartForge {
                 continue;
             }
             variants.put(variantId(key, metal.getId()), forge(key, definition, metal));
+        }
+        if (variants.isEmpty()) {
+            // Guns already forged from this part would lose it and break: say so loudly.
+            System.out.println("Forged part " + key + " has no material to be forged from; check metals.yml and its 'material'/'metals' keys");
         }
         return variants;
     }
@@ -67,13 +74,21 @@ public final class PartForge {
         variant.set("tier", metal.getTier());
         variant.set("stats", stats(definition, metal));
         variant.set("cost", cost(definition, metal));
-        variant.set("permissions", metal.getPermission().isEmpty()
-                ? definition.getStringList("permissions") : List.of(metal.getPermission()));
+        // Both apply: the material's permission (smithing level) and any lock the part sets itself.
+        variant.set("permissions", definition.getStringList("permissions"));
+        if (!metal.getPermission().isEmpty()) {
+            variant.set("forge.permission", metal.getPermission());
+        }
 
         List<String> calibers = new ArrayList<>(definition.getStringList("caliber"));
         String family = definition.getString("ammo-family", "");
         if (!family.isEmpty()) {
-            calibers.addAll(AmmunitionLoader.family(family.toLowerCase(), metal.getTier()));
+            List<String> shot = AmmunitionLoader.family(family.toLowerCase(), metal.getTier());
+            if (shot.isEmpty()) {
+                System.out.println("Forged part " + key + " (" + metal.getId() + "): no ammunition of family '"
+                        + family + "' up to tier " + metal.getTier() + "; check family/tier in ammunition.yml");
+            }
+            calibers.addAll(shot);
         }
         variant.set("caliber", calibers);
 

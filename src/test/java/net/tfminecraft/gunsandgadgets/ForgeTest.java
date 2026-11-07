@@ -93,10 +93,11 @@ loose: {}
     assertEquals(4.0, steel.scale("accuracy", 4), 1e-9);
     assertEquals(-4.0, steel.scale("reload", -4), 1e-9);
     assertEquals(-4.0, steel.scale("pierce", -4), 1e-9);
+    // A file that cannot be read keeps the materials already loaded, so forged parts survive a typo.
     new MetalLoader().load(temp.resolve("missing").toFile());
-    assertTrue(MetalLoader.getOrdered().isEmpty());
+    assertEquals(List.of("steel"), MetalLoader.getOrdered().stream().map(Metal::getId).toList());
     new MetalLoader().load(file("broken.yml", "x: [").toFile());
-    assertTrue(MetalLoader.getOrdered().isEmpty());
+    assertEquals(List.of("steel"), MetalLoader.getOrdered().stream().map(Metal::getId).toList());
   }
 
   @Test
@@ -153,7 +154,8 @@ heavy:
     // accuracy (4 + 1) * 0.8 = 4, speed 10 * 0.8 = 8, reload -2 * 1.25 = -2.5 rounds away from zero.
     assertEquals(List.of("accuracy 4", "speed 8", "reload -3", "capacity 1"), iron.getStringList("stats"));
     assertEquals(List.of("v.iron_ingot(6)", "v.leather(2)"), iron.getStringList("cost"));
-    assertEquals(List.of("professions.iron_smith"), iron.getStringList("permissions"));
+    assertEquals(List.of(), iron.getStringList("permissions"));
+    assertEquals("professions.iron_smith", iron.getString("forge.permission"));
     assertEquals(List.of("extra", "ironshot", "ironshot_powered"), iron.getStringList("caliber"));
     assertEquals("powered", iron.getString("ammo-filter"));
     assertEquals(List.of("Musketeer"), iron.getStringList("class"));
@@ -178,6 +180,7 @@ stock:
     assertEquals("Oak stock", oak.getString("name"));
     assertEquals(List.of(), oak.getStringList("cost"));
     assertEquals(List.of("own.permission"), oak.getStringList("permissions"));
+    assertFalse(oak.contains("forge.permission"));
     assertEquals(List.of(), oak.getStringList("caliber"));
     assertEquals(List.of("accuracy 2"), oak.getStringList("stats"));
     ConfigurationSection onlyMythril =
@@ -186,6 +189,11 @@ stock:
     assertEquals(List.of("p@mythril"), new ArrayList<>(only.keySet()));
     assertEquals(List.of("m.materials.mythril_ingot(1)"), only.get("p@mythril").getStringList("cost"));
     assertEquals("a@b", PartForge.variantId("a", "b"));
+    // A family with no ammunition, or no material to forge from, still loads (with a warning).
+    var nothing = yaml("n: {ammo-family: none, metals: [iron], tendencies: [speed 1]}").getConfigurationSection("n");
+    assertEquals(List.of(), PartForge.expand("n", nothing).get("n@iron").getStringList("caliber"));
+    var orphan = yaml("o: {metals: [unobtainium], tendencies: [speed 1]}").getConfigurationSection("o");
+    assertTrue(PartForge.expand("o", orphan).isEmpty());
   }
 
   @Test
@@ -218,6 +226,8 @@ legacy:
     assertEquals("mythril", part.getMetalId());
     assertEquals("§7Heavy", part.getBaseName());
     assertEquals("flintlock", part.getSkinBase());
+    assertEquals("professions.mythril_smith", part.getMaterialPermission());
+    assertTrue(part.getPermissions().isEmpty());
     assertEquals(GunPart.AmmoFilter.PLAIN, part.getAmmoFilter());
     assertEquals(Map.of(Stats.ACCURACY, 2.0, Stats.RELOAD, -2.0), part.getTendencies());
     assertEquals(Map.of(Stats.CAPACITY, 6.0, Stats.SPREAD, 20.0), part.getFixedStats());
@@ -230,6 +240,7 @@ legacy:
     assertEquals("legacy", legacy.getBaseId());
     assertEquals("legacy", legacy.getSkinBase());
     assertNull(legacy.getMetalId());
+    assertNull(legacy.getMaterialPermission());
     assertNull(legacy.getAmmoFilter()); // an unknown filter is ignored
     assertTrue(legacy.getTendencies().isEmpty());
     assertFalse(legacy.buildRevisionContent().contains("ammo-filter"));

@@ -207,7 +207,8 @@ public class ProjectileShooter {
         int cone = gunStat(meta, "spread");
         boolean pelletCone = cone > 0 && projectiles > 1;
         Vector aim = pelletCone ? applySpread(forward.clone(), spreadDegrees, rand) : forward;
-        double coneDegrees = cone * Math.max(Cache.coneMinFactor, 1.0 - Cache.coneTightenPerAccuracy * totalAcc);
+        double coneDegrees = Handling.clampSpread(
+                cone * Math.max(Cache.coneMinFactor, 1.0 - Cache.coneTightenPerAccuracy * totalAcc));
 
         // Damage: flat gun damage plus the shot, scaled by the parts' damage percent.
         int ammoDamage = ammo.getStats().getOrDefault("damage", 0);

@@ -3,6 +3,7 @@
 # multiplies a part's upsides by 'better' and its downsides by 'worse': a number sets every
 # stat, a section sets 'default' plus per-stat factors. Barrels load shot up to their tier.
 # New materials (alloys) only need an entry here; every forged part of their kind gains them.
+# Never remove or rename a material: guns forged from it would lose that part and break.
 
 iron:
   name: "§7Iron"

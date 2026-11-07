@@ -42,14 +42,20 @@ public class MetalLoader implements LoaderInterface {
 		return new ArrayList<>(metals.values());
 	}
 
+	/**
+	 * Replaces the materials, unless the file cannot be read: then the ones already loaded stay,
+	 * so a typo on /gg reload cannot strip every forged part (and break the guns made from them).
+	 */
 	public void load(File configFile) {
-		clear();
 		FileConfiguration config = new YamlConfiguration();
 		try {
 			config.load(configFile);
 		} catch (IOException | InvalidConfigurationException e) {
 			e.printStackTrace();
+			System.out.println("metals.yml could not be read; keeping the " + metals.size() + " materials already loaded");
+			return;
 		}
+		clear();
 		for (String key : config.getKeys(false)) {
 			ConfigurationSection section = config.getConfigurationSection(key);
 			if (section != null) {

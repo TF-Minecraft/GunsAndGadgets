@@ -48,6 +48,7 @@ public class GunPart {
     private final Map<Stats, Double> fixedStats;
     private final AmmoFilter ammoFilter;
     private final String skinBase;
+    private final String materialPermission;
 
     public GunPart(String key, ConfigurationSection config) {
         this.id = key;
@@ -164,6 +165,7 @@ public class GunPart {
         this.fixedStats = PartForge.parse(config.getStringList("forge.fixed"));
         this.ammoFilter = AmmoFilter.parse(config.getString("ammo-filter", null));
         this.skinBase = config.getString("skin-base", null);
+        this.materialPermission = config.getString("forge.permission", null);
 
         // Parse normal sounds
         parseSoundSection(config.getStringList("sounds"), sounds);
@@ -260,6 +262,9 @@ public class GunPart {
     public Map<Stats, Double> getFixedStats() { return fixedStats; }
 
     public AmmoFilter getAmmoFilter() { return ammoFilter; }
+
+    /** A forged part's material permission, required on top of any of the part's own permissions. */
+    public String getMaterialPermission() { return materialPermission; }
 
     /** The id gun designs are matched against when no skin-impact names one: skin-base, else the base id. */
     public String getSkinBase() { return skinBase != null ? skinBase : getBaseId(); }
