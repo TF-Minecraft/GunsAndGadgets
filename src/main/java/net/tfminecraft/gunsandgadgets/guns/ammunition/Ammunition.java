@@ -13,10 +13,18 @@ public class Ammunition {
 
     private final EnumSet<AmmoOption> options = EnumSet.noneOf(AmmoOption.class);
 
+    /** Forged barrels load every shot of their family up to their metal's tier. */
+    private final String family;
+    private final int tier;
+    private final boolean powered;
+
     public Ammunition(String key, ConfigurationSection config) {
         this.key = key;
         this.input = config.getString("input", "v.iron_nugget");
         this.amount = config.getInt("amount", 1);
+        this.family = config.getString("family", "").toLowerCase();
+        this.tier = config.getInt("tier", 0);
+        this.powered = config.getBoolean("powered", key.endsWith("_powered"));
 
         // Parse stats
         this.stats = new HashMap<>();
@@ -50,6 +58,9 @@ public class Ammunition {
     public String getInput() { return input; }
     public int getAmount() { return amount; }
     public Map<String, Integer> getStats() { return stats; }
+    public String getFamily() { return family; }
+    public int getTier() { return tier; }
+    public boolean isPowered() { return powered; }
 
     public enum AmmoOption {
         ROCKET, SMOKELESS, NO_LIGHT

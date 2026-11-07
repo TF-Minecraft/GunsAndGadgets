@@ -31,6 +31,14 @@ public class Cache {
     public static double maxSpreadDegrees = Double.POSITIVE_INFINITY; // no cap unless configured
     public static double falloffStartDistance = 0.0;
     public static double falloffMinMultiplier = 1.0;
+    // Accuracy above 5 tightens spread by 5% a point instead of the old line that reaches 0.07° at 30.
+    public static boolean smoothAccuracy = false;
+    // Pellet cone (a shotgun barrel's spread stat): each accuracy point tightens it, to a floor.
+    public static double coneTightenPerAccuracy = 0.03;
+    public static double coneMinFactor = 0.4;
+
+    // Guns stamped with a disabled or missing part refuse to fire or reload.
+    public static boolean retireDisabledPartGuns = false;
 
     public static Map<GunType, List<String>> requiredParts = new HashMap<>();
 

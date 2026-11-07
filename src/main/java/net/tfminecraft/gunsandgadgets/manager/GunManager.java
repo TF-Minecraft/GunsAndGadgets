@@ -11,6 +11,7 @@ import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.attributes.AttributeReader;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
+import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
@@ -516,6 +517,23 @@ public class GunManager implements Listener {
         }
     }
 
+    /**
+     * With retire-disabled-part-guns on, a gun built from a disabled (retired) part cannot be used.
+     * Unlike a broken gun nothing is written to the item, so turning the switch off restores it.
+     */
+    private boolean blockIfRetired(Player player, ItemStack item, List<GunPart> parts) {
+        if (!Cache.retireDisabledPartGuns) {
+            return false;
+        }
+        List<String> retired = parts.stream().filter(GunPart::isDisabled).map(GunPart::getId).toList();
+        if (retired.isEmpty()) {
+            return false;
+        }
+        String gunId = item.getItemMeta().getPersistentDataContainer().get(gunKey, PersistentDataType.STRING);
+        GunBrokenMarker.notifyRetired(player, gunId, retired);
+        return true;
+    }
+
     private boolean blockIfBroken(Player player, ItemStack item) {
         if (GunBrokenMarker.isBroken(item)) {
             return true;
@@ -526,7 +544,7 @@ public class GunManager implements Listener {
         }
         GunCraftProvenance.ResolvedParts resolved = provenance.resolveStampedParts();
         if (resolved.missingIds().isEmpty()) {
-            return false;
+            return blockIfRetired(player, item, resolved.live());
         }
         ItemMeta brokenMeta = item.getItemMeta();
         String gunId = brokenMeta.getPersistentDataContainer().get(gunKey, PersistentDataType.STRING);

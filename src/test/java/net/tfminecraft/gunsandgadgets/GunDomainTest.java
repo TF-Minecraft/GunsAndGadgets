@@ -342,7 +342,7 @@ sound-overrides: ['shoot override(pistol)']
   @Test
   void statsHeaderIsAddedOnceAndValuesArePersisted() throws Exception {
     GunPart part =
-        part("stats", "stats: ['damage 8','accuracy -1','reload 0','speed 2','range 5']");
+        part("stats", "stats: ['damage 8','accuracy -1','reload 0','speed 2','range 5','spread 14']");
     ItemStack item = item();
     StatApplier.apply(item, List.of(part), false);
     assertEquals(

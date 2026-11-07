@@ -1,5 +1,7 @@
 package net.tfminecraft.gunsandgadgets.guns.stats;
 
+import net.tfminecraft.gunsandgadgets.cache.Cache;
+
 public class StatCalculator {
 
     public static int calculateReloadTicks(int reloadStat) {
@@ -23,6 +25,9 @@ public class StatCalculator {
         if (accuracyStat <= 5) {
             // Continue smoothly from 0 → 25° down to 5 → 2.5°
             return lerp(accuracyStat, 0, 5, 25.0, 2.5);
+        } else if (Cache.smoothAccuracy) {
+            // 5% tighter per point: about the old line up to 20, without its cliff above 20.
+            return 2.5 * Math.pow(0.95, accuracyStat - 5);
         } else if (accuracyStat <= 20) {
             // 5 → 2.5° down to 20 → 1.2°
             return lerp(accuracyStat, 5, 20, 2.5, 1.2);

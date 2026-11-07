@@ -189,6 +189,7 @@ class ProjectileShooterTest {
               Ammunition.class,
               Location.class,
               double.class,
+              double.class,
               net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
               Location.class,
               Location.class,
@@ -200,6 +201,7 @@ class ProjectileShooterTest {
             ammo,
             muzzle,
             maxDistance,
+            Cache.falloffStartDistance,
             ownVehicle,
             new Location(world, 0, 0, 0),
             new Location(world, 0, 0, 2),
@@ -759,6 +761,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
+          double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
@@ -769,6 +772,7 @@ class ProjectileShooterTest {
         new Vector(0, 0, 1),
         0.0,
         100000.0,
+        Cache.falloffStartDistance,
         10.0,
         20,
         null,
@@ -831,6 +835,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
+          double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
@@ -841,6 +846,7 @@ class ProjectileShooterTest {
         new Vector(0, 0, 1),
         20.0,
         100000.0,
+        Cache.falloffStartDistance,
         10.0,
         20,
         null,
@@ -888,6 +894,78 @@ class ProjectileShooterTest {
       assertEquals(1, lights.constructed().size());
     } finally {
       PartLoader.get().remove("ordinary");
+    }
+  }
+
+  @Test
+  void forgedStatsScaleDamageAddPierceAndMoveFalloff() throws Exception {
+    var target = mock(LivingEntity.class);
+    when(target.getHealth()).thenReturn(100.0);
+    when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+        .thenReturn(new RayTraceResult(new Vector(0, 1.6, 1), target));
+    // 10 damage at -50% is 5; 20 pierce from the parts makes all of it pierce armour.
+    putInt("stat_value_damage_percent", -50);
+    putInt("stat_value_pierce", 20);
+    putInt("stat_value_falloff", 30);
+    ProjectileShooter.shootBullet(player, gun, ammo());
+    server.getScheduler().performTicks(1);
+    verify(target).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
+    // A damage percent past -100 never heals.
+    server.getScheduler().cancelTasks(plugin);
+    clearInvocations(target);
+    putInt("stat_value_damage_percent", -300);
+    ProjectileShooter.shootBullet(player, gun, ammo());
+    server.getScheduler().performTicks(1);
+    verify(target, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void shotgunPelletsFanOutAroundTheAimByTheBarrelCone() {
+    double oldTighten = Cache.coneTightenPerAccuracy;
+    double oldMin = Cache.coneMinFactor;
+    try {
+      Cache.coneTightenPerAccuracy = 0.0;
+      Cache.coneMinFactor = 0.4;
+      var config = new YamlConfiguration();
+      config.set("amount", 20);
+      putInt("stat_value_range", 1);
+      putInt("stat_value_spread", 10);
+      var directions = ArgumentCaptor.forClass(Vector.class);
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      double widest = 0;
+      for (Vector d : directions.getAllValues()) {
+        double angle = d.angle(new Vector(0, 0, 1));
+        widest = Math.max(widest, angle);
+        assertTrue(angle <= Math.toRadians(10 * Math.sqrt(2) + 0.5));
+      }
+      // Accuracy 30 alone keeps pellets within 0.2 degrees; the 10 degree cone spreads them.
+      assertTrue(widest > Math.toRadians(2));
+
+      // Accuracy tightens the cone down to its floor (0.4 of 10 degrees).
+      server.getScheduler().cancelTasks(plugin);
+      clearInvocations(world);
+      Cache.coneTightenPerAccuracy = 1.0;
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      directions = ArgumentCaptor.forClass(Vector.class);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      for (Vector d : directions.getAllValues()) {
+        assertTrue(d.angle(new Vector(0, 0, 1)) <= Math.toRadians(4 * Math.sqrt(2) + 0.5));
+      }
+
+      // A single ball from a coned barrel flies on the gun's own spread.
+      server.getScheduler().cancelTasks(plugin);
+      clearInvocations(world);
+      ProjectileShooter.shootBullet(player, gun, ammo());
+      server.getScheduler().performTicks(1);
+      directions = ArgumentCaptor.forClass(Vector.class);
+      verify(world).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      assertTrue(directions.getValue().angle(new Vector(0, 0, 1)) < Math.toRadians(0.2));
+    } finally {
+      Cache.coneTightenPerAccuracy = oldTighten;
+      Cache.coneMinFactor = oldMin;
     }
   }
 }

@@ -41,27 +41,72 @@ public final class Handling {
 
     /** As {@link #spreadMultiplier(Player)}, with the VehicleFramework seat already looked up. */
     public static double spreadMultiplier(Player player, ActiveVehicle seat) {
+        return spreadMultiplier(player, seat, Steadiness.NONE);
+    }
+
+    /**
+     * As {@link #spreadMultiplier(Player, ActiveVehicle)}, with the gun's parts deciding how much of
+     * each stance's penalty or bonus applies.
+     */
+    public static double spreadMultiplier(Player player, ActiveVehicle seat, Steadiness steadiness) {
         if (seat != null) {
-            return isTravelling(seat) ? Cache.spreadMounted : 1.0;
+            return isTravelling(seat) ? steadiness.mounted(Cache.spreadMounted) : 1.0;
         }
         if (player.isInsideVehicle()) {
             Entity vehicle = player.getVehicle();
             boolean animal = vehicle instanceof LivingEntity && !(vehicle instanceof ArmorStand);
-            return animal || isSeatMoving(vehicle) ? Cache.spreadMounted : 1.0;
+            return animal || isSeatMoving(vehicle) ? steadiness.mounted(Cache.spreadMounted) : 1.0;
         }
         if (isAirborne(player)) {
-            return Cache.spreadAirborne;
+            return steadiness.moving(Cache.spreadAirborne);
         }
         double multiplier = 1.0;
         if (player.isSprinting()) {
-            multiplier = Cache.spreadSprinting;
+            multiplier = steadiness.moving(Cache.spreadSprinting);
         } else if (isMoving(player.getCurrentInput())) {
-            multiplier = Cache.spreadMoving;
+            multiplier = steadiness.moving(Cache.spreadMoving);
         }
         if (player.isSneaking()) {
-            multiplier *= Cache.spreadSneaking;
+            multiplier *= steadiness.sneaking(Cache.spreadSneaking);
         }
         return multiplier;
+    }
+
+    /**
+     * How much of each stance's effect a gun's parts let through: 1 is the configured effect,
+     * 0.5 half of it, 2 double. The moving factor covers walking, sprinting and jumping; a
+     * steadier gun shrinks those penalties, and a steadier crouch deepens the sneaking bonus.
+     */
+    public record Steadiness(double moving, double mounted, double sneaking) {
+        public static final Steadiness NONE = new Steadiness(1.0, 1.0, 1.0);
+        static final double MIN = 0.5;
+        static final double MAX = 2.0;
+
+        /** From the gun's stats: positive means steadier (moving 40 lets 60% of the penalty through). */
+        public static Steadiness of(int movingStat, int mountedStat, int sneakingStat) {
+            return new Steadiness(clamp(1.0 - movingStat / 100.0), clamp(1.0 - mountedStat / 100.0),
+                    clamp(1.0 + sneakingStat / 100.0));
+        }
+
+        private static double clamp(double factor) {
+            return Math.min(MAX, Math.max(MIN, factor));
+        }
+
+        double moving(double stance) {
+            return scale(stance, moving);
+        }
+
+        double mounted(double stance) {
+            return scale(stance, mounted);
+        }
+
+        double sneaking(double stance) {
+            return scale(stance, sneaking);
+        }
+
+        private static double scale(double stance, double factor) {
+            return Math.max(0.0, 1.0 + (stance - 1.0) * factor);
+        }
     }
 
     /**
@@ -132,14 +177,24 @@ public final class Handling {
      * start distance, then linear down to the minimum at the shot's maximum range.
      */
     public static double falloffMultiplier(double distance, double maxDistance) {
+        return falloffMultiplier(distance, maxDistance, Cache.falloffStartDistance);
+    }
+
+    /** As {@link #falloffMultiplier(double, double)}, from a gun's own start distance. */
+    public static double falloffMultiplier(double distance, double maxDistance, double startDistance) {
         double min = Cache.falloffMinMultiplier;
-        if (min >= 1.0 || distance <= Cache.falloffStartDistance) {
+        if (min >= 1.0 || distance <= startDistance) {
             return 1.0;
         }
         if (distance >= maxDistance) {
             return min;
         }
-        double t = (distance - Cache.falloffStartDistance) / (maxDistance - Cache.falloffStartDistance);
+        double t = (distance - startDistance) / (maxDistance - startDistance);
         return 1.0 - t * (1.0 - min);
+    }
+
+    /** The gun's full-damage distance: the configured start plus its parts' falloff stat. */
+    public static double falloffStart(int falloffStat) {
+        return Math.max(0.0, Cache.falloffStartDistance + falloffStat);
     }
 }

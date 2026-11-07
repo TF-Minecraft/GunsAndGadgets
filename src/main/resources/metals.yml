@@ -1,0 +1,126 @@
+# Materials forged gun parts are made from (GunsAndGadgets forging).
+# A part's tendencies in parts.yml are written for steel (stocks: maplewood). Each material
+# multiplies a part's upsides by 'better' and its downsides by 'worse': a number sets every
+# stat, a section sets 'default' plus per-stat factors. Barrels load shot up to their tier.
+# New materials (alloys) only need an entry here; every forged part of their kind gains them.
+
+iron:
+  name: "§7Iron"
+  kind: metal
+  tier: 1
+  cost: v.iron_ingot
+  permission: professions.iron_smith
+  description:
+    - "§7Cheap and crude: smaller upsides,"
+    - "§7harsher downsides."
+  better: 0.8
+  worse: 1.25
+
+steel:
+  name: "§fSteel"
+  kind: metal
+  tier: 2
+  cost: m.materials.steel_ingot
+  permission: professions.steel_smith
+  description:
+    - "§7Reliable: every part works as designed."
+  better: 1
+  worse: 1
+
+abyssalite:
+  name: "#3a3e4dAbyssalite"
+  kind: metal
+  tier: 3
+  cost: m.materials.abyssalite_ingot
+  permission: professions.abyssalite_smith
+  description:
+    - "§7Dense: the most accurate and piercing,"
+    - "§7but slow to reload and heavy on the move."
+  better:
+    default: 1.15
+    accuracy: 1.35
+    pierce: 1.4
+    falloff: 1.6
+    range: 1.4
+    sneaking: 1.4
+  worse:
+    default: 0.85
+    reload: 1.3
+    moving: 1.3
+    mounted: 1.3
+
+mythril:
+  name: "§bMythril"
+  kind: metal
+  tier: 4
+  cost: m.materials.mythril_ingot
+  permission: professions.mythril_smith
+  description:
+    - "§7Light and strong: the fastest and steadiest,"
+    - "§7with the mildest downsides."
+  better:
+    default: 1.25
+    accuracy: 1.2
+    speed: 1.6
+    reload: 1.3
+    fire_rate: 1.3
+    moving: 1.5
+    mounted: 1.5
+  worse: 0.75
+
+barkwood:
+  name: "§6Barkwood"
+  kind: wood
+  tier: 1
+  cost: m.materials.refined_barkwood
+  permission: professions.iron_smith
+  description:
+    - "§7Cheap and crude: smaller upsides,"
+    - "§7harsher downsides."
+  better: 0.8
+  worse: 1.25
+
+maplewood:
+  name: "§eMaplewood"
+  kind: wood
+  tier: 2
+  cost: m.materials.refined_maplewood
+  permission: professions.steel_smith
+  description:
+    - "§7Light: steadier on the move and in the saddle."
+  better:
+    default: 1
+    fire_rate: 1.2
+    moving: 1.3
+    mounted: 1.3
+  worse: 1
+
+elderwood:
+  name: "§8Elderwood"
+  kind: wood
+  tier: 3
+  cost: m.materials.refined_elderwood
+  permission: professions.abyssalite_smith
+  description:
+    - "§7Steady: the most accurate stock wood."
+  better:
+    default: 1.15
+    accuracy: 1.35
+    sneaking: 1.4
+  worse: 0.9
+
+demonwood:
+  name: "§4Demonwood"
+  kind: wood
+  tier: 4
+  cost: m.materials.refined_demonwood
+  permission: professions.mythril_smith
+  description:
+    - "§7Strong and light, with the mildest downsides."
+  better:
+    default: 1.25
+    accuracy: 1.2
+    fire_rate: 1.3
+    moving: 1.5
+    mounted: 1.5
+  worse: 0.75

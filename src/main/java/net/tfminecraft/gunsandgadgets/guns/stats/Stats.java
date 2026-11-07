@@ -7,14 +7,27 @@ public enum Stats {
     FIRE_RATE("fire_rate"),
     CAPACITY("capacity"),
     DAMAGE("damage"),
-    SPREAD("spread"),
+    SPREAD("spread", "Pellet Spread"),
     RANGE("range"),
-    PIERCE("pierce");
+    PIERCE("pierce"),
+    // Forged parts (see PartForge): percent change to shot damage, blocks added to the full-damage
+    // range, and how much of each stance penalty or bonus applies (positive = steadier).
+    DAMAGE_PERCENT("damage_percent", "Damage %"),
+    FALLOFF("falloff", "Full Damage Range"),
+    MOVING("moving", "Steady on the Move"),
+    MOUNTED("mounted", "Steady Mounted"),
+    SNEAKING("sneaking", "Steady Crouched");
 
     private final String key;
+    private final String displayName;
 
     Stats(String key) {
+        this(key, null);
+    }
+
+    Stats(String key, String displayName) {
         this.key = key;
+        this.displayName = displayName;
     }
 
     /**
@@ -28,6 +41,7 @@ public enum Stats {
      * Capitalized display name (e.g. "Fire_rate" -> "Fire Rate").
      */
     public String getDisplayName() {
+        if (displayName != null) return displayName;
         String[] parts = key.split("_");
         StringBuilder sb = new StringBuilder();
         for (String p : parts) {

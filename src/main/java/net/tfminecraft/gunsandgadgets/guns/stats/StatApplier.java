@@ -52,7 +52,9 @@ public class StatApplier {
             int value = totals.get(stat);
 
             String valueColor;
-            if (value < 0) {
+            if (stat == Stats.SPREAD) {
+                valueColor = "#FFFF55"; // a pellet cone is a shape, not a better or worse number
+            } else if (value < 0) {
                 valueColor = "#FF5555";
             } else if (value == 0) {
                 valueColor = "#AAAAAA";

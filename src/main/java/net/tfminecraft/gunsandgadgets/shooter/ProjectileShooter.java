@@ -190,7 +190,9 @@ public class ProjectileShooter {
         // The shooter's VehicleFramework seat sets the stance and is skipped by their own bullets:
         // the muzzle starts inside the vehicle, next to its base.
         ActiveVehicle ownVehicle = Handling.vehicleFrameworkSeat(player);
-        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player, ownVehicle));
+        Handling.Steadiness steadiness = Handling.Steadiness.of(
+                gunStat(meta, "moving"), gunStat(meta, "mounted"), gunStat(meta, "sneaking"));
+        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player, ownVehicle, steadiness));
 
         int salt = meta.getPersistentDataContainer().getOrDefault(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "accuracy_salt"),
@@ -200,19 +202,33 @@ public class ProjectileShooter {
 
         int projectiles = Math.max(1, ammo.getAmount());
 
+        // A shotgun barrel's spread stat is its pellet cone: the aim wanders by the gun's accuracy
+        // and stance, then the pellets fan out around it, tighter the more accurate the gun.
+        int cone = gunStat(meta, "spread");
+        boolean pelletCone = cone > 0 && projectiles > 1;
+        Vector aim = pelletCone ? applySpread(forward.clone(), spreadDegrees, rand) : forward;
+        double coneDegrees = cone * Math.max(Cache.coneMinFactor, 1.0 - Cache.coneTightenPerAccuracy * totalAcc);
+
+        // Damage: flat gun damage plus the shot, scaled by the parts' damage percent.
+        int ammoDamage = ammo.getStats().getOrDefault("damage", 0);
+        double totalDamage = Math.max(0.0,
+                (gunStat(meta, "damage") + ammoDamage) * (1.0 + gunStat(meta, "damage_percent") / 100.0));
+        int pierceStat = ammo.getStats().getOrDefault("pierce", 0) + gunStat(meta, "pierce");
+        double falloffStart = Handling.falloffStart(gunStat(meta, "falloff"));
+
         for (int i = 0; i < projectiles; i++) {
-            Vector shotDir = applySpread(forward.clone(), spreadDegrees, rand);
+            Vector shotDir = pelletCone ? applySpread(aim.clone(), coneDegrees, rand)
+                    : applySpread(forward.clone(), spreadDegrees, rand);
             Vector velocity = shotDir.multiply(speed * (ammo.hasOption(AmmoOption.ROCKET) ? 0.3 : 0.7));
-            int gunDamage = meta.getPersistentDataContainer().getOrDefault(
-                    new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_damage"),
-                    PersistentDataType.INTEGER, 0);
-            int ammoDamage = ammo.getStats().getOrDefault("damage", 0);
-            double totalDamage = gunDamage + ammoDamage;
-
-            int pierceStat = ammo.getStats().getOrDefault("pierce", 0);
-
-            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, totalDamage, pierceStat, ownVehicle, Math::random);
+            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, falloffStart, totalDamage, pierceStat, ownVehicle, Math::random);
         }
+    }
+
+    /** A crafted gun's stat (stat_value_ PDC), 0 when its parts never set it. */
+    private static int gunStat(ItemMeta meta, String key) {
+        return meta.getPersistentDataContainer().getOrDefault(
+                new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_" + key),
+                PersistentDataType.INTEGER, 0);
     }
 
     private static void explode(Player shooter, Location loc, double damage, int pierceStat, int ticks) {
@@ -288,7 +304,7 @@ public class ProjectileShooter {
         v.setZ(z);
     }
 
-    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random) {
+    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double falloffStart, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random) {
         new BukkitRunnable() {
             Location loc = start.clone();
             Vector vel = velocity.clone();
@@ -347,7 +363,7 @@ public class ProjectileShooter {
                 }
 
                 // 🔍 Check for hits
-                if (handleHits(player, ammo, start, maxDistance, ownVehicle, prev, loc, damage, pierceStat, ticks)) {
+                if (handleHits(player, ammo, start, maxDistance, falloffStart, ownVehicle, prev, loc, damage, pierceStat, ticks)) {
                     cancel();
                     return;
                 }
@@ -384,7 +400,7 @@ public class ProjectileShooter {
     }
 
 
-    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, ActiveVehicle ownVehicle, Location from, Location to, double damage, int pierceStat, int ticks) {
+    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, double falloffStart, ActiveVehicle ownVehicle, Location from, Location to, double damage, int pierceStat, int ticks) {
         Vector direction = to.toVector().subtract(from.toVector()).normalize();
         double distance = from.distance(to);
 
@@ -479,7 +495,7 @@ public class ProjectileShooter {
                 return true;
             }
 
-            double finalDamage = damage * Handling.falloffMultiplier(muzzle.distance(hitPoint), maxDistance);
+            double finalDamage = damage * Handling.falloffMultiplier(muzzle.distance(hitPoint), maxDistance, falloffStart);
             if (isHeadshot(target, hitPoint)) {
                 finalDamage *= Cache.headshotMultiplier;
             }

@@ -16,11 +16,23 @@ import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 
 public class AmmunitionLoader implements LoaderInterface{
 	static HashMap<String, Ammunition> oList = new HashMap<>();
+	private static final List<Ammunition> ordered = new ArrayList<>();
 	public static void clear() {
 		oList.clear();
+		ordered.clear();
 	}
 	public static HashMap<String, Ammunition> get() {
 		return oList;
+	}
+	/** Every shot of a family up to a tier, in config order, for a forged barrel's caliber list. */
+	public static List<String> family(String family, int maxTier) {
+		List<String> keys = new ArrayList<>();
+		for (Ammunition ammo : ordered) {
+			if (!family.isEmpty() && ammo.getFamily().equals(family) && ammo.getTier() <= maxTier) {
+				keys.add(ammo.getKey());
+			}
+		}
+		return keys;
 	}
 	public static Ammunition getByString(String id) {
 		if(oList.containsKey(id)) return oList.get(id);
@@ -41,6 +53,7 @@ public class AmmunitionLoader implements LoaderInterface{
 		for(String key : list) {
 			Ammunition o = new Ammunition(key, config.getConfigurationSection(key));
 			oList.put(key, o);
+			ordered.add(o);
 		}
 	}
     

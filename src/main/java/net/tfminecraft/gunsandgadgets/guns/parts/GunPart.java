@@ -6,6 +6,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.SoundType;
+import net.tfminecraft.gunsandgadgets.guns.forge.PartForge;
 import net.tfminecraft.gunsandgadgets.guns.stats.Stats;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 
@@ -37,6 +38,16 @@ public class GunPart {
     private int revision = 0;
     private final boolean disabled;
     private final int tier;
+
+    // Forged parts (PartForge): the definition and material this variant was forged from, the
+    // reference tendencies its lore shows as arrows, and an optional powered/plain shot limit.
+    private final String forgeBase;
+    private final String forgeMetal;
+    private final String forgeName;
+    private final Map<Stats, Double> tendencies;
+    private final Map<Stats, Double> fixedStats;
+    private final AmmoFilter ammoFilter;
+    private final String skinBase;
 
     public GunPart(String key, ConfigurationSection config) {
         this.id = key;
@@ -146,6 +157,14 @@ public class GunPart {
             }
         }
         
+        this.forgeBase = config.getString("forge.base", null);
+        this.forgeMetal = config.getString("forge.metal", null);
+        this.forgeName = StringFormatter.formatHex(config.getString("forge.name", name));
+        this.tendencies = PartForge.parse(config.getStringList("forge.tendencies"));
+        this.fixedStats = PartForge.parse(config.getStringList("forge.fixed"));
+        this.ammoFilter = AmmoFilter.parse(config.getString("ammo-filter", null));
+        this.skinBase = config.getString("skin-base", null);
+
         // Parse normal sounds
         parseSoundSection(config.getStringList("sounds"), sounds);
 
@@ -226,6 +245,25 @@ public class GunPart {
 
     public int getTier() { return tier; }
 
+    public boolean isForged() { return forgeBase != null; }
+
+    /** The forged part this variant belongs to, or the part's own id when it is not forged. */
+    public String getBaseId() { return forgeBase != null ? forgeBase : id; }
+
+    public String getMetalId() { return forgeMetal; }
+
+    /** The part's name without its material. */
+    public String getBaseName() { return forgeName; }
+
+    public Map<Stats, Double> getTendencies() { return tendencies; }
+
+    public Map<Stats, Double> getFixedStats() { return fixedStats; }
+
+    public AmmoFilter getAmmoFilter() { return ammoFilter; }
+
+    /** The id gun designs are matched against when no skin-impact names one: skin-base, else the base id. */
+    public String getSkinBase() { return skinBase != null ? skinBase : getBaseId(); }
+
     public boolean hasTier() { return tier > 0; }
 
     /**
@@ -269,6 +307,13 @@ public class GunPart {
         if (!options.isEmpty()) {
             List<String> optionNames = options.stream().map(Enum::name).sorted().toList();
             sb.append("options=").append(String.join(",", optionNames)).append(';');
+        }
+
+        if (ammoFilter != null) {
+            sb.append("ammo-filter=").append(ammoFilter.name()).append(';');
+        }
+        if (skinBase != null) {
+            sb.append("skin-base=").append(skinBase).append(';');
         }
 
         List<String> classCopy = new ArrayList<>(classRequirements);
@@ -352,6 +397,25 @@ public class GunPart {
      */
     public enum PartOption {
         SMOKELESS, NO_LIGHT
+    }
+
+    /** A part that only loads powered shot (a proofed chamber) or plain shot (an airgun lock). */
+    public enum AmmoFilter {
+        POWERED, PLAIN;
+
+        public boolean allows(boolean powered) {
+            return powered == (this == POWERED);
+        }
+
+        static AmmoFilter parse(String raw) {
+            if (raw == null) return null;
+            try {
+                return valueOf(raw.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid ammo-filter: " + raw);
+                return null;
+            }
+        }
     }
 
     public static class PartSound {

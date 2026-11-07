@@ -74,6 +74,16 @@ public final class GunBrokenMarker {
         }
     }
 
+    /** One chat warning per gun_id per server session for a gun built from retired parts. */
+    public static void notifyRetired(Player player, String gunId, List<String> retiredIds) {
+        if (gunId != null && WARNED_GUN_IDS.add("retired:" + gunId)) {
+            GunsAndGadgets.getInstance().getLogger().info(
+                    "[GunsAndGadgets] Gun " + gunId + " uses retired parts: " + String.join(", ", retiredIds)
+                            + " (holder: " + player.getName() + ")");
+            player.sendMessage("§cThis gun's design has been retired. It can no longer be used.");
+        }
+    }
+
     public static void clearWarningSession(String gunId) {
         if (gunId != null) {
             WARNED_GUN_IDS.remove(gunId);

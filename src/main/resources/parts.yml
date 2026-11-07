@@ -1,489 +1,720 @@
-# Gun parts. Use disabled: true to retire a part from new crafts (do not delete ids).
-# disabled: true   # example - hidden from assembly; existing stamped guns still resolve this part
+# Gun parts. A part with 'tendencies' is forged: it becomes one part per material in
+# metals.yml (id <part>@<material>), and the material scales its tendencies, which are
+# written for steel (stocks: maplewood). 'fixed' stats never scale; 'by-metal' adds per
+# material; an 'ammo-family' barrel loads that family's shot up to its material's tier;
+# 'ammo-filter' (powered/plain) limits the gun's shot; 'skin-base' borrows a gun design.
+# Use disabled: true to retire a part from new crafts (do not delete ids).
 
 # Barrels
 smoothbore_barrel_long:
   name: "§7Smoothbore Barrel (Long)"
   part-type: barrel
-  tier: 1
   type:
     - rifle
   item: modeled.(type=gunpowder;model=2)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 1
+    - speed 10
+    - reload 1
+    - damage_percent -10
+    - falloff -6
   sounds:
     - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
-  stats:
-    - accuracy 5
-    - speed 10
-  caliber:
-    - ironshot
   name-impact:
     - Musket 1 10
-  cost:
-    - v.iron_ingot(4)
-  permissions:
-    - professions.iron_smith
   class:
     - Musketeer
 
 rifled_barrel_long:
   name: "§7Rifled Barrel (Long)"
   part-type: barrel
-  tier: 2
   type:
     - rifle
   item: modeled.(type=gunpowder;model=3)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 4
+    - speed 6
+    - reload -2
+    - pierce 2
+    - falloff 8
   sounds:
     - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
-  stats:
-    - accuracy 10
-    - speed 8
-    - reload -4
-  caliber:
-    - ironshot
-    - steelshot
   name-impact:
     - Rifle 1 10
-  cost:
-    - m.materials.steel_ingot(4)
-  permissions:
-    - professions.steel_smith
+  class:
+    - Musketeer
+
+carbine_barrel:
+  name: "§7Carbine Barrel"
+  part-type: barrel
+  type:
+    - rifle
+  item: modeled.(type=gunpowder;model=3)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 2
+    - speed 3
+    - reload 1
+    - damage_percent -10
+    - falloff -8
+    - moving 40
+    - mounted 40
+  sounds:
+    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+  name-impact:
+    - Carbine 1 20
+  class:
+    - Musketeer
+
+heavy_barrel:
+  name: "§7Heavy Barrel"
+  part-type: barrel
+  type:
+    - rifle
+  item: modeled.(type=gunpowder;model=3)
+  cost-amount: 6
+  ammo-family: shot
+  tendencies:
+    - accuracy 4
+    - speed 11
+    - reload -5
+    - damage_percent -10
+    - pierce 6
+    - falloff 20
+    - moving -50
+    - sneaking 50
+  sounds:
+    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3
+  name-impact:
+    - Longrifle 1 20
   class:
     - Musketeer
 
 smoothbore_barrel_short:
   name: "§7Smoothbore Barrel (Short)"
   part-type: barrel
-  tier: 1
   type:
     - pistol
   item: modeled.(type=gunpowder;model=4)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 4
+    - speed 5
+    - reload 1
+    - damage_percent -10
+    - falloff -4
+    - moving 30
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
-  stats:
-    - accuracy 3
-    - speed 8
-  caliber:
-    - ironshot
   name-impact:
     - Pistol 1 10
-  cost:
-    - v.iron_ingot(4)
-  permissions:
-    - professions.iron_smith
   class:
     - Musketeer
 
 rifled_barrel_short:
   name: "§7Rifled Barrel (Short)"
   part-type: barrel
-  tier: 2
   type:
     - pistol
   item: modeled.(type=gunpowder;model=5)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 7
+    - speed 6
+    - reload -2
+    - pierce 2
+    - falloff 4
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
-  stats:
-    - accuracy 7
-    - speed 7
-    - reload -4
-  caliber:
-    - ironshot
-    - steelshot
   name-impact:
     - Pistol 1 10
-  cost:
-    - m.materials.steel_ingot(4)
-  permissions:
-    - professions.steel_smith
+  class:
+    - Musketeer
+
+duelling_barrel:
+  name: "§7Duelling Barrel"
+  part-type: barrel
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=5)
+  cost-amount: 4
+  ammo-family: shot
+  tendencies:
+    - accuracy 11
+    - speed 10
+    - reload -6
+    - pierce 2
+    - falloff 12
+    - moving -30
+  sounds:
+    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+  name-impact:
+    - Duelling-Pistol 1 20
   class:
     - Musketeer
 
 spread_barrel:
   name: "§7Spread Barrel"
   part-type: barrel
-  tier: 2
   type:
     - shotgun
   item: modeled.(type=gunpowder;model=6)
+  cost-amount: 4
+  ammo-family: spreadshot
+  tendencies:
+    - accuracy 4
+    - reload -4
+    - range 2
+  fixed:
+    - cone 14
   sounds:
     - shoot minecraft:guns.musket_1
-  stats:
-    - accuracy -8
-    - reload -10
-  caliber:
-    - spreadshot
   name-impact:
     - Blunderbuss -1 100
   skin-impact:
     - blunderbuss 10
-  cost:
-    - m.materials.steel_ingot(4)
-  permissions:
-    - professions.steel_smith
+  class:
+    - Musketeer
+
+sawn_off_barrel:
+  name: "§7Sawn-off Barrel"
+  part-type: barrel
+  type:
+    - shotgun
+  item: modeled.(type=gunpowder;model=6)
+  cost-amount: 4
+  ammo-family: spreadshot
+  tendencies:
+    - accuracy 4
+    - range -5
+    - reload -3
+    - moving 40
+  fixed:
+    - cone 22
+  sounds:
+    - shoot minecraft:guns.musket_1
+  name-impact:
+    - Sawn-off -1 100
+  skin-impact:
+    - blunderbuss 10
+  class:
+    - Musketeer
+
+fowling_barrel:
+  name: "§7Fowling Barrel"
+  part-type: barrel
+  type:
+    - shotgun
+  item: modeled.(type=gunpowder;model=6)
+  cost-amount: 4
+  ammo-family: spreadshot
+  tendencies:
+    - accuracy 4
+    - range 7
+    - speed 2
+    - reload -8
+  fixed:
+    - cone 7
+  sounds:
+    - shoot minecraft:guns.musket_1
+  name-impact:
+    - Fowler -1 100
+  skin-impact:
+    - blunderbuss 10
   class:
     - Musketeer
 
 launcher_barrel:
-  name: "#3a3e4dLauncher Barrel"
+  name: "§7Launcher Barrel"
   part-type: barrel
-  tier: 3
   type:
     - launcher
   item: modeled.(type=gunpowder;model=22)
+  cost-amount: 4
+  ammo-family: rocket
+  tendencies:
+    - accuracy -1
+    - pierce 2
+  fixed:
+    - fire_rate 16
+    - reload -14
   sounds:
     - shoot gunsandgadgets:launcher_shoot
     - shoot minecraft:entity.generic.explode
-  stats:
-    - accuracy -6
-    - reload -10
-    - fire_rate 16
-  caliber:
-    - rocket
   name-impact:
     - "#3a3e4dRocket 0 100"
-    - "Launcher 1 100"
+    - Launcher 1 100
   skin-impact:
     - launcher 10
-  cost:
-    - m.materials.abyssalite_ingot(4)
-  permissions:
-    - professions.abyssalite_smith
   class:
     - Musketeer
+
+short_launch_tube:
+  name: "§7Short Launch Tube"
+  part-type: barrel
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=22)
+  cost-amount: 4
+  ammo-family: rocket
+  tendencies:
+    - accuracy -1
+    - damage_percent -8
+    - moving 40
+  fixed:
+    - fire_rate 16
+    - reload -11
+  sounds:
+    - shoot gunsandgadgets:launcher_shoot
+    - shoot minecraft:entity.generic.explode
+  name-impact:
+    - "#3a3e4dRocket 0 100"
+    - Tube 1 100
+  skin-impact:
+    - launcher 10
+  class:
+    - Musketeer
+
+long_launch_tube:
+  name: "§7Long Launch Tube"
+  part-type: barrel
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=22)
+  cost-amount: 4
+  ammo-family: rocket
+  tendencies:
+    - accuracy 3
+    - speed 4
+    - damage_percent -8
+    - pierce 4
+  fixed:
+    - fire_rate 16
+    - reload -18
+  sounds:
+    - shoot gunsandgadgets:launcher_shoot
+    - shoot minecraft:entity.generic.explode
+  name-impact:
+    - "#3a3e4dRocket 0 100"
+    - Rail-Launcher 1 100
+  skin-impact:
+    - launcher 10
+  class:
+    - Musketeer
+
 # Loaders
 muzzle_loader:
   name: "§7Muzzle Loader"
   part-type: loader
-  tier: 1
   type:
     - rifle
     - pistol
     - shotgun
     - launcher
   item: modeled.(type=gunpowder;model=7)
+  cost-amount: 2
+  tendencies:
+    - accuracy 3
+    - speed 4
+    - reload 1
+  fixed:
+    - fire_rate 2
   sounds:
     - reload gunsandgadgets:muzzle_reload
-  stats:
-    - fire_rate 2
-    - accuracy 4
-    - reload 4
-    - speed 4
-  cost:
-    - v.iron_ingot(2)
-  permissions:
-    - professions.iron_smith
   class:
     - Musketeer
 
 breech_loader:
   name: "§7Breech Loader"
   part-type: loader
-  tier: 4
   type:
     - rifle
+    - pistol
     - shotgun
     - launcher
   item: modeled.(type=gunpowder;model=8)
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+    - speed 3
+    - reload 3
+    - fire_rate 3
   sounds:
     - reload vehicleframework:gun_reload
-  stats:
-    - fire_rate 5
-    - accuracy 2
-    - reload 12
-    - speed 3
-  cost:
-    - m.materials.mythril_ingot(2)
-  permissions:
-    - professions.mythril_smith
   class:
     - Musketeer
 
-# Chamber
+patch_ramrod:
+  name: "§7Patch & Ramrod"
+  part-type: loader
+  type:
+    - rifle
+    - pistol
+  item: modeled.(type=gunpowder;model=7)
+  cost-amount: 2
+  tendencies:
+    - accuracy 5
+    - speed 5
+    - reload -3
+    - pierce 2
+  sounds:
+    - reload gunsandgadgets:muzzle_reload
+  class:
+    - Musketeer
+
+# Chambers
 single_shot:
   name: "§7Single Shot"
   part-type: chamber
-  tier: 1
   type:
     - rifle
     - pistol
     - shotgun
   item: modeled.(type=gunpowder;model=9)
-  stats:
-    - capacity 1
-    - reload 2
+  cost-amount: 2
+  tendencies:
     - accuracy 2
     - speed 3
-  cost:
-    - v.iron_ingot(2)
-  permissions:
-    - professions.iron_smith
-  class:
-    - Musketeer
-single_shot_launcher:
-  name: "§7Single Shot"
-  part-type: chamber
-  tier: 3
-  type:
-    - launcher
-  item: modeled.(type=gunpowder;model=24)
-  stats:
+    - reload 1
+  fixed:
     - capacity 1
-    - reload 4
-    - accuracy 8
-    - speed 4
-  cost:
-    - m.materials.abyssalite_ingot(2)
-  permissions:
-    - professions.abyssalite_smith
   class:
     - Musketeer
-quad_shot:
-  name: "§7Quad Shot"
+
+double_chamber:
+  name: "§7Double Chamber"
   part-type: chamber
-  tier: 4
   type:
-    - launcher
-  item: modeled.(type=gunpowder;model=25)
-  stats:
-    - capacity 4
-    - reload -10
-    - accuracy 2
-    - speed 3
-  cost:
-    - m.materials.mythril_ingot(2)
-  permissions:
-    - professions.mythril_smith
+    - rifle
+    - pistol
+    - shotgun
+  item: modeled.(type=gunpowder;model=9)
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+    - reload -4
+    - fire_rate -6
+  fixed:
+    - capacity 2
+  name-impact:
+    - (Double) 2 10
   class:
     - Musketeer
 
 revolver:
   name: "§7Revolver"
   part-type: chamber
-  tier: 3
   type:
     - rifle
     - pistol
   item: modeled.(type=gunpowder;model=10)
-  stats:
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+    - reload -10
+    - fire_rate -4
+  fixed:
     - capacity 6
-    - fire_rate 4
-    - reload -12
-    - accuracy -1
-    - damage -3
-    - speed 1
+    - damage_percent -55
   name-impact:
     - (Revolver) 2 10
-  cost:
-    - m.materials.abyssalite_ingot(2)
-  permissions:
-    - professions.abyssalite_smith
+  class:
+    - Musketeer
+
+proof_chamber:
+  name: "§7Proof Chamber"
+  part-type: chamber
+  type:
+    - rifle
+    - pistol
+  item: modeled.(type=gunpowder;model=9)
+  cost-amount: 2
+  ammo-filter: powered
+  tendencies:
+    - speed 4
+    - pierce 11
+  fixed:
+    - capacity 1
+    - damage_percent -20
+  name-impact:
+    - (Proof) 2 5
+  class:
+    - Musketeer
+
+single_shot_launcher:
+  name: "§7Single Shot"
+  part-type: chamber
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=24)
+  cost-amount: 2
+  tendencies:
+    - accuracy 5
+    - speed 2
+    - reload 2
+  fixed:
+    - capacity 1
+  class:
+    - Musketeer
+
+multi_tube_chamber:
+  name: "§7Multi-Tube Chamber"
+  part-type: chamber
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=25)
+  metals:
+    - steel
+    - abyssalite
+    - mythril
+  cost-amount: 2
+  tendencies:
+    - accuracy 2
+    - speed 2
+  fixed:
+    - fire_rate -6
+  by-metal:
+    steel:
+      - capacity 2
+      - reload -4
+    abyssalite:
+      - capacity 3
+      - reload -6
+    mythril:
+      - capacity 4
+      - reload -8
+  name-impact:
+    - (Salvo) 2 10
   class:
     - Musketeer
 
 # Actions
-steamlock:
-  name: "§7Steamlock"
-  part-type: action
-  tier: 1
-  type:
-    - rifle
-    - pistol
-  item: modeled.(type=gunpowder;model=11)
-  sound-overrides:
-    - shoot gunsandgadgets:steamlock_shoot
-  # Airgun: no muzzle smoke or flash, whichever shot it fires.
-  options:
-    - smokeless
-    - no_light
-  caliber-override:
-    - pebbleshot
-  stats:
-    - fire_rate 4
-    - accuracy 1
-    - speed -3
-  name-impact:
-    - Steamlock 0 10
-  skin-impact:
-    - steamlock 10
-  cost:
-    - v.iron_ingot(2)
-  permissions:
-    - professions.iron_smith
-  class:
-    - Musketeer
-
 matchlock:
   name: "§7Matchlock"
   part-type: action
-  tier: 2
   type:
     - rifle
     - pistol
     - shotgun
   item: modeled.(type=gunpowder;model=12)
-  stats:
-    - fire_rate 1
-    - accuracy 1
+  cost-amount: 2
+  tendencies:
+    - accuracy 3
   name-impact:
     - Matchlock 0 10
   skin-impact:
     - matchlock 10
     - blunderbuss 1
     - launcher 1
-  cost:
-    - m.materials.steel_ingot(2)
-  permissions:
-    - professions.steel_smith
   class:
     - Musketeer
 
 flintlock:
   name: "§7Flintlock"
   part-type: action
-  tier: 3
   type:
     - rifle
     - pistol
     - shotgun
   item: modeled.(type=gunpowder;model=13)
+  cost-amount: 2
+  tendencies:
+    - accuracy -1
+    - reload 2
+    - fire_rate 2
   sounds:
     - shoot minecraft:item.flintandsteel.use
-  stats:
-    - fire_rate 2
-    - accuracy 2
   name-impact:
     - Flintlock 0 10
   skin-impact:
     - flintlock 10
     - blunderbuss 1
     - launcher 1
-  cost:
-    - m.materials.abyssalite_ingot(2)
-  permissions:
-    - professions.abyssalite_smith
   class:
     - Musketeer
 
-rocketlock:
-  name: "#3a3e4dRocketlock"
+steamlock:
+  name: "§7Steamlock"
   part-type: action
-  tier: 3
   type:
-    - launcher
-  item: modeled.(type=gunpowder;model=23)
-  stats:
-    - fire_rate -10
-    - accuracy 3
-    - reload -6
+    - rifle
+    - pistol
+  item: modeled.(type=gunpowder;model=11)
+  cost-amount: 2
+  ammo-filter: plain
+  tendencies:
+    - accuracy 2
+    - speed -3
+    - damage_percent -10
+    - fire_rate 4
+  options:
+    - smokeless
+    - no_light
+  sound-overrides:
+    - shoot gunsandgadgets:steamlock_shoot
+  name-impact:
+    - Steamlock 0 10
   skin-impact:
-    - launcher 10
-  cost:
-    - m.materials.abyssalite_ingot(2)
-  permissions:
-    - professions.abyssalite_smith
+    - steamlock 10
+  class:
+    - Musketeer
+
+wheellock:
+  name: "§7Wheellock"
+  part-type: action
+  type:
+    - rifle
+    - pistol
+    - shotgun
+  item: modeled.(type=gunpowder;model=13)
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+    - mounted 50
+    - moving 15
+  name-impact:
+    - Wheellock 0 10
+  skin-impact:
+    - wheellock 10
+    - blunderbuss 1
+    - launcher 1
+  skin-base: flintlock
   class:
     - Musketeer
 
 arclock:
   name: "§7Experimental Arclock"
   part-type: action
-  tier: 4
   type:
     - rifle
   item: modeled.(type=gunpowder;model=14)
+  cost-amount: 2
+  tendencies:
+    - accuracy 6
+    - speed 7
+    - reload -8
+    - fire_rate -12
   sounds:
     - reload gunsandgadgets:arclock_reload
     - reload minecraft:block.beacon.activate
   sound-overrides:
-    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3,minecraft:guns.musket_7,minecraft:guns.musket_8,minecraft:guns.musket_9 
-  stats:
-    - fire_rate -12
-    - accuracy 8
-    - reload -10
-    - speed 8
-  caliber-override:
-    - bronzeshot
+    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3,minecraft:guns.musket_7,minecraft:guns.musket_8,minecraft:guns.musket_9
   name-impact:
     - §5Arclock 0 10
   skin-impact:
     - arclock 10
-  cost:
-    - m.materials.mythril_ingot(2)
-  permissions:
-    - professions.mythril_smith
-  class:
-    - Musketeer
   lore:
     - "§7Unlike the arclocks used in larger weapons like mounted heavy rifles"
-    - "§7The experimental handheld arclocks are not able to reproduce the rapid"
-    - "§7rate of fire seen in these larger guns. Instead the focus is shifted to"
-    - "§7accuracy and speed at great cost of its manual and long reloading process."
+    - "§7the experimental handheld arclocks cannot reproduce their rapid"
+    - "§7rate of fire. Instead the focus is shifted to accuracy and speed,"
+    - "§7at the cost of a long, manual reload."
+  class:
+    - Musketeer
+
+rocketlock:
+  name: "§7Rocketlock"
+  part-type: action
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=23)
+  cost-amount: 2
+  tendencies:
+    - accuracy 4
+    - reload -4
+  fixed:
+    - fire_rate -10
+  skin-impact:
+    - launcher 10
+  class:
+    - Musketeer
+
+fuse_igniter:
+  name: "§7Fuse Igniter"
+  part-type: action
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=23)
+  cost-amount: 2
+  tendencies:
+    - accuracy 1
+  fixed:
+    - fire_rate -14
+  skin-impact:
+    - launcher 10
+  class:
+    - Musketeer
 
 # Stocks
-oak_stock:
-  name: "§7Oak Stock"
+standard_stock:
+  name: "§7Standard Stock"
   part-type: stock
-  tier: 1
   type:
     - rifle
     - shotgun
   item: modeled.(type=gunpowder;model=15)
-  stats:
-    - accuracy 3
-  cost:
-    - m.materials.refined_barkwood(2)
-  permissions:
-    - professions.iron_smith
+  material: wood
+  cost-amount: 2
+  tendencies:
+    - accuracy 4
   class:
     - Musketeer
 
-maplewood_stock:
-  name: "§7Maplewood Stock"
+saddle_stock:
+  name: "§7Saddle Stock"
   part-type: stock
-  tier: 2
   type:
     - rifle
     - shotgun
   item: modeled.(type=gunpowder;model=16)
-  stats:
-    - accuracy 4
+  material: wood
+  cost-amount: 2
   cost:
-    - m.materials.refined_maplewood(2)
-  permissions:
-    - professions.steel_smith
+    - v.leather(2)
+  tendencies:
+    - accuracy 2
+    - moving 30
+    - mounted 40
   class:
     - Musketeer
 
-elderwood_stock:
-  name: "§8Elderwood Stock"
+cheek_rest_stock:
+  name: "§7Cheek-rest Stock"
   part-type: stock
-  tier: 3
   type:
     - rifle
-    - shotgun
   item: modeled.(type=gunpowder;model=17)
-  stats:
-    - accuracy 5
+  material: wood
+  cost-amount: 2
   cost:
-    - m.materials.refined_elderwood(2)
-  permissions:
-    - professions.abyssalite_smith
-  class:
-    - Musketeer
-
-demonwood_stock:
-  name: "§4Demonwood Stock"
-  part-type: stock
-  tier: 4
-  type:
-    - rifle
-    - shotgun
-  item: modeled.(type=gunpowder;model=17)
-  stats:
+    - v.leather(2)
+  tendencies:
     - accuracy 6
+    - reload -2
+    - sneaking 50
+    - moving -30
+  class:
+    - Musketeer
+
+padded_stock:
+  name: "§7Padded Stock"
+  part-type: stock
+  type:
+    - rifle
+    - shotgun
+  item: modeled.(type=gunpowder;model=16)
+  material: wood
+  cost-amount: 2
   cost:
-    - m.materials.refined_demonwood(2)
-  permissions:
-    - professions.mythril_smith
+    - v.leather(2)
+  tendencies:
+    - accuracy 2
+    - fire_rate 4
   class:
     - Musketeer

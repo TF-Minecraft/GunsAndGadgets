@@ -111,6 +111,8 @@ class InventoryManagerTest {
     PartDataLoader.get().put(category, data);
     GunPart p = mock(GunPart.class);
     when(p.getId()).thenReturn(id);
+    when(p.getBaseId()).thenReturn(id);
+    when(p.getSkinBase()).thenReturn(id);
     when(p.getName()).thenReturn(id);
     when(p.getItemKey()).thenReturn("v.stick");
     when(p.getPartType()).thenReturn(data);
@@ -656,5 +658,95 @@ class InventoryManagerTest {
       io.lumine.mythic.lib.MythicLib.plugin = oldMythic;
       net.Indyuce.mmoitems.MMOItems.plugin = oldItems;
     }
+  }
+
+  GunPart forged(String base, String metal, String category) {
+    GunPart p = part(base + "@" + metal, category, 1);
+    when(p.isForged()).thenReturn(true);
+    when(p.getBaseId()).thenReturn(base);
+    when(p.getMetalId()).thenReturn(metal);
+    when(p.getBaseName()).thenReturn("Base " + base);
+    return p;
+  }
+
+  @Test
+  void forgedPartsAreOneChoiceWhoseMaterialIsPickedNext() throws Exception {
+    var metals = java.nio.file.Files.createTempFile("metals", ".yml");
+    java.nio.file.Files.writeString(
+        metals, "iron: {name: Iron, description: [\"Crude metal\"]}\nsteel: {name: Steel}\n");
+    new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
+    try {
+      var iron = forged("heavy", "iron", "action");
+      when(iron.getLore()).thenReturn(List.of("Old design"));
+      forged("heavy", "steel", "action");
+      var locked = forged("heavy", "mythril", "action");
+      when(locked.getPermissions()).thenReturn(List.of("missing"));
+      forged("light", "copper", "action");
+      manager.openPartSelection(player, "action");
+      var top = player.getOpenInventory().getTopInventory();
+      assertEquals("flintlock", string(top.getItem(0), "part_id"));
+      var heavy = top.getItem(1);
+      assertEquals("heavy", string(heavy, "forge_base"));
+      assertNull(string(heavy, "part_id"));
+      assertEquals("Base heavy", heavy.getItemMeta().getDisplayName());
+      assertEquals("Old design", heavy.getItemMeta().getLore().getFirst());
+      assertEquals("§eClick to choose the material", heavy.getItemMeta().getLore().getLast());
+      var light = top.getItem(2);
+      assertEquals("light", string(light, "forge_base"));
+      assertEquals("", light.getItemMeta().getLore().getFirst());
+      assertNull(top.getItem(3));
+
+      // Choosing the part opens its materials: only those the player may forge.
+      manager.onInventoryClick(click(new PartSelectionHolder("action"), 1, heavy));
+      top = player.getOpenInventory().getTopInventory();
+      var holder = assertInstanceOf(MetalSelectionHolder.class, top.getHolder());
+      assertEquals("action", holder.getPartId());
+      assertEquals("heavy", holder.getBaseId());
+      assertNull(holder.getInventory());
+      assertEquals("heavy@iron", string(top.getItem(0), "part_id"));
+      assertTrue(top.getItem(0).getItemMeta().getLore().contains("Crude metal"));
+      assertEquals("heavy@steel", string(top.getItem(1), "part_id"));
+      assertNull(top.getItem(2));
+      assertEquals(Material.ARROW, top.getItem(8).getType());
+
+      // Picking a material selects that variant and returns to the assembly.
+      manager.onInventoryClick(click(holder, 1, top.getItem(1)));
+      assertEquals("heavy@steel", SelectedPartsManager.get(player, "action"));
+      assertInstanceOf(AssemblyHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+      // A material without a description, and one missing from metals.yml, still list.
+      manager.openMetalSelection(player, "action", "light");
+      assertEquals("light@copper", string(player.getOpenInventory().getTopInventory().getItem(0), "part_id"));
+
+      // Back returns to the part list; empty clicks are ignored.
+      manager.onInventoryClick(click(holder, 8, named("§eBack")));
+      assertInstanceOf(PartSelectionHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+      manager.onInventoryClick(click(holder, 0, null));
+      var bare = mock(ItemStack.class);
+      manager.onInventoryClick(click(holder, 0, bare));
+      manager.onInventoryClick(click(holder, 0, named("unknown")));
+      assertInstanceOf(PartSelectionHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+    } finally {
+      net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
+      java.nio.file.Files.deleteIfExists(metals);
+    }
+  }
+
+  @Test
+  void ammoFiltersKeepOnlyPoweredOrPlainShot() {
+    var barrel = part("long", "barrel", 2);
+    var chamber = part("proof", "chamber", 3);
+    var config = new YamlConfiguration();
+    for (String key : List.of("ball", "ball_powered")) {
+      AmmunitionLoader.get()
+          .put(key, new net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition(key, config));
+    }
+    when(barrel.getCalibers()).thenReturn(List.of("ball", "ball_powered", "unknown"));
+    when(chamber.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.POWERED);
+    assertEquals("ball_powered;unknown", string(output(action, barrel, chamber), "calibers"));
+    when(chamber.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.PLAIN);
+    assertEquals("ball;unknown", string(output(action, barrel, chamber), "calibers"));
+    // A filter also narrows a legacy override.
+    when(action.getCaliberOverrides()).thenReturn(List.of("ball_powered", "ball"));
+    assertEquals("ball", string(output(barrel, action, chamber), "calibers"));
   }
 }

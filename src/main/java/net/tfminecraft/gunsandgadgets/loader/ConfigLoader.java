@@ -63,6 +63,12 @@ public class ConfigLoader {
         Cache.falloffStartDistance = Math.max(0.0, finite(config, "handling.falloff.start-distance", 0.0));
         Cache.falloffMinMultiplier =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.falloff.min-multiplier", 1.0)));
+        Cache.smoothAccuracy = config.getBoolean("handling.smooth-accuracy", false);
+        Cache.coneTightenPerAccuracy =
+                Math.max(0.0, finite(config, "handling.pellet-cone.tighten-per-accuracy", 0.03));
+        Cache.coneMinFactor =
+                Math.max(0.0, Math.min(1.0, finite(config, "handling.pellet-cone.min-factor", 0.4)));
+        Cache.retireDisabledPartGuns = config.getBoolean("retire-disabled-part-guns", false);
 
         section = config.getConfigurationSection("required-parts");
         if (section != null) {

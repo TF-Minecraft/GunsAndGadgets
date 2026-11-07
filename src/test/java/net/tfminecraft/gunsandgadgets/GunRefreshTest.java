@@ -370,4 +370,17 @@ class GunRefreshTest extends GunsTestSupport {
     assertFalse(GunRefreshListener.isWorldStorage(mock(Player.class)));
     assertFalse(GunRefreshListener.isWorldStorage(null));
   }
+
+  @Test
+  void retiredWarningsAreLimitedPerGun() {
+    when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
+    Player player = mock(Player.class);
+    when(player.getName()).thenReturn("Hunter");
+    String id = UUID.randomUUID().toString();
+    GunBrokenMarker.notifyRetired(player, null, List.of("old"));
+    GunBrokenMarker.notifyRetired(player, id, List.of("old"));
+    GunBrokenMarker.notifyRetired(player, id, List.of("old"));
+    verify(player).sendMessage(contains("design has been retired"));
+    GunBrokenMarker.clearWarningSession("retired:" + id);
+  }
 }

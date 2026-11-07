@@ -47,7 +47,9 @@ public class SkinResolver {
                 .findFirst().orElse(null);
 
         if (action != null) {
-            String actionId = action.getId().toLowerCase();
+            // Forged actions match by their part (matchlock, not matchlock@steel); a new action can
+            // borrow an existing design with skin-base.
+            String actionId = action.getSkinBase().toLowerCase();
 
             for (SkinData skin : skins.values()) {
                 // must support this gun type

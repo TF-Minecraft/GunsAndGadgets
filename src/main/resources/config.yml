@@ -43,6 +43,19 @@ handling:
     falloff:
         start-distance: 24
         min-multiplier: 0.5
+    # Accuracy above 5 tightens spread by 5% a point. Off (or left out), spread
+    # follows the old line that reaches 1.2 degrees at 20 and 0.07 at 30.
+    smooth-accuracy: true
+    # A shotgun barrel's spread stat is its pellet cone in degrees: the aim wanders
+    # by accuracy and stance, then the pellets fan out around it. Each point of
+    # accuracy tightens the cone, down to min-factor of its size.
+    pellet-cone:
+        tighten-per-accuracy: 0.03
+        min-factor: 0.4
+
+# Guns stamped with a disabled (retired) part refuse to fire or reload. Nothing
+# is written to the gun, so turning this off makes them usable again.
+retire-disabled-part-guns: false
 
 attributes:
     charisma:

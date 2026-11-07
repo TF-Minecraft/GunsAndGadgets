@@ -1,38 +1,235 @@
-pebbleshot:
-  input: m.utils.pebbleshot
+# Shot. 'family' and 'tier' decide which forged barrels load it (a barrel loads its family up
+# to its material's tier); 'powered' marks the heavier charge some parts require or refuse.
+
+ironshot:
+  input: m.utils.ironshot
+  family: shot
+  tier: 1
+  powered: false
   stats:
-    - damage 8
-    - accuracy -2
+    - damage 5
+    - accuracy 0
     - pierce 1
-spreadshot:
-  input: m.utils.spreadshot
-  amount: 16
+ironspreadshot:
+  input: m.utils.ironspreadshot
+  family: spreadshot
+  tier: 1
+  powered: false
+  amount: 10
   stats:
     - range 20
     - damage 1
-ironshot:
-  input: m.utils.ironshot
-  stats:
-    - damage 9
-    - accuracy -1
-    - pierce 4
-steelshot:
-  input: m.utils.steelshot
-  stats:
-    - damage 12
-    - accuracy 4
-    - pierce 5
-bronzeshot:
-  input: m.utils.bronzeshot
-  stats:
-    - damage 16
-    - accuracy 6
-    - pierce 8
-rocket:
-  input: m.utils.rocket
+ironrocket:
+  input: m.utils.ironrocket
+  family: rocket
+  tier: 1
+  powered: false
   options:
     - rocket
   stats:
-    - damage 18
+    - damage 10
+    - accuracy 1
+    - pierce 3
+steelshot:
+  input: m.utils.steelshot
+  family: shot
+  tier: 2
+  powered: false
+  stats:
+    - damage 7
+    - accuracy 1
+    - pierce 2
+steelspreadshot:
+  input: m.utils.steelspreadshot
+  family: spreadshot
+  tier: 2
+  powered: false
+  amount: 11
+  stats:
+    - range 22
+    - damage 1
+steelrocket:
+  input: m.utils.steelrocket
+  family: rocket
+  tier: 2
+  powered: false
+  options:
+    - rocket
+  stats:
+    - damage 12
+    - accuracy 1
+    - pierce 4
+bronzeshot:
+  input: m.utils.bronzeshot
+  family: shot
+  tier: 3
+  powered: false
+  stats:
+    - damage 10
     - accuracy 2
-    - pierce 14
+    - pierce 3
+bronzespreadshot:
+  input: m.utils.bronzespreadshot
+  family: spreadshot
+  tier: 3
+  powered: false
+  amount: 13
+  stats:
+    - range 24
+    - damage 1
+bronzerocket:
+  input: m.utils.bronzerocket
+  family: rocket
+  tier: 3
+  powered: false
+  options:
+    - rocket
+  stats:
+    - damage 13
+    - accuracy 2
+    - pierce 5
+mythrilshot:
+  input: m.utils.mythrilshot
+  family: shot
+  tier: 4
+  powered: false
+  stats:
+    - damage 13
+    - accuracy 3
+    - pierce 4
+mythrilspreadshot:
+  input: m.utils.mythrilspreadshot
+  family: spreadshot
+  tier: 4
+  powered: false
+  amount: 14
+  stats:
+    - range 26
+    - damage 1
+mythrilrocket:
+  input: m.utils.mythrilrocket
+  family: rocket
+  tier: 4
+  powered: false
+  options:
+    - rocket
+  stats:
+    - damage 15
+    - accuracy 2
+    - pierce 6
+ironshot_powered:
+  input: m.utils.ironshot_powered
+  family: shot
+  tier: 1
+  powered: true
+  stats:
+    - damage 6
+    - accuracy 1
+    - pierce 2
+ironspreadshot_powered:
+  input: m.utils.ironspreadshot_powered
+  family: spreadshot
+  tier: 1
+  powered: true
+  amount: 11
+  stats:
+    - range 21
+    - damage 1
+ironrocket_powered:
+  input: m.utils.ironrocket_powered
+  family: rocket
+  tier: 1
+  powered: true
+  options:
+    - rocket
+  stats:
+    - damage 11
+    - accuracy 1
+    - pierce 4
+steelshot_powered:
+  input: m.utils.steelshot_powered
+  family: shot
+  tier: 2
+  powered: true
+  stats:
+    - damage 9
+    - accuracy 2
+    - pierce 3
+steelspreadshot_powered:
+  input: m.utils.steelspreadshot_powered
+  family: spreadshot
+  tier: 2
+  powered: true
+  amount: 12
+  stats:
+    - range 23
+    - damage 1
+steelrocket_powered:
+  input: m.utils.steelrocket_powered
+  family: rocket
+  tier: 2
+  powered: true
+  options:
+    - rocket
+  stats:
+    - damage 13
+    - accuracy 1
+    - pierce 5
+bronzeshot_powered:
+  input: m.utils.bronzeshot_powered
+  family: shot
+  tier: 3
+  powered: true
+  stats:
+    - damage 12
+    - accuracy 3
+    - pierce 4
+bronzespreadshot_powered:
+  input: m.utils.bronzespreadshot_powered
+  family: spreadshot
+  tier: 3
+  powered: true
+  amount: 14
+  stats:
+    - range 25
+    - damage 1
+bronzerocket_powered:
+  input: m.utils.bronzerocket_powered
+  family: rocket
+  tier: 3
+  powered: true
+  options:
+    - rocket
+  stats:
+    - damage 14
+    - accuracy 2
+    - pierce 6
+mythrilshot_powered:
+  input: m.utils.mythrilshot_powered
+  family: shot
+  tier: 4
+  powered: true
+  stats:
+    - damage 15
+    - accuracy 4
+    - pierce 5
+mythrilspreadshot_powered:
+  input: m.utils.mythrilspreadshot_powered
+  family: spreadshot
+  tier: 4
+  powered: true
+  amount: 15
+  stats:
+    - range 27
+    - damage 1
+mythrilrocket_powered:
+  input: m.utils.mythrilrocket_powered
+  family: rocket
+  tier: 4
+  powered: true
+  options:
+    - rocket
+  stats:
+    - damage 16
+    - accuracy 2
+    - pierce 7

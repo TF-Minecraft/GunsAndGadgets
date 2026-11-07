@@ -5,14 +5,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import net.tfminecraft.tlibs.interfaces.LoaderInterface;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
+import net.tfminecraft.gunsandgadgets.guns.forge.PartForge;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.utils.RevisionTracker;
 
@@ -46,12 +49,24 @@ public class PartLoader implements LoaderInterface{
 		List<String> list = new ArrayList<String>(set);
 		
 		for(String key : list) {
-			GunPart o = new GunPart(key, config.getConfigurationSection(key));
-			String hash = RevisionTracker.sha256(o.buildRevisionContent());
-			int revision = GunsAndGadgets.getRevisionTracker().resolvePart(key, hash);
-			o.setRevision(revision);
-			oList.put(key, o);
-			ordered.add(o);
+			ConfigurationSection section = config.getConfigurationSection(key);
+			if (PartForge.isForged(section)) {
+				// One part per material; the material is part of the id the gun stamps.
+				for (Map.Entry<String, ConfigurationSection> variant : PartForge.expand(key, section).entrySet()) {
+					add(variant.getKey(), variant.getValue());
+				}
+			} else {
+				add(key, section);
+			}
 		}
+	}
+
+	private static void add(String key, ConfigurationSection section) {
+		GunPart o = new GunPart(key, section);
+		String hash = RevisionTracker.sha256(o.buildRevisionContent());
+		int revision = GunsAndGadgets.getRevisionTracker().resolvePart(key, hash);
+		o.setRevision(revision);
+		oList.put(key, o);
+		ordered.add(o);
 	}
 }

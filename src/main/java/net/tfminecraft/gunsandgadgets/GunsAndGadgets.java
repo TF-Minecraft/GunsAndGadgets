@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
+import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
 import net.tfminecraft.gunsandgadgets.loader.ConfigLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
@@ -27,6 +28,7 @@ public class GunsAndGadgets extends JavaPlugin {
 	private final PartDataLoader partDataLoader = new PartDataLoader();
 	private final SkinLoader skinLoader = new SkinLoader();
 	private final AmmunitionLoader ammunitionLoader = new AmmunitionLoader();
+	private final MetalLoader metalLoader = new MetalLoader();
 
 	private final CraftingManager craftingManager = new CraftingManager();
 	private GunManager gunManager;
@@ -88,6 +90,7 @@ public class GunsAndGadgets extends JavaPlugin {
 		String[] files = {
 			"config.yml",
 			"part-types.yml",
+			"metals.yml",
 			"parts.yml",
 			"skins.yml",
 			"ammunition.yml"
@@ -104,6 +107,8 @@ public class GunsAndGadgets extends JavaPlugin {
 	public void loadConfigs() {
 		configLoader.loadConfig(new File(getDataFolder(), "config.yml"));
 		ammunitionLoader.load(new File(getDataFolder(), "ammunition.yml"));
+		// Forged parts read their materials and their barrels' shot families while loading.
+		metalLoader.load(new File(getDataFolder(), "metals.yml"));
 		partDataLoader.load(new File(getDataFolder(), "part-types.yml"));
 		partLoader.load(new File(getDataFolder(), "parts.yml"));
 		skinLoader.load(new File(getDataFolder(), "skins.yml"));
@@ -113,7 +118,7 @@ public class GunsAndGadgets extends JavaPlugin {
 	public void reload() {
 		loadConfigs();
 		revisionTracker.flush();
-		getLogger().info("Reloaded configs (skins, parts, ammunition, config).");
+		getLogger().info("Reloaded configs (skins, parts, metals, ammunition, config).");
 	}
 
 	public static RevisionTracker getRevisionTracker() {

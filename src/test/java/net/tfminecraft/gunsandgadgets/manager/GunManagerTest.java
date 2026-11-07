@@ -1278,4 +1278,58 @@ class GunManagerTest {
     use();
     assertNull(player.nextActionBar());
   }
+
+  @Test
+  void retiredPartsBlockUseOnlyWhileTheSwitchIsOn() {
+    when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
+    var retired = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+    when(retired.isDisabled()).thenReturn(true);
+    when(retired.getId()).thenReturn("old");
+    var live = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+    PartLoader.get().put("old", retired);
+    PartLoader.get().put("live", live);
+    boolean previous = net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns;
+    try {
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(
+                  new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("live", 1),
+                  new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("old", 1)),
+              1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = true;
+      use();
+      use();
+      server.getScheduler().performTicks(12);
+      assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+      assertEquals("§cThis gun's design has been retired. It can no longer be used.", player.nextMessage());
+      assertNull(player.nextMessage());
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      // Turning the switch off restores the gun: nothing was written to it.
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = false;
+      use();
+      server.getScheduler().performTicks(12);
+      assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+      // A gun made only from live parts is never retired.
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = true;
+      var fresh = new ItemStack(gun);
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("live", 1)), 1)
+          .applyTo(fresh);
+      var m = fresh.getItemMeta();
+      m.getPersistentDataContainer().remove(key("bullets_loaded"));
+      fresh.setItemMeta(m);
+      player.getInventory().setItemInMainHand(fresh);
+      use();
+      server.getScheduler().performTicks(12);
+      // Two shots were left in the pouch after the first reload.
+      assertEquals(2, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    } finally {
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = previous;
+      PartLoader.get().remove("old");
+      PartLoader.get().remove("live");
+    }
+  }
 }
