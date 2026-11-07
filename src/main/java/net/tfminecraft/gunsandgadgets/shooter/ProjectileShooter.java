@@ -388,12 +388,13 @@ public class ProjectileShooter {
         Vector direction = to.toVector().subtract(from.toVector()).normalize();
         double distance = from.distance(to);
 
+        Object own = ownVehicle;
         RayTraceResult result = from.getWorld().rayTraceEntities(
             from,                    // start point
             direction,               // direction vector (should be normalized)
             distance,                // how far to check
             0.4,                     // radius (the "thickness" of the ray)
-            entity -> !isOwnVehicle(entity, ownVehicle)
+            entity -> !isOwnVehicle(entity, own)
                     && ((entity instanceof LivingEntity living && !living.isDead())
                     || vehicleFor(entity) != null)
         );
@@ -506,7 +507,9 @@ public class ProjectileShooter {
         return false;
     }
 
-    private static boolean isOwnVehicle(Entity entity, ActiveVehicle ownVehicle) {
+    // Typed Object so the ray-filter lambda never names a VehicleFramework class: a lambda resolves
+    // the classes it captures when it is created, which would fail without VehicleFramework installed.
+    private static boolean isOwnVehicle(Entity entity, Object ownVehicle) {
         return ownVehicle != null && vehicleFor(entity) == ownVehicle;
     }
 
