@@ -23,7 +23,9 @@ smoothbore_barrel_long:
     - damage_percent -10
     - falloff -6
   sounds:
-    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+    - shoot gunsandgadgets:musket_shoot
+  smoke: 1
+  smoke-cone: 0.25
   name-impact:
     - Musket 1 10
   class:
@@ -44,7 +46,9 @@ rifled_barrel_long:
     - pierce 2
     - falloff 8
   sounds:
-    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6 pitch=1.05
+  smoke: 0.85
+  smoke-cone: 0.15
   name-impact:
     - Rifle 1 10
   class:
@@ -67,7 +71,9 @@ carbine_barrel:
     - moving 40
     - mounted 40
   sounds:
-    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6 pitch=1.22 volume=0.8
+  smoke: 0.55
+  smoke-cone: 0.2
   name-impact:
     - Carbine 1 20
   class:
@@ -91,7 +97,10 @@ heavy_barrel:
     - moving -50
     - sneaking 50
   sounds:
-    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3
+    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3 pitch=0.8 volume=1.1
+    - shoot gunsandgadgets:launcher_shoot pitch=1.35 volume=0.28
+  smoke: 1.6
+  smoke-cone: 0.12
   name-impact:
     - Longrifle 1 20
   class:
@@ -113,7 +122,9 @@ smoothbore_barrel_short:
     - falloff -4
     - moving 30
   sounds:
-    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5 pitch=1.08
+  smoke: 0.5
+  smoke-cone: 0.3
   name-impact:
     - Pistol 1 10
   class:
@@ -135,6 +146,8 @@ rifled_barrel_short:
     - falloff 4
   sounds:
     - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+  smoke: 0.45
+  smoke-cone: 0.2
   name-impact:
     - Pistol 1 10
   class:
@@ -156,7 +169,10 @@ duelling_barrel:
     - falloff 12
     - moving -30
   sounds:
-    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+    - shoot minecraft:guns.pistol_2,minecraft:guns.pistol_4 pitch=0.9
+    - shoot minecraft:guns.musket_7 pitch=1.3 volume=0.35
+  smoke: 0.6
+  smoke-cone: 0.12
   name-impact:
     - Duelling-Pistol 1 20
   class:
@@ -177,7 +193,9 @@ spread_barrel:
   fixed:
     - spread 14
   sounds:
-    - shoot minecraft:guns.musket_1
+    - shoot minecraft:guns.musket_1 pitch=0.86 volume=1.1
+  smoke: 1.3
+  smoke-cone: 0.7
   name-impact:
     - Blunderbuss -1 100
   skin-impact:
@@ -201,7 +219,10 @@ sawn_off_barrel:
   fixed:
     - spread 22
   sounds:
-    - shoot minecraft:guns.musket_1
+    - shoot minecraft:guns.musket_1 pitch=0.74 volume=1.2
+    - shoot minecraft:guns.musket_10 pitch=0.8 volume=0.5
+  smoke: 1.5
+  smoke-cone: 1
   name-impact:
     - Sawn-off -1 100
   skin-impact:
@@ -225,7 +246,9 @@ fowling_barrel:
   fixed:
     - spread 7
   sounds:
-    - shoot minecraft:guns.musket_1
+    - shoot minecraft:guns.musket_5 pitch=0.95
+  smoke: 1
+  smoke-cone: 0.35
   name-impact:
     - Fowler -1 100
   skin-impact:
@@ -250,6 +273,9 @@ launcher_barrel:
   sounds:
     - shoot gunsandgadgets:launcher_shoot
     - shoot minecraft:entity.generic.explode
+  smoke: 1.2
+  smoke-cone: 0.3
+  backblast: true
   name-impact:
     - "#3a3e4dRocket 0 100"
     - Launcher 1 100
@@ -274,8 +300,11 @@ short_launch_tube:
     - fire_rate 16
     - reload -11
   sounds:
-    - shoot gunsandgadgets:launcher_shoot
-    - shoot minecraft:entity.generic.explode
+    - shoot gunsandgadgets:launcher_shoot pitch=1.18
+    - shoot minecraft:entity.generic.explode pitch=1.18
+  smoke: 1
+  smoke-cone: 0.4
+  backblast: true
   name-impact:
     - "#3a3e4dRocket 0 100"
     - Tube 1 100
@@ -301,8 +330,11 @@ long_launch_tube:
     - fire_rate 16
     - reload -18
   sounds:
-    - shoot gunsandgadgets:launcher_shoot
-    - shoot minecraft:entity.generic.explode
+    - shoot gunsandgadgets:launcher_shoot pitch=0.86 volume=1.1
+    - shoot minecraft:entity.generic.explode pitch=0.86
+  smoke: 1.3
+  smoke-cone: 0.2
+  backblast: true
   name-impact:
     - "#3a3e4dRocket 0 100"
     - Rail-Launcher 1 100
@@ -350,6 +382,7 @@ breech_loader:
     - fire_rate 3
   sounds:
     - reload vehicleframework:gun_reload
+    - reload minecraft:block.iron_trapdoor.close pitch=1.4 volume=0.5
   class:
     - Musketeer
 
@@ -367,7 +400,8 @@ patch_ramrod:
     - reload -3
     - pierce 2
   sounds:
-    - reload gunsandgadgets:muzzle_reload
+    - reload gunsandgadgets:muzzle_reload pitch=0.85
+    - reload minecraft:block.wood.place pitch=0.7 volume=0.6
   class:
     - Musketeer
 
@@ -425,6 +459,8 @@ revolver:
   fixed:
     - capacity 6
     - damage_percent -55
+  sounds:
+    - shoot minecraft:block.tripwire.click_on pitch=1.4 volume=0.4
   name-impact:
     - (Revolver) 2 10
   class:
@@ -445,6 +481,8 @@ proof_chamber:
   fixed:
     - capacity 1
     - damage_percent -20
+  sound-pitch: 0.92
+  sound-volume: 1.12
   name-impact:
     - (Proof) 2 5
   class:
@@ -509,6 +547,9 @@ matchlock:
   cost-amount: 2
   tendencies:
     - accuracy 3
+  sounds:
+    - shoot minecraft:block.fire.extinguish pitch=1.6 volume=0.25
+  ignition: ember
   name-impact:
     - Matchlock 0 10
   skin-impact:
@@ -533,6 +574,7 @@ flintlock:
     - fire_rate 2
   sounds:
     - shoot minecraft:item.flintandsteel.use
+  ignition: flint
   name-impact:
     - Flintlock 0 10
   skin-impact:
@@ -561,6 +603,7 @@ steamlock:
     - no_light
   sound-overrides:
     - shoot gunsandgadgets:steamlock_shoot
+  ignition: steam
   name-impact:
     - Steamlock 0 10
   skin-impact:
@@ -581,6 +624,9 @@ wheellock:
     - accuracy 1
     - mounted 50
     - moving 15
+  sounds:
+    - shoot minecraft:block.grindstone.use pitch=1.8 volume=0.35
+  ignition: wheel
   name-impact:
     - Wheellock 0 10
   skin-impact:
@@ -608,6 +654,8 @@ arclock:
     - reload minecraft:block.beacon.activate
   sound-overrides:
     - shoot minecraft:guns.musket_1,minecraft:guns.musket_3,minecraft:guns.musket_7,minecraft:guns.musket_8,minecraft:guns.musket_9
+    - shoot minecraft:block.beacon.power_select pitch=2 volume=0.5
+  ignition: arc
   name-impact:
     - §5Arclock 0 10
   skin-impact:
@@ -632,6 +680,9 @@ rocketlock:
     - reload -4
   fixed:
     - fire_rate -10
+  sounds:
+    - shoot minecraft:block.lever.click pitch=1.6 volume=0.5
+  ignition: flint
   skin-impact:
     - launcher 10
   class:
@@ -648,6 +699,9 @@ fuse_igniter:
     - accuracy 1
   fixed:
     - fire_rate -14
+  sounds:
+    - shoot minecraft:entity.tnt.primed pitch=1.6 volume=0.4
+  ignition: fuse
   skin-impact:
     - launcher 10
   class:

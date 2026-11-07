@@ -69,6 +69,7 @@ public class ConfigLoader {
         Cache.coneMinFactor =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.pellet-cone.min-factor", 0.4)));
         Cache.retireDisabledPartGuns = config.getBoolean("retire-disabled-part-guns", false);
+        Cache.partIconPrefix = config.getString("part-icons", "").trim();
 
         section = config.getConfigurationSection("required-parts");
         if (section != null) {

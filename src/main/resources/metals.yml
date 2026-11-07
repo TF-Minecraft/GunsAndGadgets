@@ -14,6 +14,9 @@ iron:
   description:
     - "§7Cheap and crude: smaller upsides,"
     - "§7harsher downsides."
+  sound-pitch: 0.94
+  flash: "#ffb35a"
+  trail: "#9a9a9a"
   better: 0.8
   worse: 1.25
 
@@ -25,6 +28,8 @@ steel:
   permission: professions.steel_smith
   description:
     - "§7Reliable: every part works as designed."
+  flash: "#fff1c4"
+  trail: "#f4f4f4"
   better: 1
   worse: 1
 
@@ -37,6 +42,10 @@ abyssalite:
   description:
     - "§7Dense: the most accurate and piercing,"
     - "§7but slow to reload and heavy on the move."
+  sound-pitch: 0.86
+  sound-volume: 1.15
+  flash: "#b28cff"
+  trail: "#c27a46"
   better:
     default: 1.15
     accuracy: 1.35
@@ -59,6 +68,11 @@ mythril:
   description:
     - "§7Light and strong: the fastest and steadiest,"
     - "§7with the mildest downsides."
+  sound-pitch: 1.1
+  sounds:
+    - shoot minecraft:block.amethyst_block.chime pitch=1.5 volume=0.4
+  flash: "#a8f6ff"
+  trail: "#8ff0ff"
   better:
     default: 1.25
     accuracy: 1.2

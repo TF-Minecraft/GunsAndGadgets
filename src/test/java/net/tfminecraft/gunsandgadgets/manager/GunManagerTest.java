@@ -607,6 +607,30 @@ class GunManagerTest {
   }
 
   @Test
+  void forgedSkinsSetThePoseModelAndKeepThePartStrings() {
+    when(skin.isForged()).thenReturn(true);
+    when(skin.getForgedModel(SkinState.AIM)).thenReturn(NamespacedKey.fromString("tfmc_guns:rifle_aim"));
+    when(skin.parseModel(SkinState.AIM)).thenReturn(new ItemStack(Material.CROSSBOW));
+    var meta = mock(org.bukkit.inventory.meta.ItemMeta.class);
+    var item = spy(new ItemStack(Material.STONE_HOE));
+    doNothing().when(item).setType(any(Material.class));
+    doReturn(meta).when(item).getItemMeta();
+    doReturn(true).when(item).setItemMeta(any());
+    try (var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class)) {
+      assertSame(item, manager.applyModel(item, skin, SkinState.AIM));
+      verify(item).setType(Material.CROSSBOW);
+      looks.verify(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stamp(eq(meta), eq(skin), eq(SkinState.AIM), any()));
+      verify(item).setItemMeta(meta);
+    }
+    // an item without meta just changes material
+    var bare = spy(new ItemStack(Material.STONE_HOE));
+    doNothing().when(bare).setType(any(Material.class));
+    doReturn(null).when(bare).getItemMeta();
+    assertSame(bare, manager.applyModel(bare, skin, SkinState.AIM));
+    verify(bare, never()).setItemMeta(any());
+  }
+
+  @Test
   void plainModelWithoutCustomDataChangesMaterialOnly() {
     gun = spy(gun);
     doNothing().when(gun).setType(any(Material.class));

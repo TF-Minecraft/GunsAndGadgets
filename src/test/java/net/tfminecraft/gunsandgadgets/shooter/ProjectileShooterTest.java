@@ -240,6 +240,18 @@ class ProjectileShooterTest {
   }
 
   @Test
+  void stampedLookAddsIgnitionBackblastFlashAndTrail() {
+    put("shoot_fx", "ignition=flint;smoke=0.5;cone=0.4;backblast=true;flash=ffb35a;trail=9a9a9a;");
+    ProjectileShooter.shoot(player, gun, ammo());
+    server.getScheduler().performTicks(5);
+    verify(world, times(20))
+        .spawnParticle(eq(Particle.CAMPFIRE_COSY_SMOKE), any(Location.class), eq(0), anyDouble(), anyDouble(), anyDouble(), anyDouble());
+    verify(world).spawnParticle(eq(Particle.CRIT), any(Location.class), eq(8), anyDouble(), anyDouble(), anyDouble(), anyDouble());
+    verify(world, atLeastOnce())
+        .spawnParticle(eq(Particle.DUST), any(Location.class), anyInt(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), any(Particle.DustOptions.class), eq(true));
+  }
+
+  @Test
   void ammunitionCanSuppressBothMuzzleEffects() {
     ProjectileShooter.shoot(player, gun, ammo("SMOKELESS", "NO_LIGHT"));
     server.getScheduler().performTicks(2);
@@ -764,7 +776,8 @@ class ProjectileShooterTest {
           double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
-          java.util.function.DoubleSupplier.class
+          java.util.function.DoubleSupplier.class,
+          Color.class
         },
         player,
         ammo("ROCKET"),
@@ -776,7 +789,8 @@ class ProjectileShooterTest {
         10.0,
         20,
         null,
-        (java.util.function.DoubleSupplier) () -> 0.5);
+        (java.util.function.DoubleSupplier) () -> 0.5,
+        (Color) null);
     server.getScheduler().performTicks(106);
     verify(world).playSound(any(Location.class), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));
     verify(world, atLeastOnce()).playSound(any(Location.class), eq("rocket"), eq(4f), eq(1.3f));
@@ -838,7 +852,8 @@ class ProjectileShooterTest {
           double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
-          java.util.function.DoubleSupplier.class
+          java.util.function.DoubleSupplier.class,
+          Color.class
         },
         player,
         ammo("ROCKET"),
@@ -850,7 +865,8 @@ class ProjectileShooterTest {
         10.0,
         20,
         null,
-        random);
+        random,
+        (Color) null);
     server.getScheduler().performTicks(106);
     var locations = ArgumentCaptor.forClass(Location.class);
     verify(world).playSound(locations.capture(), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));

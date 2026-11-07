@@ -61,3 +61,38 @@ launcher:
   aim: crossbow.24
   types:
     - launcher
+
+# Forged guns (every part forged) are drawn part by part by the pack's tfmc_guns item models:
+# forged-model + _carry/_reload/_aim, on the material for that pose (crossbow keeps the aiming hold).
+# Remove these to show forged guns with the designs above instead.
+forged_rifle:
+  forged-model: tfmc_guns:rifle
+  carry: stone_hoe
+  reload: stone_hoe
+  aim: crossbow
+  types:
+    - rifle
+
+forged_pistol:
+  forged-model: tfmc_guns:pistol
+  carry: stone_hoe
+  reload: stone_hoe
+  aim: crossbow
+  types:
+    - pistol
+
+forged_shotgun:
+  forged-model: tfmc_guns:shotgun
+  carry: stone_hoe
+  reload: stone_hoe
+  aim: crossbow
+  types:
+    - shotgun
+
+forged_launcher:
+  forged-model: tfmc_guns:launcher
+  carry: stone_hoe
+  reload: stone_hoe
+  aim: crossbow
+  types:
+    - launcher

@@ -21,6 +21,7 @@ import net.tfminecraft.gunsandgadgets.util.SoundPlayer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -62,17 +63,24 @@ public class ProjectileShooter {
             PersistentDataType.STRING
         );
         SoundPlayer.playSounds(player.getLocation(), shootSounds, true, 8f);
+        ShotFx fx = shotFx(meta);
 
         // Common values
         Location start = player.getEyeLocation().clone();
         Vector forward = start.getDirection().normalize();
+        fx.spawnIgnition(start, forward);
         start.add(forward.multiply(1.0));
 
         // Airguns (steamlock) and smokeless shots skip muzzle smoke and flash.
         if (!suppressesMuzzle(gun, ammo, AmmoOption.SMOKELESS, PartOption.SMOKELESS)) {
-            spawnMuzzleSmoke(start, forward);
+            spawnMuzzleSmoke(start, forward, fx.smokeCount(), fx.cone());
+            if (fx.backblast()) {
+                Location back = start.clone().subtract(forward.clone().multiply(3.0));
+                spawnMuzzleSmoke(back, forward.clone().multiply(-1), fx.smokeCount(), fx.cone() * 1.5);
+            }
         }
         if (!suppressesMuzzle(gun, ammo, AmmoOption.NO_LIGHT, PartOption.NO_LIGHT)) {
+            fx.spawnFlash(start);
             (new LightEffect()).createTemporaryLight(start, 10);
             new BukkitRunnable() {
                 @Override
@@ -123,15 +131,21 @@ public class ProjectileShooter {
         return "rifle_steamlock".equals(skinId) || "pistol_steamlock".equals(skinId);
     }
 
-    private static void spawnMuzzleSmoke(Location start, Vector forward) {
+    static ShotFx shotFx(ItemMeta meta) {
+        return ShotFx.decode(meta.getPersistentDataContainer().get(
+                new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_fx"), PersistentDataType.STRING));
+    }
+
+    /** Two waves of smoke: a puff fanned by the barrel's cone, then a jet along the shot. */
+    private static void spawnMuzzleSmoke(Location start, Vector forward, int count, double cone) {
         Vector velocity = forward.clone();
-        for(int i = 0; i<10; i++) {
+        for(int i = 0; i<count; i++) {
             double mult = Math.max(0.2, i*0.08);
             velocity = forward.clone().multiply(mult);
             Vector spread = new Vector(
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2
+                    (Math.random() - 0.5) * cone,
+                    (Math.random() - 0.5) * cone,
+                    (Math.random() - 0.5) * cone
                 );
             start.getWorld().spawnParticle(
                 Particle.CAMPFIRE_COSY_SMOKE,
@@ -141,7 +155,7 @@ public class ProjectileShooter {
                 mult
             );
         }
-        for(int i = 0; i<10; i++) {
+        for(int i = 0; i<count; i++) {
             double mult = Math.max(0.2, i*0.08);
             velocity = forward.clone().multiply(mult);
             start.getWorld().spawnParticle(
@@ -160,7 +174,7 @@ public class ProjectileShooter {
         if (gun == null || !gun.hasItemMeta()) return;
 
         ItemMeta meta = gun.getItemMeta();
-
+        Color trail = shotFx(meta).trail();
 
         Location start = player.getEyeLocation().clone();
         Vector forward = start.getDirection().normalize();
@@ -221,7 +235,7 @@ public class ProjectileShooter {
             Vector shotDir = pelletCone ? applySpread(aim.clone(), coneDegrees, rand)
                     : applySpread(forward.clone(), spreadDegrees, rand);
             Vector velocity = shotDir.multiply(speed * (ammo.hasOption(AmmoOption.ROCKET) ? 0.3 : 0.7));
-            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, falloffStart, totalDamage, pierceStat, ownVehicle, Math::random);
+            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, falloffStart, totalDamage, pierceStat, ownVehicle, Math::random, trail);
         }
     }
 
@@ -305,7 +319,7 @@ public class ProjectileShooter {
         v.setZ(z);
     }
 
-    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double falloffStart, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random) {
+    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double falloffStart, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random, Color trail) {
         new BukkitRunnable() {
             Location loc = start.clone();
             Vector vel = velocity.clone();
@@ -370,7 +384,7 @@ public class ProjectileShooter {
                 }
 
                 // ✏️ Draw trace
-                drawLine(ammo, prev, loc, 256);
+                drawLine(ammo, prev, loc, 256, trail);
 
                 // Gravity (lighter for rockets)
                 vel.add(new Vector(0, ammo.hasOption(AmmoOption.ROCKET) ? -0.02 : -0.05, 0));
@@ -459,7 +473,7 @@ public class ProjectileShooter {
             if (ammo.hasOption(AmmoOption.ROCKET)) {
                 explode(player, current, damage, pierceStat, ticks);
             } else {
-                drawLine(ammo, from.clone(), current, 256);
+                drawLine(ammo, from.clone(), current, 256, null);
                 Location impact = ImpactVfx.onBlockSurface(current, direction, block);
                 ImpactVfx.spawn(
                         impact,
@@ -615,7 +629,8 @@ public class ProjectileShooter {
                 .build();
     }
 
-    private static void drawLine(Ammunition ammo, Location from, Location to, double radius) {
+    /** The shot's path: rocket sparks, or smoke with dots of the barrel material's trail colour. */
+    private static void drawLine(Ammunition ammo, Location from, Location to, double radius, Color trail) {
         Vector diff = to.toVector().subtract(from.toVector());
         int steps = (int) (diff.length() * 4);
         Vector step = diff.clone().multiply(1.0 / steps);
@@ -641,6 +656,10 @@ public class ProjectileShooter {
                     null,
                     true
                 );
+                if (trail != null && i % 2 == 0) {
+                    point.getWorld().spawnParticle(Particle.DUST, point, 1, 0, 0, 0, 0,
+                            new Particle.DustOptions(trail, 0.6f), true);
+                }
             }
             point.add(step);
         }

@@ -47,6 +47,7 @@ import net.tfminecraft.gunsandgadgets.guns.forge.ForgeLore;
 import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.PartData;
+import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinResolver;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
@@ -54,6 +55,7 @@ import net.tfminecraft.gunsandgadgets.guns.stats.StatApplier;
 import net.tfminecraft.gunsandgadgets.guns.stats.Stats;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
 import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
+import net.tfminecraft.gunsandgadgets.shooter.ShotFx;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
@@ -206,6 +208,7 @@ public class InventoryManager implements Listener {
     private ItemStack createForgedChoiceItem(GunPart part) {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
         ItemMeta m = i.getItemMeta();
+        ForgedLook.applyIcon(m, part, false);
         m.setDisplayName(part.getBaseName());
         m.getPersistentDataContainer().set(forgeBaseKey(), PersistentDataType.STRING, part.getBaseId());
         List<String> lore = new ArrayList<>();
@@ -459,7 +462,7 @@ public class InventoryManager implements Listener {
 
         // Base item
         ItemStack base = TLibs.getItemAPI().getCreator().getItemFromPath(Cache.outputItems.getOrDefault(type, "v.stick"));
-        
+
         base = applyClass(base, parts);
 
         ItemStack skinItem = skin.parseModel(SkinState.CARRY);
@@ -476,6 +479,7 @@ public class InventoryManager implements Listener {
                     && LegacyModelData.has(skinItem.getItemMeta())) {
                 LegacyModelData.set(meta, LegacyModelData.get(skinItem.getItemMeta()));
             }
+            ForgedLook.stamp(meta, skin, SkinState.CARRY, parts);
             meta.setDisplayName(buildName(parts));
 
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
@@ -540,6 +544,7 @@ public class InventoryManager implements Listener {
                     new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_sounds"));
             storeSounds(type, parts, SoundType.RELOAD, pdc,
                     new NamespacedKey(GunsAndGadgets.getInstance(), "reload_sounds"));
+            ShotFx.stamp(parts, pdc, new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_fx"));
 
             meta.setLore(lore);
             base.setItemMeta(meta);
@@ -631,18 +636,41 @@ public class InventoryManager implements Listener {
     /**
      * Collect sounds for a given type and write them into the PDC.
      */
+    /** One sound group: "key,key" plus "|pitch|volume" when they aren't 1. */
+    private static void addGroup(List<String> result, GunPart.PartSound ps, double pitch, double volume) {
+        String group = String.join(",", ps.getSoundKeys());
+        if (!group.isBlank()) {
+            result.add(group + GunPart.PartSound.levelSuffix(pitch * ps.getPitch(), volume * ps.getVolume()));
+        }
+    }
+
     private void storeSounds(GunType gunType, Collection<GunPart> parts,
                          SoundType soundType, PersistentDataContainer pdc, NamespacedKey key) {
         List<String> result = new ArrayList<>();
-        
+
+        // The report takes every part's pitch and volume and the barrel material's.
+        double pitch = 1.0;
+        double volume = 1.0;
+        Metal metal = null;
+        if (soundType == SoundType.SHOOT) {
+            for (GunPart part : parts) {
+                pitch *= part.getSoundPitch();
+                volume *= part.getSoundVolume();
+            }
+            metal = ShotFx.barrelMetal(parts);
+            if (metal != null) {
+                pitch *= metal.getSoundPitch();
+                volume *= metal.getSoundVolume();
+            }
+        }
+
         // 🔄 1) Collect ALL overrides first (across all parts)
         for (GunPart part : parts) {
             List<GunPart.PartSound> overrides = part.getSoundOverrides().get(soundType);
             if (overrides != null) {
                 for (GunPart.PartSound ps : overrides) {
                     if (ps.matches(gunType)) {
-                        String group = String.join(",", ps.getSoundKeys());
-                        if (!group.isBlank()) result.add(group);
+                        addGroup(result, ps, pitch, volume);
                     }
                 }
             }
@@ -655,14 +683,19 @@ public class InventoryManager implements Listener {
             return;
         }
 
-        // 🎵 2) Otherwise, gather normal sounds
+        // 🎵 2) Otherwise, gather normal sounds (and the barrel material's layers, e.g. mythril's ring)
+        List<List<GunPart.PartSound>> sources = new ArrayList<>();
         for (GunPart part : parts) {
-            List<GunPart.PartSound> base = part.getSounds().get(soundType);
+            sources.add(part.getSounds().get(soundType));
+        }
+        if (metal != null) {
+            sources.add(metal.getSounds().get(soundType));
+        }
+        for (List<GunPart.PartSound> base : sources) {
             if (base != null) {
                 for (GunPart.PartSound ps : base) {
                     if (ps.matches(gunType)) {
-                        String group = String.join(",", ps.getSoundKeys());
-                        if (!group.isBlank()) result.add(group);
+                        addGroup(result, ps, pitch, volume);
                     }
                 }
             }
@@ -737,6 +770,7 @@ public class InventoryManager implements Listener {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
 
         ItemMeta m = i.getItemMeta();
+        ForgedLook.applyIcon(m, part, true);
 
         // Name
         m.setDisplayName(part.getName());

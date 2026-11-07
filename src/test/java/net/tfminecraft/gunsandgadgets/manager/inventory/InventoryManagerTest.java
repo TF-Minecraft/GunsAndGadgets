@@ -118,6 +118,9 @@ class InventoryManagerTest {
     when(p.getPartType()).thenReturn(data);
     when(p.getGunTypes()).thenReturn(Set.of(GunType.values()));
     when(p.isEnabledForCrafting()).thenAnswer(i -> !p.isDisabled());
+    when(p.getSoundPitch()).thenReturn(1.0);
+    when(p.getSoundVolume()).thenReturn(1.0);
+    when(p.getSmoke()).thenReturn(1.0);
     PartLoader.get().put(id, p);
     PartLoader.getOrdered().add(p);
     return p;
@@ -667,6 +670,30 @@ class InventoryManagerTest {
     when(p.getMetalId()).thenReturn(metal);
     when(p.getBaseName()).thenReturn("Base " + base);
     return p;
+  }
+
+  @Test
+  void barrelMaterialPitchesTheReportAndColoursTheShot() throws Exception {
+    var metals = java.nio.file.Files.createTempFile("metals", ".yml");
+    java.nio.file.Files.writeString(
+        metals,
+        "steel: {name: Steel, sound-pitch: 2, sound-volume: 0.5, flash: ffffff, sounds: [shoot ring pitch=0.5]}\n");
+    new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
+    try {
+      var barrel = forged("long", "steel", "barrel");
+      when(barrel.getSounds())
+          .thenReturn(Map.of(SoundType.SHOOT, List.of(new GunPart.PartSound(List.of("bang"), null, 1.5, 1))));
+      when(barrel.getSmokeCone()).thenReturn(0.5);
+      when(action.getIgnition()).thenReturn("flint");
+      var gun = output(barrel, action);
+      assertEquals("bang|3|0.5;ring|1|0.5", string(gun, "shoot_sounds"));
+      assertTrue(string(gun, "shoot_fx").contains("ignition=flint;"));
+      assertTrue(string(gun, "shoot_fx").contains("flash=ffffff;"));
+      assertNull(string(gun, "reload_sounds"));
+    } finally {
+      net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
+      java.nio.file.Files.deleteIfExists(metals);
+    }
   }
 
   @Test

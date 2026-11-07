@@ -13,6 +13,7 @@ import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
+import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
@@ -144,8 +145,8 @@ public class GunManager implements Listener {
                 }
             }
         }
-        
-        
+
+
         item = player.getInventory().getItemInMainHand();
         if(item == null) return;
         if (!item.hasItemMeta()) return;
@@ -553,13 +554,23 @@ public class GunManager implements Listener {
         return true;
     }
 
-    
+
 
     // This path mutates the existing ItemStack; replacing it would change aliases held by callers.
     @SuppressWarnings("deprecation")
     public ItemStack applyModel(ItemStack i, SkinData data, SkinState state) {
         ItemStack skin = data.parseModel(state);
         if (skin == null || skin.getType().isAir()) {
+            return i;
+        }
+        if (data.isForged()) {
+            // The pose's model and material; the strings follow the gun's stamped parts.
+            i.setType(skin.getType());
+            ItemMeta forged = i.getItemMeta();
+            if (forged != null) {
+                ForgedLook.stamp(forged, data, state, ForgedLook.stampedParts(i));
+                i.setItemMeta(forged);
+            }
             return i;
         }
         if (ItemSkinPreserver.hasSkinData(skin)) {

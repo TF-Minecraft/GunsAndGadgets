@@ -14,6 +14,15 @@ import org.bukkit.entity.Player;
  */
 public class SoundPlayer {
 
+    private static float level(String raw) {
+        try {
+            float value = Float.parseFloat(raw.trim());
+            return Float.isFinite(value) && value >= 0 ? value : 1f;
+        } catch (NumberFormatException e) {
+            return 1f;
+        }
+    }
+
     /**
      * Play all sounds from a semicolon-separated list at a location.
      *
@@ -30,15 +39,20 @@ public class SoundPlayer {
             Random rand = new Random();
 
             for (String group : groups) {
-                String[] keys = group.split(",");
+                // "key,key" or "key,key|pitch|volume" (pitch and volume scale this group)
+                String[] levels = group.split("\\|");
+                String[] keys = levels[0].split(",");
                 if (keys.length == 0) continue;
 
                 // pick one at random
                 String chosen = keys[rand.nextInt(keys.length)].trim();
                 if (chosen.isEmpty()) continue;
 
+                float pitch = levels.length > 1 ? level(levels[1]) : 1f;
+                float scale = levels.length > 2 ? level(levels[2]) : 1f;
                 playedAny = true;
-                loc.getWorld().playSound(loc, chosen, SoundCategory.PLAYERS, volume, 1f);
+                loc.getWorld().playSound(loc, chosen, SoundCategory.PLAYERS, volume * scale,
+                        Math.max(0.5f, Math.min(2f, pitch)));
             }
         }
 

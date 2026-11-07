@@ -51,6 +51,15 @@ public class GunPart {
     private final String materialPermission;
     private final boolean declaresAmmoFamily;
 
+    // Firing presentation (forged looks): the lock's ignition effect, the barrel's smoke and
+    // back-blast, and how this part tunes the gun's report.
+    private final String ignition;
+    private final double smoke;
+    private final double smokeCone;
+    private final boolean backblast;
+    private final double soundPitch;
+    private final double soundVolume;
+
     public GunPart(String key, ConfigurationSection config) {
         this.id = key;
         this.name = StringFormatter.formatHex(config.getString("name", key));
@@ -169,51 +178,23 @@ public class GunPart {
         this.materialPermission = config.getString("forge.permission", null);
         this.declaresAmmoFamily = config.contains("forge.ammo-family");
 
+        this.ignition = config.getString("ignition", null);
+        this.smoke = factor(config.getDouble("smoke", 1.0));
+        this.smokeCone = factor(config.getDouble("smoke-cone", 0.0));
+        this.backblast = config.getBoolean("backblast", false);
+        this.soundPitch = factor(config.getDouble("sound-pitch", 1.0));
+        this.soundVolume = factor(config.getDouble("sound-volume", 1.0));
+
         // Parse normal sounds
-        parseSoundSection(config.getStringList("sounds"), sounds);
+        PartSound.parseSection(config.getStringList("sounds"), sounds, "part " + id);
 
         // Parse overrides
-        parseSoundSection(config.getStringList("sound-overrides"), soundOverrides);
+        PartSound.parseSection(config.getStringList("sound-overrides"), soundOverrides, "part " + id);
     }
 
-    private void parseSoundSection(List<String> entries, Map<SoundType, List<PartSound>> target) {
-        for (String s : entries) {
-            String[] split = s.split(" ", 2);
-            if (split.length < 2) continue;
-
-            SoundType type;
-            try {
-                type = SoundType.valueOf(split[0].toUpperCase());
-            } catch (IllegalArgumentException ex) {
-                System.out.println("Invalid sound type for part " + id + ": " + split[0]);
-                continue;
-            }
-
-            String raw = split[1].trim();
-            String soundKeys = raw;
-            GunType requiredType = null;
-
-            if (raw.contains("(") && raw.endsWith(")")) {
-                int start = raw.indexOf("(");
-                int end = raw.lastIndexOf(")");
-                soundKeys = raw.substring(0, start);
-                String typeStr = raw.substring(start + 1, end);
-
-                try {
-                    requiredType = GunType.valueOf(typeStr.toUpperCase());
-                } catch (Exception e) {
-                    System.out.println("Invalid gun type for sound in part " + id + ": " + typeStr);
-                }
-            }
-
-            List<String> keys = Arrays.stream(soundKeys.split(","))
-                    .map(String::trim)
-                    .filter(k -> !k.isEmpty())
-                    .toList();
-
-            target.computeIfAbsent(type, t -> new ArrayList<>())
-                .add(new PartSound(keys, requiredType));
-        }
+    /** NaN, infinite or negative values fall back to 1 so a typo never mutes or flips anything. */
+    public static double factor(double value) {
+        return Double.isFinite(value) && value >= 0 ? value : 1.0;
     }
 
 
@@ -276,6 +257,19 @@ public class GunPart {
 
     public boolean hasTier() { return tier > 0; }
 
+    /** The lock's ignition effect (flint, ember, wheel, steam, arc, fuse), or null. */
+    public String getIgnition() { return ignition; }
+    /** Muzzle smoke multiplier (1 = the old cloud). */
+    public double getSmoke() { return smoke; }
+    /** How wide the muzzle smoke fans out; 0 = not set by this part. */
+    public double getSmokeCone() { return smokeCone; }
+    /** Smoke also blows out of the back of the tube. */
+    public boolean hasBackblast() { return backblast; }
+    /** Multiplies the pitch of the gun's report. */
+    public double getSoundPitch() { return soundPitch; }
+    /** Multiplies the volume of the gun's report. */
+    public double getSoundVolume() { return soundVolume; }
+
     /**
      * Canonical gameplay content for revision hashing. Excludes name, lore, permissions, disabled.
      */
@@ -332,6 +326,8 @@ public class GunPart {
 
         sb.append("name-impact=").append(buildNameImpactContent()).append(';');
         sb.append("skin-impact=").append(buildSkinImpactContent()).append(';');
+        sb.append("fx=").append(ignition).append(',').append(smoke).append(',').append(smokeCone).append(',')
+                .append(backblast).append(',').append(soundPitch).append(',').append(soundVolume).append(';');
         sb.append("sounds=").append(buildSoundContent(sounds)).append(';');
         sb.append("sound-overrides=").append(buildSoundContent(soundOverrides));
         return sb.toString();
@@ -364,7 +360,7 @@ public class GunPart {
                 String gunType = sound.getRequiredType() != null ? sound.getRequiredType().name() : "";
                 List<String> keys = new ArrayList<>(sound.getSoundKeys());
                 Collections.sort(keys, String.CASE_INSENSITIVE_ORDER);
-                parts.add(type.name() + ":" + gunType + ":" + String.join("|", keys));
+                parts.add(type.name() + ":" + gunType + ":" + String.join("|", keys) + sound.levelSuffix());
             }
         }
         Collections.sort(parts, String.CASE_INSENSITIVE_ORDER);
@@ -431,10 +427,94 @@ public class GunPart {
     public static class PartSound {
         private final List<String> soundKeys; // multiple options
         private final GunType requiredType; // may be null
+        private final double pitch;
+        private final double volume;
 
         public PartSound(List<String> soundKeys, GunType requiredType) {
+            this(soundKeys, requiredType, 1.0, 1.0);
+        }
+
+        public PartSound(List<String> soundKeys, GunType requiredType, double pitch, double volume) {
             this.soundKeys = soundKeys;
             this.requiredType = requiredType;
+            this.pitch = factor(pitch);
+            this.volume = factor(volume);
+        }
+
+        /**
+         * Reads "<shoot|reload> <key>,<key>[(gun type)] [pitch=<n>] [volume=<n>]" lines into {@code target}.
+         * One key is picked at random per group; pitch and volume scale that group.
+         */
+        public static void parseSection(List<String> entries, Map<SoundType, List<PartSound>> target, String owner) {
+            for (String s : entries) {
+                String[] split = s.trim().split("\\s+");
+                if (split.length < 2) continue;
+
+                SoundType type;
+                try {
+                    type = SoundType.valueOf(split[0].toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                    System.out.println("Invalid sound type for " + owner + ": " + split[0]);
+                    continue;
+                }
+
+                String soundKeys = split[1];
+                GunType requiredType = null;
+                if (soundKeys.contains("(") && soundKeys.endsWith(")")) {
+                    int start = soundKeys.indexOf("(");
+                    String typeStr = soundKeys.substring(start + 1, soundKeys.length() - 1);
+                    soundKeys = soundKeys.substring(0, start);
+                    try {
+                        requiredType = GunType.valueOf(typeStr.toUpperCase());
+                    } catch (Exception e) {
+                        System.out.println("Invalid gun type for sound in " + owner + ": " + typeStr);
+                    }
+                }
+
+                double pitch = 1.0;
+                double volume = 1.0;
+                for (int i = 2; i < split.length; i++) {
+                    String[] kv = split[i].split("=", 2);
+                    try {
+                        double value = Double.parseDouble(kv.length == 2 ? kv[1] : "");
+                        if (kv[0].equalsIgnoreCase("pitch")) {
+                            pitch = value;
+                        } else if (kv[0].equalsIgnoreCase("volume")) {
+                            volume = value;
+                        } else {
+                            System.out.println("Unknown sound setting for " + owner + ": " + split[i]);
+                        }
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid sound setting for " + owner + ": " + split[i]);
+                    }
+                }
+
+                List<String> keys = Arrays.stream(soundKeys.split(","))
+                        .map(String::trim)
+                        .filter(k -> !k.isEmpty())
+                        .toList();
+
+                target.computeIfAbsent(type, t -> new ArrayList<>())
+                    .add(new PartSound(keys, requiredType, pitch, volume));
+            }
+        }
+
+        public double getPitch() { return pitch; }
+        public double getVolume() { return volume; }
+
+        /** "|pitch|volume" when either differs from 1, so plain sounds keep their old stored form. */
+        public String levelSuffix() {
+            return levelSuffix(pitch, volume);
+        }
+
+        public static String levelSuffix(double pitch, double volume) {
+            if (pitch == 1.0 && volume == 1.0) return "";
+            return "|" + trim(pitch) + "|" + trim(volume);
+        }
+
+        private static String trim(double value) {
+            String text = String.format(java.util.Locale.ROOT, "%.3f", value);
+            return text.replaceAll("0+$", "").replaceAll("\\.$", "");
         }
 
         public GunType getRequiredType() { return requiredType; }

@@ -57,6 +57,11 @@ handling:
 # is written to the gun, so turning this off makes them usable again.
 retire-disabled-part-guns: false
 
+# Item model prefix for forged part icons in the gunsmithing menus: <prefix><part> in the part
+# list, <prefix><part>_<material> once a material is chosen (the pack's tfmc_guns icons).
+# Leave blank to show each part's own item.
+part-icons: "tfmc_guns:part/"
+
 attributes:
     charisma:
         accuracy-per-level: 1.0

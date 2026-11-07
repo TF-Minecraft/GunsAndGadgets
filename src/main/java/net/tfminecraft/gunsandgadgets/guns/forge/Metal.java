@@ -5,7 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.Color;
 import org.bukkit.configuration.ConfigurationSection;
+
+import net.tfminecraft.gunsandgadgets.guns.SoundType;
+import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
+import net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartSound;
 
 import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
 
@@ -27,6 +32,13 @@ public final class Metal {
     private final Map<String, Double> worse = new HashMap<>();
     private final double betterDefault;
     private final double worseDefault;
+    // Presentation: a barrel forged from this material colours the muzzle flash and the trail,
+    // pitches and loudens the report, and may add sound layers (mythril's ring).
+    private final Color flash;
+    private final Color trail;
+    private final double soundPitch;
+    private final double soundVolume;
+    private final Map<SoundType, List<PartSound>> sounds = new HashMap<>();
 
     public Metal(String id, ConfigurationSection config) {
         this.id = id.toLowerCase();
@@ -40,6 +52,21 @@ public final class Metal {
         }
         this.betterDefault = readFactors(config, "better", better);
         this.worseDefault = readFactors(config, "worse", worse);
+        this.flash = color(config.getString("flash", null));
+        this.trail = color(config.getString("trail", null));
+        this.soundPitch = GunPart.factor(config.getDouble("sound-pitch", 1.0));
+        this.soundVolume = GunPart.factor(config.getDouble("sound-volume", 1.0));
+        PartSound.parseSection(config.getStringList("sounds"), sounds, "material " + this.id);
+    }
+
+    /** "#rrggbb" or "rrggbb"; anything else means no colour. */
+    static Color color(String hex) {
+        if (hex == null) return null;
+        String raw = hex.trim().replace("#", "");
+        if (!raw.matches("[0-9a-fA-F]{6}")) {
+            return null;
+        }
+        return Color.fromRGB(Integer.parseInt(raw, 16));
     }
 
     /** "better: 1.2" sets every stat; a section sets "default" plus per-stat factors. */
@@ -75,4 +102,9 @@ public final class Metal {
     public String getCost() { return cost; }
     public String getPermission() { return permission; }
     public List<String> getDescription() { return description; }
+    public Color getFlash() { return flash; }
+    public Color getTrail() { return trail; }
+    public double getSoundPitch() { return soundPitch; }
+    public double getSoundVolume() { return soundVolume; }
+    public Map<SoundType, List<PartSound>> getSounds() { return sounds; }
 }

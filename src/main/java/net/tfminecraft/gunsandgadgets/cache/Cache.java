@@ -40,6 +40,9 @@ public class Cache {
     // Guns stamped with a disabled or missing part refuse to fire or reload.
     public static boolean retireDisabledPartGuns = false;
 
+    /** Item model prefix for forged part icons in the menus (part-icons); blank = the part's own item. */
+    public static String partIconPrefix = "";
+
     public static Map<GunType, List<String>> requiredParts = new HashMap<>();
 
     public static List<AttributeData> attributes = new ArrayList<>();
