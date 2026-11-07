@@ -366,6 +366,10 @@ handling:
     assertEquals(2, PartLoader.getByString("multi_tube_chamber@steel").getStats().get(Stats.CAPACITY));
     assertEquals(4, PartLoader.getByString("multi_tube_chamber@mythril").getStats().get(Stats.CAPACITY));
     assertEquals(GunPart.AmmoFilter.POWERED, PartLoader.getByString("proof_chamber@iron").getAmmoFilter());
+    // Shotgun barrels set their pellet cone (the spread stat) whatever the metal.
+    assertEquals(14, PartLoader.getByString("spread_barrel@iron").getStats().get(Stats.SPREAD));
+    assertEquals(22, PartLoader.getByString("sawn_off_barrel@mythril").getStats().get(Stats.SPREAD));
+    assertEquals(7, PartLoader.getByString("fowling_barrel@steel").getStats().get(Stats.SPREAD));
     assertEquals("demonwood", PartLoader.getByString("cheek_rest_stock@demonwood").getMetalId());
     for (GunPart part : PartLoader.getOrdered()) {
       assertTrue(part.isForged(), part.getId());
