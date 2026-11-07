@@ -8,7 +8,6 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
@@ -90,15 +89,18 @@ public final class GunStatRefresher {
     }
 
     public static boolean isManaged(ItemStack item) {
-        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
-            return false;
-        }
-        PersistentDataContainer pdc = item.getItemMeta().getPersistentDataContainer();
-        NamespacedKey gunIdKey = new NamespacedKey(GunsAndGadgets.getInstance(), "gun_id");
-        if (!pdc.has(gunIdKey, PersistentDataType.STRING)) {
+        // read in place first: sweeps check every item, and only guns need their meta copied
+        if (!isGun(item)) {
             return false;
         }
         return GunCraftProvenance.readFrom(item) != null;
+    }
+
+    /** Carries a gun id (any GunsAndGadgets gun, stamped or not). */
+    public static boolean isGun(ItemStack item) {
+        return item != null && !item.getType().isAir() && item.hasItemMeta()
+                && item.getPersistentDataContainer().has(
+                        new NamespacedKey(GunsAndGadgets.getInstance(), "gun_id"), PersistentDataType.STRING);
     }
 
     private static String readGunId(ItemStack item) {

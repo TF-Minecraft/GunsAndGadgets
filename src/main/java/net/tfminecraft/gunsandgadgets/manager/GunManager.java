@@ -179,8 +179,9 @@ public class GunManager implements Listener {
     }
 
     public int loadedBullets(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return 0;
-        return item.getItemMeta().getPersistentDataContainer().getOrDefault(bulletsKey, PersistentDataType.INTEGER, 0);
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return 0;
+        // read in place: aiming checks this every tick
+        return item.getPersistentDataContainer().getOrDefault(bulletsKey, PersistentDataType.INTEGER, 0);
     }
 
     public SkinData skinOf(ItemStack item) {

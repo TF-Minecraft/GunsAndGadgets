@@ -30,7 +30,6 @@ class GunRefundTest extends GunsTestSupport {
   void resetRefunds() {
     Cache.refundsEnabled = false;
     Cache.refundsAutomatic = false;
-    Cache.refundFreeGuns = false;
   }
 
   ItemStack gun(String name, Map<String, Integer> inputs) {
@@ -55,7 +54,7 @@ class GunRefundTest extends GunsTestSupport {
   }
 
   @Test
-  void onlyOldGunsArePricedAndFreeGunsAreKeptUnlessConfigured() {
+  void oldGunsArePricedAndThoseWithoutAPriceGiveNothing() {
     ItemStack old = gun("Old", Map.of("v.iron_ingot", 3, "v.flint", 0));
     part(true, Map.of("v.iron_ingot", 4));
     assertNull(GunRefunder.refundFor(old)); // refunds off
@@ -76,16 +75,20 @@ class GunRefundTest extends GunsTestSupport {
     PartLoader.clear();
     assertTrue(GunRefunder.isOld(old));
     assertEquals(Map.of("v.iron_ingot", 6), GunRefunder.refundFor(old));
-    // crafted before inputs were recorded: the parts' costs, unless a part is gone
+    // crafted before inputs were recorded: the parts' costs, nothing when a part is gone
     ItemStack older = gun("Older", null);
-    assertNull(GunRefunder.refundFor(older));
+    assertEquals(Map.of(), GunRefunder.refundFor(older));
     part(true, Map.of("v.iron_ingot", 4));
     assertEquals(Map.of("v.iron_ingot", 8), GunRefunder.refundFor(older));
-    // crafted for free: kept, or the parts' costs
-    ItemStack free = gun("Free", Map.of());
-    assertNull(GunRefunder.refundFor(free));
-    Cache.refundFreeGuns = true;
-    assertEquals(Map.of("v.iron_ingot", 8), GunRefunder.refundFor(free));
+    // crafted for free: nothing back
+    assertEquals(Map.of(), GunRefunder.refundFor(gun("Free", Map.of())));
+    // from before guns recorded their parts: old, nothing back
+    ItemStack unstamped = new ItemStack(Material.STICK);
+    var meta2 = unstamped.getItemMeta();
+    meta2.getPersistentDataContainer().set(new NamespacedKey(plugin, "gun_id"), PersistentDataType.STRING, "ancient");
+    unstamped.setItemMeta(meta2);
+    assertTrue(GunRefunder.isOld(unstamped));
+    assertEquals(Map.of(), GunRefunder.refundFor(unstamped));
   }
 
   @Test
@@ -124,10 +127,9 @@ class GunRefundTest extends GunsTestSupport {
       verify(world).dropItemNaturally(any(), eq(over));
       verify(player).sendMessage("§eYour old §7Old Musket§e was taken apart for its materials:");
       verify(player).sendMessage("- Iron 70");
-      // a free gun whose parts cost nothing is just retired
-      Cache.refundFreeGuns = true;
+      // a free gun is just removed
       assertTrue(GunRefunder.takeApart(player, gun(null, Map.of()), remove));
-      verify(player).sendMessage("§eYour old gun§e was retired. It had no materials to return.");
+      verify(player).sendMessage("§eYour old gun§e was retired and removed.");
     }
   }
 
@@ -138,6 +140,7 @@ class GunRefundTest extends GunsTestSupport {
     player.getInventory().setItem(2, old);
     try (var refresh = mockStatic(GunStatRefresher.class);
         var refunder = mockStatic(GunRefunder.class)) {
+      refresh.when(() -> GunStatRefresher.isGun(old)).thenReturn(true);
       refresh.when(() -> GunStatRefresher.isManaged(old)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(old))
@@ -161,6 +164,7 @@ class GunRefundTest extends GunsTestSupport {
       // a gun that isn't old is refreshed as before
       ItemStack current = new ItemStack(Material.BLAZE_ROD);
       player.getInventory().setItem(3, current);
+      refresh.when(() -> GunStatRefresher.isGun(current)).thenReturn(true);
       refresh.when(() -> GunStatRefresher.isManaged(current)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(current))

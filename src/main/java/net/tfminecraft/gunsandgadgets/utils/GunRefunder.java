@@ -21,43 +21,47 @@ import net.tfminecraft.gunsandgadgets.util.CostFormatter;
 import net.tfminecraft.tlibs.TLibs;
 
 /**
- * Old guns, built with a retired (disabled) or removed part, are taken apart for what they cost
- * (config.yml {@code refunds}): the materials their crafting took, recorded since 2.0.6, or for
- * older guns the costs of their parts. The gun is removed and the materials go to the player.
+ * Old guns are taken apart (config.yml {@code refunds}) so none stay on the server: a gun built
+ * with a retired (disabled) or removed part, or from before guns recorded their parts (2.0.0). The
+ * gun is removed and the player gets the materials its crafting took (recorded since 2.0.6), or for
+ * older stamped guns the costs of their parts. Guns with no price (crafted for free, unstamped, or
+ * with a removed part and nothing recorded) give nothing back.
  */
 public final class GunRefunder {
 
     private GunRefunder() {}
 
-    /** A gun stamped with a part that is retired or no longer exists. */
+    /** A gun with no record of its parts, or stamped with a part that is retired or no longer exists. */
     public static boolean isOld(ItemStack item) {
-        if (!GunStatRefresher.isManaged(item)) {
+        if (!GunStatRefresher.isGun(item)) {
             return false;
         }
-        GunCraftProvenance.ResolvedParts parts = GunCraftProvenance.readFrom(item).resolveStampedParts();
+        GunCraftProvenance provenance = GunCraftProvenance.readFrom(item);
+        if (provenance == null) {
+            return true;
+        }
+        GunCraftProvenance.ResolvedParts parts = provenance.resolveStampedParts();
         return !parts.missingIds().isEmpty() || parts.live().stream().anyMatch(GunPart::isDisabled);
     }
 
     /**
-     * What an old gun gives back (item path to amount), or null when refunds are off, the gun is
-     * not old, or it can't be priced: crafted for free with {@code free-guns: keep}, or crafted
-     * before inputs were recorded from a part that no longer exists.
+     * What an old gun gives back (item path to amount; empty when it has no price), or null when
+     * refunds are off or the gun is not old.
      */
     public static Map<String, Integer> refundFor(ItemStack item) {
         if (!Cache.refundsEnabled || !isOld(item)) {
             return null;
         }
         Map<String, Integer> inputs = GunCraftInputs.readFrom(item);
-        if (inputs != null && !inputs.isEmpty()) {
+        if (inputs != null) {
+            // what the crafting took; nothing for a gun crafted for free
             return scaled(inputs, item.getAmount());
         }
-        if (inputs != null && !Cache.refundFreeGuns) {
-            return null;
+        GunCraftProvenance provenance = GunCraftProvenance.readFrom(item);
+        if (provenance == null || !provenance.resolveStampedParts().missingIds().isEmpty()) {
+            return Map.of();
         }
-        GunCraftProvenance.ResolvedParts parts = GunCraftProvenance.readFrom(item).resolveStampedParts();
-        if (!parts.missingIds().isEmpty()) {
-            return null;
-        }
+        GunCraftProvenance.ResolvedParts parts = provenance.resolveStampedParts();
         Map<String, Integer> cost = new LinkedHashMap<>();
         for (GunPart part : parts.live()) {
             part.getCost().forEach((path, amount) -> cost.merge(path, amount, Integer::sum));
@@ -78,7 +82,7 @@ public final class GunRefunder {
     /**
      * Takes an old gun apart for the player: {@code remove} takes the gun away, then the materials
      * go into their inventory (dropped at their feet when full). False, and nothing changes, when
-     * the gun is not refundable or a material can't be made.
+     * the gun is not old (or refunds are off) or a material can't be made.
      */
     public static boolean takeApart(Player player, ItemStack gun, Runnable remove) {
         Map<String, Integer> refund = refundFor(gun);
@@ -110,7 +114,7 @@ public final class GunRefunder {
             }
         }
         if (refund.isEmpty()) {
-            player.sendMessage("§eYour old " + name + "§e was retired. It had no materials to return.");
+            player.sendMessage("§eYour old " + name + "§e was retired and removed.");
         } else {
             player.sendMessage("§eYour old " + name + "§e was taken apart for its materials:");
             CostFormatter.getCostsFormatted(refund).forEach(player::sendMessage);

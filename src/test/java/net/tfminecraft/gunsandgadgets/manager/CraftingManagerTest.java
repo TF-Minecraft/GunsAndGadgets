@@ -218,11 +218,7 @@ class CraftingManagerTest {
           .thenReturn(false);
       manager.onStationOpen(event);
       verify(inventory).setItemInMainHand(null);
-      // old but can't be priced: refused with a word
-      refunder.when(() -> net.tfminecraft.gunsandgadgets.utils.GunRefunder.isOld(old)).thenReturn(true, false);
-      manager.onStationOpen(event);
-      verify(player).sendMessage("§cThis old gun can't be taken apart here. Ask staff about it.");
-      verify(event, times(2)).setCancelled(true);
+      verify(event).setCancelled(true);
       verifyNoInteractions(assembly);
       // any other item opens the gunsmith
       manager.onStationOpen(event);

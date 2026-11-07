@@ -171,9 +171,14 @@ class GunManagerTest {
       // another gun in the same slot draws from the start
       set("gun_id", "other");
       player.getInventory().setItemInMainHand(gun);
+      assertEquals("other", DrawTimer.gunId(player.getInventory().getItemInMainHand()));
+      assertEquals("other", DrawTimer.gunId(p.getInventory().getItemInMainHand()));
       timer.tick(p);
       assertFalse(manager.isDrawn(player, "other"));
+      assertFalse(manager.isDrawn(player, "same-id"));
       set("gun_id", "same-id");
+      player.getInventory().setItemInMainHand(gun);
+      timer.tick(p);
       // a different slot draws again; a gun without a known type is ready at once
       player.getInventory().setHeldItemSlot(4);
       set("gun_type", "cannon");
@@ -206,7 +211,10 @@ class GunManagerTest {
     assertSame(skin, manager.skinOf(gun));
     assertEquals(0, manager.loadedBullets(null));
     var bare = mock(ItemStack.class);
+    when(bare.getType()).thenReturn(Material.STICK);
     assertEquals(0, manager.loadedBullets(bare));
+    assertEquals(0, manager.loadedBullets(new ItemStack(Material.AIR)));
+    assertNull(DrawTimer.gunId(new ItemStack(Material.AIR)));
     assertNull(manager.skinOf(bare));
     assertNull(DrawTimer.gunId(bare));
     assertNull(DrawTimer.gunId(null));

@@ -54,6 +54,10 @@ class GunRefreshTest extends GunsTestSupport {
     assertFalse(GunStatRefresher.refresh(null).isChanged());
     assertFalse(GunStatRefresher.refresh(new ItemStack(Material.AIR)).isChanged());
     assertFalse(GunStatRefresher.refresh(gun("RIFLE", "id", false)).isChanged());
+    assertFalse(GunStatRefresher.isGun(null));
+    assertFalse(GunStatRefresher.isGun(new ItemStack(Material.AIR)));
+    assertFalse(GunStatRefresher.isGun(new ItemStack(Material.STICK)));
+    assertTrue(GunStatRefresher.isGun(gun("RIFLE", "id", false)));
     assertFalse(GunStatRefresher.isManaged(null));
     assertFalse(GunStatRefresher.isManaged(new ItemStack(Material.AIR)));
     assertFalse(GunStatRefresher.isManaged(new ItemStack(Material.STICK)));
@@ -61,6 +65,7 @@ class GunRefreshTest extends GunsTestSupport {
     when(metadataFree.getType()).thenReturn(Material.STICK);
     when(metadataFree.hasItemMeta()).thenReturn(false);
     assertFalse(GunStatRefresher.isManaged(metadataFree));
+    assertFalse(GunStatRefresher.isGun(metadataFree));
     assertFalse(GunBrokenMarker.isBroken(metadataFree));
     assertFalse(GunStatRefresher.isManaged(gun("RIFLE", null, true)));
     assertFalse(GunStatRefresher.isManaged(gun("RIFLE", "id", false)));
@@ -214,7 +219,7 @@ class GunRefreshTest extends GunsTestSupport {
     when(inventory.getItem(3))
         .thenReturn(
             null, new ItemStack(Material.AIR), new ItemStack(Material.STICK), original, original);
-    try (var refresh = mockStatic(GunStatRefresher.class)) {
+    try (var refresh = mockStatic(GunStatRefresher.class, CALLS_REAL_METHODS)) {
       refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(original))
@@ -239,7 +244,7 @@ class GunRefreshTest extends GunsTestSupport {
     var player = server.addPlayer();
     ItemStack original = gun("RIFLE", "id", true), rebuilt = new ItemStack(Material.BLAZE_ROD);
     player.getInventory().setItem(2, original);
-    try (var refresh = mockStatic(GunStatRefresher.class)) {
+    try (var refresh = mockStatic(GunStatRefresher.class, CALLS_REAL_METHODS)) {
       refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(original))
@@ -249,6 +254,16 @@ class GunRefreshTest extends GunsTestSupport {
       server.getScheduler().performOneTick();
       assertEquals(rebuilt, player.getInventory().getItem(2));
     }
+  }
+
+  @Test
+  void unstampedGunsAreLeftToRefundsAndNotRefreshed() {
+    var player = server.addPlayer();
+    ItemStack unstamped = gun("RIFLE", "id", false);
+    player.getInventory().setItem(2, unstamped);
+    new GunRefreshListener().onHotbarSelect(new PlayerItemHeldEvent(player, 0, 2));
+    server.getScheduler().performOneTick();
+    assertEquals(unstamped, player.getInventory().getItem(2));
   }
 
   @Test
@@ -304,7 +319,7 @@ class GunRefreshTest extends GunsTestSupport {
     player.getInventory().setItemInOffHand(original);
     player.getInventory().setItem(5, new ItemStack(Material.STICK));
     player.getEnderChest().setItem(4, original);
-    try (var refresh = mockStatic(GunStatRefresher.class)) {
+    try (var refresh = mockStatic(GunStatRefresher.class, CALLS_REAL_METHODS)) {
       refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(original))
@@ -336,7 +351,7 @@ class GunRefreshTest extends GunsTestSupport {
   @Test
   void openSweepOnlyTouchesWorldStorageAfterTheEvent() {
     ItemStack original = gun("RIFLE", "id", true), rebuilt = new ItemStack(Material.BLAZE_ROD);
-    try (var refresh = mockStatic(GunStatRefresher.class)) {
+    try (var refresh = mockStatic(GunStatRefresher.class, CALLS_REAL_METHODS)) {
       refresh.when(() -> GunStatRefresher.isManaged(original)).thenReturn(true);
       refresh
           .when(() -> GunStatRefresher.refreshIfOutdated(original))

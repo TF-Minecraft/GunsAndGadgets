@@ -50,11 +50,6 @@ public class CraftingManager implements Listener {
                 event.setCancelled(true);
                 return;
             }
-            if (GunRefunder.isOld(hand)) {
-                event.setCancelled(true);
-                player.sendMessage("§cThis old gun can't be taken apart here. Ask staff about it.");
-                return;
-            }
         }
         if (player.isSneaking()) return;
         event.setCancelled(true);

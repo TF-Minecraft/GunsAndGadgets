@@ -112,11 +112,17 @@ public final class DrawTimer {
         return base * factor;
     }
 
+    static final NamespacedKey GUN_ID = NamespacedKey.fromString("gunsandgadgets:gun_id");
+
+    /**
+     * The gun's id, or null for anything else. Runs every tick for every player, so it reads the
+     * item's data in place instead of copying its meta.
+     */
     static String gunId(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
             return null;
         }
-        return item.getItemMeta().getPersistentDataContainer().get(key("gun_id"), PersistentDataType.STRING);
+        return item.getPersistentDataContainer().get(GUN_ID, PersistentDataType.STRING);
     }
 
     private static NamespacedKey key(String name) {

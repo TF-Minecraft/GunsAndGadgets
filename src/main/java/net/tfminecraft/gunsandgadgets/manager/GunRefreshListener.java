@@ -105,10 +105,14 @@ public class GunRefreshListener implements Listener {
 
     /** Brings a gun up to date; with automatic refunds an old gun is taken apart for {@code player}. */
     private void tryRefresh(Player player, ItemStack item, ItemConsumer writer) {
-        if (item == null || item.getType().isAir() || !GunStatRefresher.isManaged(item)) {
+        if (!GunStatRefresher.isGun(item)) {
             return;
         }
+        // old guns, including unstamped ones the refresh can't read, are taken apart first
         if (Cache.refundsAutomatic && player != null && GunRefunder.takeApart(player, item, () -> writer.accept(null))) {
+            return;
+        }
+        if (!GunStatRefresher.isManaged(item)) {
             return;
         }
         GunStatRefresher.RefreshResult result = GunStatRefresher.refreshIfOutdated(item);

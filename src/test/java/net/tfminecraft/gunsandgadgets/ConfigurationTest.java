@@ -142,7 +142,6 @@ handling:
     assertEquals(1.75, Cache.spreadHip);
     assertFalse(Cache.refundsEnabled);
     assertFalse(Cache.refundsAutomatic);
-    assertFalse(Cache.refundFreeGuns);
     // Bad draw entries: an unknown gun type is skipped, a non-number gives no draw time.
     loader.loadConfig(
         file(
@@ -153,7 +152,7 @@ handling:
     base-seconds: {rifle: .nan, pistol: -2, cannon: 3}
     stance: {moving: .nan, sprinting: 0}
 aiming: {enabled: true, slow: 5}
-refunds: {enabled: true, automatic: true, free-guns: Part-Costs}
+refunds: {enabled: true, automatic: true}
 """)
             .toFile());
     assertEquals(0, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE));
@@ -162,7 +161,7 @@ refunds: {enabled: true, automatic: true, free-guns: Part-Costs}
     assertEquals(1.0, Cache.drawMoving);
     assertEquals(0.1, Cache.drawSprinting);
     assertEquals(0.9, Cache.aimSlow);
-    assertTrue(Cache.refundsEnabled && Cache.refundsAutomatic && Cache.refundFreeGuns);
+    assertTrue(Cache.refundsEnabled && Cache.refundsAutomatic);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
     assertEquals(0, Cache.scopeSettleTicks);
     assertEquals(1.0, Cache.spreadHip);
