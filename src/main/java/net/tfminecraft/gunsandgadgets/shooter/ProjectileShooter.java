@@ -187,7 +187,10 @@ public class ProjectileShooter {
         int totalAcc = gunAcc + ammoAcc;
         double baseSpread = Math.max(0.02, StatCalculator.calculateAccuracy(totalAcc)*AttributeReader.getAccuracyMultFromAttributes(player));
         // Stance widens only the launch cone; rocket wobble in flight keeps the gun's own spread.
-        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player));
+        // The shooter's VehicleFramework seat sets the stance and is skipped by their own bullets:
+        // the muzzle starts inside the vehicle, next to its base.
+        ActiveVehicle ownVehicle = Handling.vehicleFrameworkSeat(player);
+        double spreadDegrees = Handling.clampSpread(baseSpread * Handling.spreadMultiplier(player, ownVehicle));
 
         int salt = meta.getPersistentDataContainer().getOrDefault(
                 new NamespacedKey(GunsAndGadgets.getInstance(), "accuracy_salt"),
@@ -208,7 +211,7 @@ public class ProjectileShooter {
 
             int pierceStat = ammo.getStats().getOrDefault("pierce", 0);
 
-            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, totalDamage, pierceStat, Math::random);
+            startProjectileTask(player, ammo, start.clone(), velocity, baseSpread, maxDistance, totalDamage, pierceStat, ownVehicle, Math::random);
         }
     }
 
@@ -285,7 +288,7 @@ public class ProjectileShooter {
         v.setZ(z);
     }
 
-    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double damage, int pierceStat, java.util.function.DoubleSupplier random) {
+    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random) {
         new BukkitRunnable() {
             Location loc = start.clone();
             Vector vel = velocity.clone();
@@ -344,7 +347,7 @@ public class ProjectileShooter {
                 }
 
                 // 🔍 Check for hits
-                if (handleHits(player, ammo, start, maxDistance, prev, loc, damage, pierceStat, ticks)) {
+                if (handleHits(player, ammo, start, maxDistance, ownVehicle, prev, loc, damage, pierceStat, ticks)) {
                     cancel();
                     return;
                 }
@@ -381,7 +384,7 @@ public class ProjectileShooter {
     }
 
 
-    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, Location from, Location to, double damage, int pierceStat, int ticks) {
+    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, ActiveVehicle ownVehicle, Location from, Location to, double damage, int pierceStat, int ticks) {
         Vector direction = to.toVector().subtract(from.toVector()).normalize();
         double distance = from.distance(to);
 
@@ -390,8 +393,9 @@ public class ProjectileShooter {
             direction,               // direction vector (should be normalized)
             distance,                // how far to check
             0.4,                     // radius (the "thickness" of the ray)
-            entity -> (entity instanceof LivingEntity living && !living.isDead())
-                    || vehicleFor(entity) != null
+            entity -> !isOwnVehicle(entity, ownVehicle)
+                    && ((entity instanceof LivingEntity living && !living.isDead())
+                    || vehicleFor(entity) != null)
         );
 
 
@@ -500,6 +504,10 @@ public class ProjectileShooter {
         }
 
         return false;
+    }
+
+    private static boolean isOwnVehicle(Entity entity, ActiveVehicle ownVehicle) {
+        return ownVehicle != null && vehicleFor(entity) == ownVehicle;
     }
 
     private static ActiveVehicle vehicleFor(Entity entity) {

@@ -171,6 +171,16 @@ class ProjectileShooterTest {
 
   boolean hitsFrom(Ammunition ammo, int ticks, Location muzzle, double maxDistance)
       throws Exception {
+    return hitsFrom(ammo, ticks, muzzle, maxDistance, null);
+  }
+
+  boolean hitsFrom(
+      Ammunition ammo,
+      int ticks,
+      Location muzzle,
+      double maxDistance,
+      net.tfminecraft.vehicleframework.vehicles.ActiveVehicle ownVehicle)
+      throws Exception {
     return (boolean)
         call(
             "handleHits",
@@ -179,6 +189,7 @@ class ProjectileShooterTest {
               Ammunition.class,
               Location.class,
               double.class,
+              net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
               Location.class,
               Location.class,
               double.class,
@@ -189,6 +200,7 @@ class ProjectileShooterTest {
             ammo,
             muzzle,
             maxDistance,
+            ownVehicle,
             new Location(world, 0, 0, 0),
             new Location(world, 0, 0, 2),
             10.0,
@@ -472,6 +484,41 @@ class ProjectileShooterTest {
   }
 
   @Test
+  void shootersOwnVehicleNeverStopsTheirBullets() throws Exception {
+    MockBukkit.createMockPlugin("VehicleFramework");
+    var ownBase = mock(org.bukkit.entity.ArmorStand.class);
+    var otherBase = mock(org.bukkit.entity.ArmorStand.class);
+    var own = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var other = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+    var manager = mock(net.tfminecraft.vehicleframework.managers.VehicleManager.class);
+    when(manager.get(ownBase)).thenReturn(own);
+    when(manager.get(otherBase)).thenReturn(other);
+    var bystander = mock(LivingEntity.class);
+    try (var framework = mockStatic(net.tfminecraft.vehicleframework.VehicleFramework.class)) {
+      framework
+          .when(net.tfminecraft.vehicleframework.VehicleFramework::getVehicleManager)
+          .thenReturn(manager);
+      var filters = new ArrayList<Predicate<Entity>>();
+      when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+          .thenAnswer(
+              i -> {
+                filters.add(i.getArgument(4));
+                return null;
+              });
+      assertFalse(hitsFrom(ammo(), 1, new Location(world, 0, 0, 0), 100.0, own));
+      assertFalse(hitsFrom(ammo(), 1, new Location(world, 0, 0, 0), 100.0, null));
+      var seated = filters.get(0);
+      var onFoot = filters.get(1);
+      // From inside a vehicle: its own base is skipped; other vehicles and people still stop the bullet.
+      assertFalse(seated.test(ownBase));
+      assertTrue(seated.test(otherBase));
+      assertTrue(seated.test(bystander));
+      // On foot every vehicle counts, including the one the shooter isn't in.
+      assertTrue(onFoot.test(ownBase));
+    }
+  }
+
+  @Test
   void killingPlayerSchedulesFourConfirmationNotes() throws Exception {
     var target = mock(Player.class);
     when(target.getHealth()).thenReturn(20.0);
@@ -713,6 +760,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           int.class,
+          net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
         },
         player,
@@ -723,6 +771,7 @@ class ProjectileShooterTest {
         100000.0,
         10.0,
         20,
+        null,
         (java.util.function.DoubleSupplier) () -> 0.5);
     server.getScheduler().performTicks(106);
     verify(world).playSound(any(Location.class), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));
@@ -783,6 +832,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           int.class,
+          net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class
         },
         player,
@@ -793,6 +843,7 @@ class ProjectileShooterTest {
         100000.0,
         10.0,
         20,
+        null,
         random);
     server.getScheduler().performTicks(106);
     var locations = ArgumentCaptor.forClass(Location.class);

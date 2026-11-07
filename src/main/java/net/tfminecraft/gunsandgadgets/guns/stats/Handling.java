@@ -36,7 +36,11 @@ public final class Handling {
      * whatever applies on the ground.
      */
     public static double spreadMultiplier(Player player) {
-        ActiveVehicle seat = vehicleFrameworkSeat(player);
+        return spreadMultiplier(player, vehicleFrameworkSeat(player));
+    }
+
+    /** As {@link #spreadMultiplier(Player)}, with the VehicleFramework seat already looked up. */
+    public static double spreadMultiplier(Player player, ActiveVehicle seat) {
         if (seat != null) {
             return isTravelling(seat) ? Cache.spreadMounted : 1.0;
         }
@@ -64,7 +68,7 @@ public final class Handling {
      * The VehicleFramework vehicle the player sits in, or null. VehicleFramework seats riders
      * through ModelEngine's mount manager, so they have no Bukkit vehicle and are found here.
      */
-    static ActiveVehicle vehicleFrameworkSeat(Player player) {
+    public static ActiveVehicle vehicleFrameworkSeat(Player player) {
         if (!Bukkit.getPluginManager().isPluginEnabled("VehicleFramework")) {
             return null;
         }

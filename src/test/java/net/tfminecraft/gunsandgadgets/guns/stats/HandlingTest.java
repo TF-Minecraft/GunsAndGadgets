@@ -171,6 +171,18 @@ class HandlingTest {
     }
 
     @Test
+    void aSeatLookedUpByTheCallerIsUsedAsIs() {
+      var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class);
+      var panel = mock(net.tfminecraft.vehicleframework.vehicles.util.AccessPanel.class);
+      when(vehicle.getAccessPanel()).thenReturn(panel);
+      when(panel.getSpeed()).thenReturn(0.3);
+      when(player.isInsideVehicle()).thenReturn(false);
+      assertEquals(2.0, Handling.spreadMultiplier(player, vehicle));
+      when(panel.getSpeed()).thenReturn(0.0);
+      assertEquals(1.0, Handling.spreadMultiplier(player, vehicle));
+    }
+
+    @Test
     void trainCarriagesMoveWithTheirLocomotive() {
       when(player.isInsideVehicle()).thenReturn(false);
       org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("VehicleFramework");
