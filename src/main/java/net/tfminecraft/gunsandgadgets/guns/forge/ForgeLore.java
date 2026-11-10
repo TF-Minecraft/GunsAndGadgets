@@ -21,6 +21,11 @@ public final class ForgeLore {
     private ForgeLore() {}
 
     public static List<String> lines(GunPart part) {
+        return lines(part, true);
+    }
+
+    /** {@code scaled} false shows the tendencies as parts.yml writes them (the steel reference). */
+    public static List<String> lines(GunPart part, boolean scaled) {
         List<String> lines = new ArrayList<>();
         Map<Stats, Double> fixed = part.getFixedStats();
         Double capacity = fixed.get(Stats.CAPACITY);
@@ -32,7 +37,7 @@ public final class ForgeLore {
             lines.add(format("§7■ #c2b48aPellet Spread§e: §f" + coneWord(cone)));
         }
         // In the part's own material: a mythril upside can show more arrows than an iron one.
-        Metal metal = part.getMetalId() == null ? null : MetalLoader.getByString(part.getMetalId());
+        Metal metal = !scaled || part.getMetalId() == null ? null : MetalLoader.getByString(part.getMetalId());
         for (Map.Entry<Stats, Double> tendency : part.getTendencies().entrySet()) {
             double value = tendency.getValue();
             if (metal != null) value = metal.scale(tendency.getKey().getKey(), value);

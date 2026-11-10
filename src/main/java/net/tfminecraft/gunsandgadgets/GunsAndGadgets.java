@@ -54,7 +54,11 @@ public class GunsAndGadgets extends JavaPlugin {
 	@Override
 	public void onDisable() {
 		if (gunManager != null) {
-			for (var player : getServer().getOnlinePlayers()) gunManager.cancelActiveReload(player);
+			for (var player : getServer().getOnlinePlayers()) {
+				gunManager.cancelActiveReload(player);
+				// a reload must not leave a scoped gun a spyglass or the aiming slowdown on
+				gunManager.stopAiming(player);
+			}
 		}
 		revisionTracker.flush();
 	}
@@ -93,6 +97,8 @@ public class GunsAndGadgets extends JavaPlugin {
 			"part-types.yml",
 			"metals.yml",
 			"parts.yml",
+			// the pre-forging parts, so old guns resolve (and refund) even if a server forgets to move them
+			"retired-parts.yml",
 			"skins.yml",
 			"ammunition.yml"
 		};

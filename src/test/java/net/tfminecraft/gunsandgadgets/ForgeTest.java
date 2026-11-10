@@ -423,6 +423,17 @@ handling:
       assertFalse(part.getCost().isEmpty(), part.getId());
     }
     assertEquals(37 * 4 - 1, PartLoader.getOrdered().size()); // 37 parts (4 pistol grips), no iron multi-tube
+    // The part list shows the steel reference arrows, whichever material a player sees first.
+    GunPart ironHeavy = PartLoader.getByString("heavy_barrel@iron");
+    assertEquals(ForgeLore.lines(heavy), ForgeLore.lines(ironHeavy, false));
+    assertNotEquals(ForgeLore.lines(ironHeavy), ForgeLore.lines(ironHeavy, false));
+    // The bundled retired parts (the pre-forging defaults) load disabled beside the forged ones.
+    new PartLoader().loadRetired(resource("/retired-parts.yml"));
+    for (String old : List.of("flintlock", "matchlock", "rifled_barrel_long", "revolver", "quad_shot")) {
+      assertTrue(PartLoader.getByString(old).isRetired(), old);
+    }
+    assertEquals(37 * 4 - 1 + 21, PartLoader.getOrdered().size());
+    assertTrue(PartLoader.isHealthy());
   }
 
   @Test

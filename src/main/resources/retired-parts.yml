@@ -1,0 +1,491 @@
+# Pre-forging parts (retired 2026-11-07): loaded disabled so old guns still resolve and, with
+# refunds on, are taken apart. Ids that parts.yml defines are skipped. A server with its own
+# old parts should replace this file with its pre-forging parts.yml before installing the new one.
+
+
+# Barrels
+smoothbore_barrel_long:
+  name: "§7Smoothbore Barrel (Long)"
+  part-type: barrel
+  tier: 1
+  type:
+    - rifle
+  item: modeled.(type=gunpowder;model=2)
+  sounds:
+    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+  stats:
+    - accuracy 5
+    - speed 10
+  caliber:
+    - ironshot
+  name-impact:
+    - Musket 1 10
+  cost:
+    - v.iron_ingot(4)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+
+rifled_barrel_long:
+  name: "§7Rifled Barrel (Long)"
+  part-type: barrel
+  tier: 2
+  type:
+    - rifle
+  item: modeled.(type=gunpowder;model=3)
+  sounds:
+    - shoot minecraft:guns.musket_2,minecraft:guns.musket_4,minecraft:guns.musket_6
+  stats:
+    - accuracy 10
+    - speed 8
+    - reload -4
+  caliber:
+    - ironshot
+    - steelshot
+  name-impact:
+    - Rifle 1 10
+  cost:
+    - m.materials.steel_ingot(4)
+  permissions:
+    - professions.steel_smith
+  class:
+    - Musketeer
+
+smoothbore_barrel_short:
+  name: "§7Smoothbore Barrel (Short)"
+  part-type: barrel
+  tier: 1
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=4)
+  sounds:
+    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+  stats:
+    - accuracy 3
+    - speed 8
+  caliber:
+    - ironshot
+  name-impact:
+    - Pistol 1 10
+  cost:
+    - v.iron_ingot(4)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+
+rifled_barrel_short:
+  name: "§7Rifled Barrel (Short)"
+  part-type: barrel
+  tier: 2
+  type:
+    - pistol
+  item: modeled.(type=gunpowder;model=5)
+  sounds:
+    - shoot minecraft:guns.pistol_1,minecraft:guns.pistol_2,minecraft:guns.pistol_3,minecraft:guns.pistol_4,minecraft:guns.pistol_5
+  stats:
+    - accuracy 7
+    - speed 7
+    - reload -4
+  caliber:
+    - ironshot
+    - steelshot
+  name-impact:
+    - Pistol 1 10
+  cost:
+    - m.materials.steel_ingot(4)
+  permissions:
+    - professions.steel_smith
+  class:
+    - Musketeer
+
+spread_barrel:
+  name: "§7Spread Barrel"
+  part-type: barrel
+  tier: 2
+  type:
+    - shotgun
+  item: modeled.(type=gunpowder;model=6)
+  sounds:
+    - shoot minecraft:guns.musket_1
+  stats:
+    - accuracy -8
+    - reload -10
+  caliber:
+    - spreadshot
+  name-impact:
+    - Blunderbuss -1 100
+  skin-impact:
+    - blunderbuss 10
+  cost:
+    - m.materials.steel_ingot(4)
+  permissions:
+    - professions.steel_smith
+  class:
+    - Musketeer
+
+launcher_barrel:
+  name: "#3a3e4dLauncher Barrel"
+  part-type: barrel
+  tier: 3
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=22)
+  sounds:
+    - shoot gunsandgadgets:launcher_shoot
+    - shoot minecraft:entity.generic.explode
+  stats:
+    - accuracy -6
+    - reload -10
+    - fire_rate 16
+  caliber:
+    - rocket
+  name-impact:
+    - "#3a3e4dRocket 0 100"
+    - "Launcher 1 100"
+  skin-impact:
+    - launcher 10
+  cost:
+    - m.materials.abyssalite_ingot(4)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+# Loaders
+muzzle_loader:
+  name: "§7Muzzle Loader"
+  part-type: loader
+  tier: 1
+  type:
+    - rifle
+    - pistol
+    - shotgun
+    - launcher
+  item: modeled.(type=gunpowder;model=7)
+  sounds:
+    - reload gunsandgadgets:muzzle_reload
+  stats:
+    - fire_rate 2
+    - accuracy 4
+    - reload 4
+    - speed 4
+  cost:
+    - v.iron_ingot(2)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+
+breech_loader:
+  name: "§7Breech Loader"
+  part-type: loader
+  tier: 4
+  type:
+    - rifle
+    - shotgun
+    - launcher
+  item: modeled.(type=gunpowder;model=8)
+  sounds:
+    - reload vehicleframework:gun_reload
+  stats:
+    - fire_rate 5
+    - accuracy 2
+    - reload 12
+    - speed 3
+  cost:
+    - m.materials.mythril_ingot(2)
+  permissions:
+    - professions.mythril_smith
+  class:
+    - Musketeer
+
+# Chamber
+single_shot:
+  name: "§7Single Shot"
+  part-type: chamber
+  tier: 1
+  type:
+    - rifle
+    - pistol
+    - shotgun
+  item: modeled.(type=gunpowder;model=9)
+  stats:
+    - capacity 1
+    - reload 2
+    - accuracy 2
+    - speed 3
+  cost:
+    - v.iron_ingot(2)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+single_shot_launcher:
+  name: "§7Single Shot"
+  part-type: chamber
+  tier: 3
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=24)
+  stats:
+    - capacity 1
+    - reload 4
+    - accuracy 8
+    - speed 4
+  cost:
+    - m.materials.abyssalite_ingot(2)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+quad_shot:
+  name: "§7Quad Shot"
+  part-type: chamber
+  tier: 4
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=25)
+  stats:
+    - capacity 4
+    - reload -10
+    - accuracy 2
+    - speed 3
+  cost:
+    - m.materials.mythril_ingot(2)
+  permissions:
+    - professions.mythril_smith
+  class:
+    - Musketeer
+
+revolver:
+  name: "§7Revolver"
+  part-type: chamber
+  tier: 3
+  type:
+    - rifle
+    - pistol
+  item: modeled.(type=gunpowder;model=10)
+  stats:
+    - capacity 6
+    - fire_rate 4
+    - reload -12
+    - accuracy -1
+    - damage -3
+    - speed 1
+  name-impact:
+    - (Revolver) 2 10
+  cost:
+    - m.materials.abyssalite_ingot(2)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+
+# Actions
+steamlock:
+  name: "§7Steamlock"
+  part-type: action
+  tier: 1
+  type:
+    - rifle
+    - pistol
+  item: modeled.(type=gunpowder;model=11)
+  sound-overrides:
+    - shoot gunsandgadgets:steamlock_shoot
+  # Airgun: no muzzle smoke or flash, whichever shot it fires.
+  options:
+    - smokeless
+    - no_light
+  caliber-override:
+    - pebbleshot
+  stats:
+    - fire_rate 4
+    - accuracy 1
+    - speed -3
+  name-impact:
+    - Steamlock 0 10
+  skin-impact:
+    - steamlock 10
+  cost:
+    - v.iron_ingot(2)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+
+matchlock:
+  name: "§7Matchlock"
+  part-type: action
+  tier: 2
+  type:
+    - rifle
+    - pistol
+    - shotgun
+  item: modeled.(type=gunpowder;model=12)
+  stats:
+    - fire_rate 1
+    - accuracy 1
+  name-impact:
+    - Matchlock 0 10
+  skin-impact:
+    - matchlock 10
+    - blunderbuss 1
+    - launcher 1
+  cost:
+    - m.materials.steel_ingot(2)
+  permissions:
+    - professions.steel_smith
+  class:
+    - Musketeer
+
+flintlock:
+  name: "§7Flintlock"
+  part-type: action
+  tier: 3
+  type:
+    - rifle
+    - pistol
+    - shotgun
+  item: modeled.(type=gunpowder;model=13)
+  sounds:
+    - shoot minecraft:item.flintandsteel.use
+  stats:
+    - fire_rate 2
+    - accuracy 2
+  name-impact:
+    - Flintlock 0 10
+  skin-impact:
+    - flintlock 10
+    - blunderbuss 1
+    - launcher 1
+  cost:
+    - m.materials.abyssalite_ingot(2)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+
+rocketlock:
+  name: "#3a3e4dRocketlock"
+  part-type: action
+  tier: 3
+  type:
+    - launcher
+  item: modeled.(type=gunpowder;model=23)
+  stats:
+    - fire_rate -10
+    - accuracy 3
+    - reload -6
+  skin-impact:
+    - launcher 10
+  cost:
+    - m.materials.abyssalite_ingot(2)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+
+arclock:
+  name: "§7Experimental Arclock"
+  part-type: action
+  tier: 4
+  type:
+    - rifle
+  item: modeled.(type=gunpowder;model=14)
+  sounds:
+    - reload gunsandgadgets:arclock_reload
+    - reload minecraft:block.beacon.activate
+  sound-overrides:
+    - shoot minecraft:guns.musket_1,minecraft:guns.musket_3,minecraft:guns.musket_7,minecraft:guns.musket_8,minecraft:guns.musket_9 
+  stats:
+    - fire_rate -12
+    - accuracy 8
+    - reload -10
+    - speed 8
+  caliber-override:
+    - bronzeshot
+  name-impact:
+    - §5Arclock 0 10
+  skin-impact:
+    - arclock 10
+  cost:
+    - m.materials.mythril_ingot(2)
+  permissions:
+    - professions.mythril_smith
+  class:
+    - Musketeer
+  lore:
+    - "§7Unlike the arclocks used in larger weapons like mounted heavy rifles"
+    - "§7The experimental handheld arclocks are not able to reproduce the rapid"
+    - "§7rate of fire seen in these larger guns. Instead the focus is shifted to"
+    - "§7accuracy and speed at great cost of its manual and long reloading process."
+
+# Stocks
+oak_stock:
+  name: "§7Oak Stock"
+  part-type: stock
+  tier: 1
+  type:
+    - rifle
+    - shotgun
+  item: modeled.(type=gunpowder;model=15)
+  stats:
+    - accuracy 3
+  cost:
+    - m.materials.refined_barkwood(2)
+  permissions:
+    - professions.iron_smith
+  class:
+    - Musketeer
+
+maplewood_stock:
+  name: "§7Maplewood Stock"
+  part-type: stock
+  tier: 2
+  type:
+    - rifle
+    - shotgun
+  item: modeled.(type=gunpowder;model=16)
+  stats:
+    - accuracy 4
+  cost:
+    - m.materials.refined_maplewood(2)
+  permissions:
+    - professions.steel_smith
+  class:
+    - Musketeer
+
+elderwood_stock:
+  name: "§8Elderwood Stock"
+  part-type: stock
+  tier: 3
+  type:
+    - rifle
+    - shotgun
+  item: modeled.(type=gunpowder;model=17)
+  stats:
+    - accuracy 5
+  cost:
+    - m.materials.refined_elderwood(2)
+  permissions:
+    - professions.abyssalite_smith
+  class:
+    - Musketeer
+
+demonwood_stock:
+  name: "§4Demonwood Stock"
+  part-type: stock
+  tier: 4
+  type:
+    - rifle
+    - shotgun
+  item: modeled.(type=gunpowder;model=17)
+  stats:
+    - accuracy 6
+  cost:
+    - m.materials.refined_demonwood(2)
+  permissions:
+    - professions.mythril_smith
+  class:
+    - Musketeer

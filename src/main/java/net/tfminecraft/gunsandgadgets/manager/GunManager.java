@@ -177,6 +177,11 @@ public class GunManager implements Listener {
         return aiming;
     }
 
+    /** Lowers an aimed gun and ends the slowdown (plugin disable). */
+    public void stopAiming(Player player) {
+        aiming.stop(player);
+    }
+
     DrawTimer drawTimer() {
         return draw;
     }

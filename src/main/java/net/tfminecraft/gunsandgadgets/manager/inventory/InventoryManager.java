@@ -217,7 +217,7 @@ public class InventoryManager implements Listener {
             lore.add(StringFormatter.formatHex(line));
         }
         if (!lore.isEmpty()) lore.add("");
-        lore.addAll(ForgeLore.lines(part));
+        lore.addAll(ForgeLore.lines(part, false)); // the reference (steel) arrows, whichever material comes first
         lore.add("");
         lore.add("§eClick to choose the material");
         m.setLore(lore);
