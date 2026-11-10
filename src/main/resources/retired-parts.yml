@@ -1,6 +1,7 @@
 # Pre-forging parts (retired 2026-11-07): loaded disabled so old guns still resolve and, with
-# refunds on, are taken apart. Ids that parts.yml defines are skipped. A server with its own
-# old parts should replace this file with its pre-forging parts.yml before installing the new one.
+# refunds on, are taken apart. Ids that parts.yml defines are skipped. These are the plugin's old
+# default values: a server that tuned its parts should replace this file with its own pre-forging
+# parts.yml before installing the new one, or old guns refresh to these values.
 
 
 # Barrels

@@ -24,7 +24,7 @@ public final class ForgeLore {
         return lines(part, true);
     }
 
-    /** {@code scaled} false shows the tendencies as parts.yml writes them (the steel reference). */
+    /** {@code scaled} false shows the tendencies unscaled, as parts.yml writes them (the steel reference); fixed stats are the part's own. */
     public static List<String> lines(GunPart part, boolean scaled) {
         List<String> lines = new ArrayList<>();
         Map<Stats, Double> fixed = part.getFixedStats();

@@ -56,7 +56,7 @@ public class GunsAndGadgets extends JavaPlugin {
 		if (gunManager != null) {
 			for (var player : getServer().getOnlinePlayers()) {
 				gunManager.cancelActiveReload(player);
-				// a reload must not leave a scoped gun a spyglass or the aiming slowdown on
+				// a plugin disable or reload must not leave a scoped gun a spyglass or the aiming slowdown on
 				gunManager.stopAiming(player);
 			}
 		}
