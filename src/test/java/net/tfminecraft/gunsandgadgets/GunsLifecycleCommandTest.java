@@ -40,7 +40,7 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
       assertNotNull(actual.getCommand("gg").getExecutor());
       assertNotNull(actual.getCommand("gg").getTabCompleter());
       for (String resource :
-          List.of("config.yml", "part-types.yml", "parts.yml", "skins.yml", "ammunition.yml")) {
+          List.of("config.yml", "part-types.yml", "parts.yml", "retired-parts.yml", "skins.yml", "ammunition.yml")) {
         assertTrue(Files.exists(actual.getDataFolder().toPath().resolve(resource)), resource);
       }
       var custom = actual.getDataFolder().toPath().resolve("config.yml");
@@ -59,6 +59,7 @@ class GunsLifecycleCommandTest extends GunsTestSupport {
       Player player = server.addPlayer();
       actual.onDisable();
       verify(guns.constructed().getFirst()).cancelActiveReload(player);
+      verify(guns.constructed().getFirst()).stopAiming(player);
       try (var paths = Files.walk(actual.getDataFolder().toPath())) {
         for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
           Files.delete(path);

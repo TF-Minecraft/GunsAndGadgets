@@ -48,6 +48,7 @@ abstract class GunsTestSupport {
     PartDataLoader.clear();
     PartLoader.clear();
     AmmunitionLoader.clear();
+    MetalLoader.clear();
     SkinLoader.clear();
   }
 

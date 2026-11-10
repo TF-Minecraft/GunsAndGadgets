@@ -3,6 +3,7 @@ package net.tfminecraft.gunsandgadgets.loader;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.bukkit.configuration.ConfigurationSection;
@@ -63,6 +64,45 @@ public class ConfigLoader {
         Cache.falloffStartDistance = Math.max(0.0, finite(config, "handling.falloff.start-distance", 0.0));
         Cache.falloffMinMultiplier =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.falloff.min-multiplier", 1.0)));
+        Cache.smoothAccuracy = config.getBoolean("handling.smooth-accuracy", false);
+        Cache.coneTightenPerAccuracy =
+                Math.max(0.0, finite(config, "handling.pellet-cone.tighten-per-accuracy", 0.03));
+        Cache.coneMinFactor =
+                Math.max(0.0, Math.min(1.0, finite(config, "handling.pellet-cone.min-factor", 0.4)));
+        Cache.retireDisabledPartGuns = config.getBoolean("retire-disabled-part-guns", false);
+        Cache.refundsEnabled = config.getBoolean("refunds.enabled", false);
+        Cache.refundsAutomatic = config.getBoolean("refunds.automatic", false);
+        Cache.partIconPrefix = config.getString("part-icons", "").trim();
+
+        // Draw time: seconds per gun type, slowed by stance. Left out = guns are ready at once.
+        Cache.drawBaseTicks = new HashMap<>();
+        ConfigurationSection draw = config.getConfigurationSection("handling.draw.base-seconds");
+        if (draw != null) {
+            for (String key : draw.getKeys(false)) {
+                try {
+                    GunType type = GunType.valueOf(key.toUpperCase());
+                    double seconds = draw.getDouble(key, 0.0);
+                    Cache.drawBaseTicks.put(type, Double.isFinite(seconds) ? (int) Math.round(Math.max(0.0, seconds) * 20) : 0);
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Unknown gun type in handling.draw.base-seconds: " + key);
+                }
+            }
+        }
+        Cache.drawMoving = Math.max(0.1, finite(config, "handling.draw.stance.moving", 1.0));
+        Cache.drawSprinting = Math.max(0.1, finite(config, "handling.draw.stance.sprinting", 1.0));
+        Cache.drawAirborne = Math.max(0.1, finite(config, "handling.draw.stance.airborne", 1.0));
+        Cache.drawMounted = Math.max(0.1, finite(config, "handling.draw.stance.mounted", 1.0));
+        Cache.drawSneaking = Math.max(0.1, finite(config, "handling.draw.stance.sneaking", 1.0));
+
+        Cache.aimingEnabled = config.getBoolean("aiming.enabled", false);
+        Cache.aimSlow = Math.max(0.0, Math.min(0.9, finite(config, "aiming.slow", 0.0)));
+        Cache.scopeSettleTicks = (int) Math.round(Math.max(0.0, finite(config, "aiming.scope-settle-seconds", 0.0)) * 20);
+        Cache.spreadHip = Math.max(0.0, finite(config, "handling.spread-multipliers.hip", 1.0));
+        Cache.rocketSafeDistance = Math.max(0.0, finite(config, "handling.rockets.safe-distance", 4.0));
+        Cache.rocketMinMultiplier =
+                Math.max(0.0, Math.min(1.0, finite(config, "handling.rockets.min-multiplier", 0.1)));
+        Cache.rocketFullDistance = Math.max(0.0, finite(config, "handling.rockets.full-damage-distance", 0.0));
+        Cache.typeIconPrefix = config.getString("type-icons", "").trim();
 
         section = config.getConfigurationSection("required-parts");
         if (section != null) {

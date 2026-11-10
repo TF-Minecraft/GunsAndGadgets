@@ -43,14 +43,19 @@ import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.SoundType;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
+import net.tfminecraft.gunsandgadgets.guns.forge.ForgeLore;
+import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.PartData;
+import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinResolver;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatApplier;
 import net.tfminecraft.gunsandgadgets.guns.stats.Stats;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
+import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
+import net.tfminecraft.gunsandgadgets.shooter.ShotFx;
 import net.tfminecraft.gunsandgadgets.loader.PartDataLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
@@ -92,7 +97,7 @@ public class InventoryManager implements Listener {
                 // ❌ No valid part (permission or none exist) → barrier
                 ItemStack barrier = new ItemStack(Material.BARRIER);
                 ItemMeta bm = barrier.getItemMeta();
-                bm.setDisplayName("§cNo Part");
+                bm.setDisplayName("§cNo part available");
                 barrier.setItemMeta(bm);
                 inv.setItem(slot, barrier);
             }
@@ -111,8 +116,9 @@ public class InventoryManager implements Listener {
         Inventory typeInv = Bukkit.createInventory(new TypeSelectionHolder(), 9, "§6Select Gun Type");
         int slot = 0;
         for (GunType type : GunType.values()) {
-            ItemStack item = new ItemStack(Material.PAPER);
+            ItemStack item = new ItemStack(ForgedLook.typeIconsOn() ? Material.STONE_HOE : Material.PAPER);
             ItemMeta meta = item.getItemMeta();
+            ForgedLook.applyTypeIcon(meta, type);
             meta.setDisplayName("§e" + type.getDisplayName());
             meta.setLore(List.of("§7Click to choose this type"));
             item.setItemMeta(meta);
@@ -127,40 +133,109 @@ public class InventoryManager implements Listener {
     public void openPartSelection(Player player, String partCategoryId) {
         GunType chosen = TypeSelectionManager.getSelectedType(player);
 
-        // collect options matching this category + gun type
+        // collect options matching this category + gun type; a forged part is one option whose
+        // materials are picked next
         List<GunPart> options = new ArrayList<>();
-        for (GunPart part : PartLoader.getOrdered()) {
-            if (!part.getPartType().getId().equalsIgnoreCase(partCategoryId)) continue;
-            if (!part.getGunTypes().contains(chosen)) continue;
-            if (part.isDisabled()) continue;
-            if (!hasPermissionForPart(player, part)) continue; // 🚫 permission check
+        Set<String> forgedSeen = new HashSet<>();
+        for (GunPart part : selectable(player, partCategoryId, chosen, null)) {
+            if (part.isForged() && !forgedSeen.add(part.getBaseId())) continue;
             options.add(part);
         }
 
         int size = Math.max(9, Math.min(54, ((options.size() + 8) / 9) * 9));
-        Inventory inv = Bukkit.createInventory(new PartSelectionHolder(partCategoryId), size, "§6Select " + partCategoryId);
+        Inventory inv = Bukkit.createInventory(new PartSelectionHolder(partCategoryId), size, "§6Select " + categoryName(partCategoryId, chosen));
 
         if (options.isEmpty()) {
             // ❌ No available parts → show barrier
             ItemStack barrier = new ItemStack(Material.BARRIER);
             ItemMeta bm = barrier.getItemMeta();
-            bm.setDisplayName("§cNo Part");
+            bm.setDisplayName("§cNo part available");
             barrier.setItemMeta(bm);
             inv.setItem(size / 2, barrier);
         } else {
             for (GunPart part : options) {
-                ItemStack option = createPartItem(part);
+                ItemStack option = part.isForged() ? createForgedChoiceItem(part) : createPartItem(part);
                 inv.addItem(option);
             }
         }
 
         // optional: back button
+        inv.setItem(size - 1, backButton());
+
+        player.openInventory(inv);
+    }
+
+    /** The materials a forged part can be made from, each with its cost. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    public void openMetalSelection(Player player, String partCategoryId, String baseId) {
+        GunType chosen = TypeSelectionManager.getSelectedType(player);
+        List<GunPart> variants = selectable(player, partCategoryId, chosen, baseId);
+        int size = Math.max(9, Math.min(54, ((variants.size() + 1 + 8) / 9) * 9));
+        Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Select Material");
+        for (GunPart variant : variants) {
+            inv.addItem(createPartItem(variant));
+        }
+        inv.setItem(size - 1, backButton());
+        player.openInventory(inv);
+    }
+
+    /** Enabled parts of a category the player may craft for this gun type (one forged part's variants when baseId is set). */
+    private List<GunPart> selectable(Player player, String partCategoryId, GunType chosen, String baseId) {
+        List<GunPart> options = new ArrayList<>();
+        for (GunPart part : PartLoader.getOrdered()) {
+            if (!part.getPartType().getId().equalsIgnoreCase(partCategoryId)) continue;
+            if (!part.getGunTypes().contains(chosen)) continue;
+            if (part.isDisabled()) continue;
+            if (baseId != null && !part.getBaseId().equals(baseId)) continue;
+            if (!hasPermissionForPart(player, part)) continue; // 🚫 permission check
+            options.add(part);
+        }
+        return options;
+    }
+
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private ItemStack backButton() {
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta bm = back.getItemMeta();
         bm.setDisplayName("§eBack"); back.setItemMeta(bm);
-        inv.setItem(size - 1, back);
+        return back;
+    }
 
-        player.openInventory(inv);
+    /** A forged part in the part list: its tendencies, and a click to choose the material. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private ItemStack createForgedChoiceItem(GunPart part) {
+        ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
+        ItemMeta m = i.getItemMeta();
+        ForgedLook.applyIcon(m, part, false);
+        m.setDisplayName(part.getBaseName());
+        m.getPersistentDataContainer().set(forgeBaseKey(), PersistentDataType.STRING, part.getBaseId());
+        List<String> lore = new ArrayList<>();
+        for (String line : part.getBaseLore()) {
+            lore.add(StringFormatter.formatHex(line));
+        }
+        if (!lore.isEmpty()) lore.add("");
+        lore.addAll(ForgeLore.lines(part, false)); // the reference (steel) arrows, whichever material comes first
+        lore.add("");
+        lore.add("§eClick to choose the material");
+        m.setLore(lore);
+        i.setItemMeta(m);
+        return i;
+    }
+
+    /** A part category as a screen title shows it: "Barrel", and "Grip" for a pistol's stock. */
+    static String categoryName(String partCategoryId, GunType type) {
+        if (partCategoryId.equalsIgnoreCase("stock") && type == GunType.PISTOL) {
+            return "Grip";
+        }
+        String name = partCategoryId.replace('_', ' ');
+        return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
+    private static NamespacedKey forgeBaseKey() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "forge_base");
     }
 
 
@@ -213,11 +288,12 @@ public class InventoryManager implements Listener {
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     private ItemStack createWeaponTypeButton(GunType type) {
-        ItemStack item = new ItemStack(Material.NETHER_STAR); // placeholder icon
+        ItemStack item = new ItemStack(ForgedLook.typeIconsOn() ? Material.STONE_HOE : Material.NETHER_STAR);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§6Select Type: §e" + type.getDisplayName());
+        ForgedLook.applyTypeIcon(meta, type);
+        meta.setDisplayName("§6Gun Type: §e" + type.getDisplayName());
         List<String> lore = new ArrayList<>();
-        lore.add("§7Click to change weapon type");
+        lore.add("§7Click to change gun type");
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
@@ -233,7 +309,7 @@ public class InventoryManager implements Listener {
 
                 if (idx == -1) {
                     // override everything
-                    return "§7" + ni.getFragment();
+                    return StringFormatter.formatHex(ForgedLook.tierColor(MajorityTierResolver.resolve(parts))) + ni.getFragment();
                 }
 
                 GunPart.NameImpact existing = chosen.get(idx);
@@ -247,7 +323,8 @@ public class InventoryManager implements Listener {
         List<Integer> order = new ArrayList<>(chosen.keySet());
         Collections.sort(order);
 
-        StringBuilder sb = new StringBuilder("§7");
+        // the name is written in the colour of the gun's final tier
+        StringBuilder sb = new StringBuilder(StringFormatter.formatHex(ForgedLook.tierColor(MajorityTierResolver.resolve(parts))));
         for (int idx : order) {
             sb.append(chosen.get(idx).getFragment()).append(" ");
         }
@@ -374,6 +451,17 @@ public class InventoryManager implements Listener {
                 }
             }
         }
+        // A gun whose parts declare shot (or limit it) but leave none to load could never fire:
+        // e.g. a plain-shot-only lock with a powered-shot-only chamber.
+        List<String> calibers = resolveCalibers(parts);
+        if (calibers.isEmpty() && declaresShot(parts)) {
+            ItemStack barrier = new ItemStack(Material.BARRIER);
+            ItemMeta bm = barrier.getItemMeta();
+            bm.setDisplayName("§cThese parts don't make a gun");
+            bm.setLore(List.of("§7No shot fits all of them."));
+            barrier.setItemMeta(bm);
+            return barrier;
+        }
         // Resolve skin
         SkinResolver resolver = new SkinResolver(SkinLoader.get());
         SkinData skin = resolver.resolve(type, parts);
@@ -387,7 +475,7 @@ public class InventoryManager implements Listener {
 
         // Base item
         ItemStack base = TLibs.getItemAPI().getCreator().getItemFromPath(Cache.outputItems.getOrDefault(type, "v.stick"));
-        
+
         base = applyClass(base, parts);
 
         ItemStack skinItem = skin.parseModel(SkinState.CARRY);
@@ -404,6 +492,7 @@ public class InventoryManager implements Listener {
                     && LegacyModelData.has(skinItem.getItemMeta())) {
                 LegacyModelData.set(meta, LegacyModelData.get(skinItem.getItemMeta()));
             }
+            ForgedLook.stamp(meta, skin, SkinState.CARRY, parts);
             meta.setDisplayName(buildName(parts));
 
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
@@ -439,12 +528,11 @@ public class InventoryManager implements Listener {
             // ✅ Store accuracy salt — set above with gun_id when preserving runtime
 
             // ---------- Caliber section ----------
-            List<String> calibers = resolveCalibers(parts);
             List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
 
             if (!calibers.isEmpty()) {
                 lore.add("");
-                lore.add("§6§lCaliber:");
+                lore.add("§6§lShot:");
                 for (String ammoKey : calibers) {
                     Ammunition ammo = AmmunitionLoader.getByString(ammoKey);
                     if (ammo != null) {
@@ -456,7 +544,7 @@ public class InventoryManager implements Listener {
                     }
                 }
                 if (calibers.size() > 1) {
-                    lore.add("§8Crouch and right-click to change shot");
+                    lore.add("§8Swap hands to change shot");
                 }
 
                 // ✅ Save calibers in PDC
@@ -469,6 +557,7 @@ public class InventoryManager implements Listener {
                     new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_sounds"));
             storeSounds(type, parts, SoundType.RELOAD, pdc,
                     new NamespacedKey(GunsAndGadgets.getInstance(), "reload_sounds"));
+            ShotFx.stamp(parts, pdc, new NamespacedKey(GunsAndGadgets.getInstance(), "shoot_fx"));
 
             meta.setLore(lore);
             base.setItemMeta(meta);
@@ -560,18 +649,41 @@ public class InventoryManager implements Listener {
     /**
      * Collect sounds for a given type and write them into the PDC.
      */
+    /** One sound group: "key,key" plus "|pitch|volume" when they aren't 1. */
+    private static void addGroup(List<String> result, GunPart.PartSound ps, double pitch, double volume) {
+        String group = String.join(",", ps.getSoundKeys());
+        if (!group.isBlank()) {
+            result.add(group + GunPart.PartSound.levelSuffix(pitch * ps.getPitch(), volume * ps.getVolume()));
+        }
+    }
+
     private void storeSounds(GunType gunType, Collection<GunPart> parts,
                          SoundType soundType, PersistentDataContainer pdc, NamespacedKey key) {
         List<String> result = new ArrayList<>();
-        
+
+        // The report takes every part's pitch and volume and the barrel material's.
+        double pitch = 1.0;
+        double volume = 1.0;
+        Metal metal = null;
+        if (soundType == SoundType.SHOOT) {
+            for (GunPart part : parts) {
+                pitch *= part.getSoundPitch();
+                volume *= part.getSoundVolume();
+            }
+            metal = ShotFx.barrelMetal(parts);
+            if (metal != null) {
+                pitch *= metal.getSoundPitch();
+                volume *= metal.getSoundVolume();
+            }
+        }
+
         // 🔄 1) Collect ALL overrides first (across all parts)
         for (GunPart part : parts) {
             List<GunPart.PartSound> overrides = part.getSoundOverrides().get(soundType);
             if (overrides != null) {
                 for (GunPart.PartSound ps : overrides) {
                     if (ps.matches(gunType)) {
-                        String group = String.join(",", ps.getSoundKeys());
-                        if (!group.isBlank()) result.add(group);
+                        addGroup(result, ps, pitch, volume);
                     }
                 }
             }
@@ -584,14 +696,19 @@ public class InventoryManager implements Listener {
             return;
         }
 
-        // 🎵 2) Otherwise, gather normal sounds
+        // 🎵 2) Otherwise, gather normal sounds (and the barrel material's layers, e.g. mythril's ring)
+        List<List<GunPart.PartSound>> sources = new ArrayList<>();
         for (GunPart part : parts) {
-            List<GunPart.PartSound> base = part.getSounds().get(soundType);
+            sources.add(part.getSounds().get(soundType));
+        }
+        if (metal != null) {
+            sources.add(metal.getSounds().get(soundType));
+        }
+        for (List<GunPart.PartSound> base : sources) {
             if (base != null) {
                 for (GunPart.PartSound ps : base) {
                     if (ps.matches(gunType)) {
-                        String group = String.join(",", ps.getSoundKeys());
-                        if (!group.isBlank()) result.add(group);
+                        addGroup(result, ps, pitch, volume);
                     }
                 }
             }
@@ -607,6 +724,16 @@ public class InventoryManager implements Listener {
      * Finds the calibers for the selected parts.
      * If an override is present, the last part with one supplies every caliber.
      */
+    private static boolean declaresShot(Collection<GunPart> parts) {
+        for (GunPart part : parts) {
+            if (!part.getCalibers().isEmpty() || part.getAmmoFilter() != null || part.declaresAmmoFamily()
+                    || (part.getCaliberOverrides() != null && !part.getCaliberOverrides().isEmpty())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<String> resolveCalibers(Collection<GunPart> parts) {
         List<String> override = null;
         List<String> normal = new ArrayList<>();
@@ -619,11 +746,20 @@ public class InventoryManager implements Listener {
             }
         }
 
-        if (override != null) {
-            // ✅ Only the last override matters, with all of its calibers
-            return List.copyOf(override);
+        List<String> calibers = override != null
+                ? new ArrayList<>(override) // ✅ Only the last override matters, with all of its calibers
+                : normal;
+        // A proofed chamber loads only powered shot and an airgun lock only plain shot.
+        for (GunPart part : parts) {
+            GunPart.AmmoFilter filter = part.getAmmoFilter();
+            if (filter != null) {
+                calibers.removeIf(key -> {
+                    Ammunition ammo = AmmunitionLoader.getByString(key);
+                    return ammo != null && !filter.allows(ammo.isPowered());
+                });
+            }
         }
-        return normal;
+        return calibers;
     }
 
 
@@ -647,6 +783,7 @@ public class InventoryManager implements Listener {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
 
         ItemMeta m = i.getItemMeta();
+        ForgedLook.applyIcon(m, part, true);
 
         // Name
         m.setDisplayName(part.getName());
@@ -670,8 +807,12 @@ public class InventoryManager implements Listener {
             }
         }
 
-        // Add stats
-        if (!part.getStats().isEmpty()) {
+        if (part.isForged()) {
+            // What the part does, not by how much: the material sets the numbers on the gun.
+            lore.add("");
+            lore.addAll(ForgeLore.lines(part));
+        } else if (!part.getStats().isEmpty()) {
+            // Add stats
             lore.add(""); // spacer line
             lore.add(StringFormatter.formatHex("#b38e88§lStats:"));
 
@@ -789,19 +930,47 @@ public class InventoryManager implements Listener {
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
                 return;
             }
-            NamespacedKey key = new NamespacedKey(GunsAndGadgets.getInstance(), "part_id");
-            String partKey = clicked.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
-            if (partKey == null) return;
-
-            // save selection and reopen preview
-            SelectedPartsManager.set(player, holder.getPartId(), partKey);
-            openCraftingInventory(player);
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+            String baseId = clicked.getItemMeta().getPersistentDataContainer().get(forgeBaseKey(), PersistentDataType.STRING);
+            if (baseId != null) {
+                openMetalSelection(player, holder.getPartId(), baseId);
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+                return;
+            }
+            selectPart(player, holder.getPartId(), clicked);
+            return;
         }
+
+        // MATERIAL SELECTION GUI (forged parts)
+        if (menu instanceof MetalSelectionHolder holder) {
+            event.setCancelled(true);
+
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || !clicked.hasItemMeta()) return;
+            if ("§eBack".equals(clicked.getItemMeta().getDisplayName())) {
+                openPartSelection(player, holder.getPartId());
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+                return;
+            }
+            selectPart(player, holder.getPartId(), clicked);
+        }
+    }
+
+    /** Saves the clicked part for its slot and reopens the assembly preview. */
+    private void selectPart(Player player, String partCategoryId, ItemStack clicked) {
+        NamespacedKey key = new NamespacedKey(GunsAndGadgets.getInstance(), "part_id");
+        String partKey = clicked.getItemMeta().getPersistentDataContainer().get(key, PersistentDataType.STRING);
+        if (partKey == null) return;
+
+        // save selection and reopen preview
+        SelectedPartsManager.set(player, partCategoryId, partKey);
+        openCraftingInventory(player);
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
     }
 
     private boolean hasPermissionForPart(Player player, GunPart part) {
         if(!Cache.requireInput) return true; //tutorial setup
+        String materialPermission = part.getMaterialPermission();
+        if (materialPermission != null && !player.hasPermission(materialPermission)) return false;
         if (part.getPermissions().isEmpty()) return true;
         for (String perm : part.getPermissions()) {
             if (player.hasPermission(perm)) return true;

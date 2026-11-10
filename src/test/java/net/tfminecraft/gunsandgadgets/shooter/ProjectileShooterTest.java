@@ -189,6 +189,7 @@ class ProjectileShooterTest {
               Ammunition.class,
               Location.class,
               double.class,
+              double.class,
               net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
               Location.class,
               Location.class,
@@ -200,12 +201,23 @@ class ProjectileShooterTest {
             ammo,
             muzzle,
             maxDistance,
+            Cache.falloffStartDistance,
             ownVehicle,
             new Location(world, 0, 0, 0),
             new Location(world, 0, 0, 2),
             10.0,
             20,
             ticks);
+  }
+
+  @Test
+  void aimedAsksTheGunManagerWhenThereIsOne() {
+    assertFalse(ProjectileShooter.aimed(player));
+    var guns = mock(net.tfminecraft.gunsandgadgets.manager.GunManager.class, RETURNS_DEEP_STUBS);
+    when(plugin.getGunManager()).thenReturn(guns);
+    assertFalse(ProjectileShooter.aimed(player));
+    when(guns.getAiming().isAiming(player)).thenReturn(true);
+    assertTrue(ProjectileShooter.aimed(player));
   }
 
   @Test
@@ -235,6 +247,18 @@ class ProjectileShooterTest {
             anyDouble(),
             anyDouble(),
             anyDouble());
+  }
+
+  @Test
+  void stampedLookAddsIgnitionBackblastFlashAndTrail() {
+    put("shoot_fx", "ignition=flint;smoke=0.5;cone=0.4;backblast=true;flash=ffb35a;trail=9a9a9a;");
+    ProjectileShooter.shoot(player, gun, ammo());
+    server.getScheduler().performTicks(5);
+    verify(world, times(20))
+        .spawnParticle(eq(Particle.CAMPFIRE_COSY_SMOKE), any(Location.class), eq(0), anyDouble(), anyDouble(), anyDouble(), anyDouble());
+    verify(world).spawnParticle(eq(Particle.CRIT), any(Location.class), eq(8), anyDouble(), anyDouble(), anyDouble(), anyDouble());
+    verify(world, atLeastOnce())
+        .spawnParticle(eq(Particle.DUST), any(Location.class), anyInt(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), any(Particle.DustOptions.class), eq(true));
   }
 
   @Test
@@ -708,16 +732,69 @@ class ProjectileShooterTest {
         .thenReturn(List.of(near, far, otherPlayer, player, mock(Entity.class)));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         10.0,
         20,
-        10);
+        10,
+        0.0);
     verify(near).damage(eq(7.5), any(org.bukkit.damage.DamageSource.class));
     verify(far, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
     verify(otherPlayer).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
     verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void rocketBlastsGrowWithDistanceFlownAndSpareOthersPointBlank() throws Exception {
+    double safe = net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance;
+    double min = net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier;
+    double full = net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance;
+    try {
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance = 4;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier = 0.1;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = 40;
+      assertEquals(0.1, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 2));
+      assertEquals(0.55, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 22), 1e-9);
+      assertEquals(1.0, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 60));
+      var near = mock(LivingEntity.class);
+      when(near.getLocation()).thenReturn(new Location(world, 0, 0, 0));
+      when(near.getHealth()).thenReturn(100.0);
+      when(player.getLocation()).thenReturn(new Location(world, 0, 0, 0));
+      when(player.getHealth()).thenReturn(1000.0);
+      when(world.getNearbyEntities(any(Location.class), anyDouble(), anyDouble(), anyDouble()))
+          .thenReturn(List.of(near, player));
+      // fired at the ground at one's feet: others take a tenth, the shooter all of it
+      call(
+          "explode",
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          player,
+          new Location(world, 0, 0, 0),
+          10.0,
+          20,
+          1,
+          1.0);
+      verify(near).damage(eq(2.0), any(org.bukkit.damage.DamageSource.class));
+      verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+      // a long shot hits in full, however fast the rocket flew
+      call(
+          "explode",
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          player,
+          new Location(world, 0, 0, 0),
+          10.0,
+          20,
+          3,
+          50.0);
+      verify(near).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
+      // a full distance inside the safe distance arms at once past it
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = 2;
+      assertEquals(1.0, net.tfminecraft.gunsandgadgets.guns.stats.Handling.rocketMultiplier(0, 3));
+    } finally {
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketSafeDistance = safe;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketMinMultiplier = min;
+      net.tfminecraft.gunsandgadgets.cache.Cache.rocketFullDistance = full;
+    }
   }
 
   @Test
@@ -728,22 +805,24 @@ class ProjectileShooterTest {
     for (int ticks : new int[] {0, 10, 30}) {
       call(
           "explode",
-          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
           player,
           new Location(world, 0, 0, 0),
           10.0,
           20,
-          ticks);
+          ticks,
+        0.0);
     }
     verify(player, times(3)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class},
+        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         20.0,
         20,
-        10);
+        10,
+        0.0);
     verify(player).damage(eq(20.0), any(org.bukkit.damage.DamageSource.class));
   }
 
@@ -759,9 +838,11 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
+          double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
-          java.util.function.DoubleSupplier.class
+          java.util.function.DoubleSupplier.class,
+          Color.class
         },
         player,
         ammo("ROCKET"),
@@ -769,10 +850,12 @@ class ProjectileShooterTest {
         new Vector(0, 0, 1),
         0.0,
         100000.0,
+        Cache.falloffStartDistance,
         10.0,
         20,
         null,
-        (java.util.function.DoubleSupplier) () -> 0.5);
+        (java.util.function.DoubleSupplier) () -> 0.5,
+        (Color) null);
     server.getScheduler().performTicks(106);
     verify(world).playSound(any(Location.class), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));
     verify(world, atLeastOnce()).playSound(any(Location.class), eq("rocket"), eq(4f), eq(1.3f));
@@ -831,9 +914,11 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
+          double.class,
           int.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
-          java.util.function.DoubleSupplier.class
+          java.util.function.DoubleSupplier.class,
+          Color.class
         },
         player,
         ammo("ROCKET"),
@@ -841,10 +926,12 @@ class ProjectileShooterTest {
         new Vector(0, 0, 1),
         20.0,
         100000.0,
+        Cache.falloffStartDistance,
         10.0,
         20,
         null,
-        random);
+        random,
+        (Color) null);
     server.getScheduler().performTicks(106);
     var locations = ArgumentCaptor.forClass(Location.class);
     verify(world).playSound(locations.capture(), eq(Sound.ENTITY_GENERIC_EXPLODE), eq(8f), eq(1f));
@@ -888,6 +975,78 @@ class ProjectileShooterTest {
       assertEquals(1, lights.constructed().size());
     } finally {
       PartLoader.get().remove("ordinary");
+    }
+  }
+
+  @Test
+  void forgedStatsScaleDamageAddPierceAndMoveFalloff() throws Exception {
+    var target = mock(LivingEntity.class);
+    when(target.getHealth()).thenReturn(100.0);
+    when(world.rayTraceEntities(any(), any(), anyDouble(), anyDouble(), any()))
+        .thenReturn(new RayTraceResult(new Vector(0, 1.6, 1), target));
+    // 10 damage at -50% is 5; 20 pierce from the parts makes all of it pierce armour.
+    putInt("stat_value_damage_percent", -50);
+    putInt("stat_value_pierce", 20);
+    putInt("stat_value_falloff", 30);
+    ProjectileShooter.shootBullet(player, gun, ammo());
+    server.getScheduler().performTicks(1);
+    verify(target).damage(eq(5.0), any(org.bukkit.damage.DamageSource.class));
+    // A damage percent past -100 never heals.
+    server.getScheduler().cancelTasks(plugin);
+    clearInvocations(target);
+    putInt("stat_value_damage_percent", -300);
+    ProjectileShooter.shootBullet(player, gun, ammo());
+    server.getScheduler().performTicks(1);
+    verify(target, never()).damage(anyDouble(), any(org.bukkit.damage.DamageSource.class));
+  }
+
+  @Test
+  void shotgunPelletsFanOutAroundTheAimByTheBarrelCone() {
+    double oldTighten = Cache.coneTightenPerAccuracy;
+    double oldMin = Cache.coneMinFactor;
+    try {
+      Cache.coneTightenPerAccuracy = 0.0;
+      Cache.coneMinFactor = 0.4;
+      var config = new YamlConfiguration();
+      config.set("amount", 20);
+      putInt("stat_value_range", 1);
+      putInt("stat_value_spread", 10);
+      var directions = ArgumentCaptor.forClass(Vector.class);
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      double widest = 0;
+      for (Vector d : directions.getAllValues()) {
+        double angle = d.angle(new Vector(0, 0, 1));
+        widest = Math.max(widest, angle);
+        assertTrue(angle <= Math.toRadians(10 * Math.sqrt(2) + 0.5));
+      }
+      // Accuracy 30 alone keeps pellets within 0.2 degrees; the 10 degree cone spreads them.
+      assertTrue(widest > Math.toRadians(2));
+
+      // Accuracy tightens the cone down to its floor (0.4 of 10 degrees).
+      server.getScheduler().cancelTasks(plugin);
+      clearInvocations(world);
+      Cache.coneTightenPerAccuracy = 1.0;
+      ProjectileShooter.shootBullet(player, gun, new Ammunition("buckshot", config));
+      server.getScheduler().performTicks(1);
+      directions = ArgumentCaptor.forClass(Vector.class);
+      verify(world, times(20)).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      for (Vector d : directions.getAllValues()) {
+        assertTrue(d.angle(new Vector(0, 0, 1)) <= Math.toRadians(4 * Math.sqrt(2) + 0.5));
+      }
+
+      // A single ball from a coned barrel flies on the gun's own spread.
+      server.getScheduler().cancelTasks(plugin);
+      clearInvocations(world);
+      ProjectileShooter.shootBullet(player, gun, ammo());
+      server.getScheduler().performTicks(1);
+      directions = ArgumentCaptor.forClass(Vector.class);
+      verify(world).rayTraceEntities(any(), directions.capture(), anyDouble(), eq(.4), any());
+      assertTrue(directions.getValue().angle(new Vector(0, 0, 1)) < Math.toRadians(0.2));
+    } finally {
+      Cache.coneTightenPerAccuracy = oldTighten;
+      Cache.coneMinFactor = oldMin;
     }
   }
 }

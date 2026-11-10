@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import java.util.*;
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.attributes.AttributeReader;
+import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.skins.*;
 import net.tfminecraft.gunsandgadgets.loader.*;
@@ -133,6 +134,422 @@ class GunManagerTest {
     Cancellable event = mock(Cancellable.class);
     manager.handleGunUse(player, event);
     return event;
+  }
+
+  org.bukkit.entity.Player drawer() {
+    var p = spy(player);
+    doNothing().when(p).setCooldown(any(Material.class), anyInt());
+    doReturn(true).when(p).isOnGround();
+    doReturn(null).when(p).getCurrentInput();
+    return p;
+  }
+
+  @Test
+  void aGunTakenIntoTheHandWaitsItsDrawTime() {
+    var old = new java.util.HashMap<>(Cache.drawBaseTicks);
+    try {
+      Cache.drawBaseTicks = new java.util.HashMap<>(java.util.Map.of(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE, 10));
+      setInt("stat_value_draw", 50); // half the base: 5 ticks
+      player.getInventory().setItemInMainHand(gun);
+      var p = drawer();
+      var timer = manager.drawTimer();
+      timer.tick(p);
+      verify(p).setCooldown(eq(Material.STICK), eq(5));
+      assertFalse(manager.isDrawn(player, "same-id"));
+      use();
+      assertEquals("Still drawing your gun.", actionBar());
+      assertEquals(5, player.getInventory().getItem(1).getAmount());
+      for (int i = 0; i < 4; i++) timer.tick(p);
+      verify(p).setCooldown(eq(Material.STICK), eq(1)); // the sweep refreshes every few ticks
+      assertFalse(manager.isDrawn(player, "same-id"));
+      timer.tick(p);
+      verify(p).setCooldown(eq(Material.STICK), eq(0));
+      assertTrue(manager.isDrawn(player, "same-id"));
+      assertFalse(manager.isDrawn(player, "other"));
+      timer.tick(p); // stays drawn
+      assertTrue(manager.isDrawn(player, "same-id"));
+      // another gun in the same slot draws from the start
+      set("gun_id", "other");
+      player.getInventory().setItemInMainHand(gun);
+      assertEquals("other", DrawTimer.gunId(player.getInventory().getItemInMainHand()));
+      assertEquals("other", DrawTimer.gunId(p.getInventory().getItemInMainHand()));
+      timer.tick(p);
+      assertFalse(manager.isDrawn(player, "other"));
+      assertFalse(manager.isDrawn(player, "same-id"));
+      set("gun_id", "same-id");
+      player.getInventory().setItemInMainHand(gun);
+      timer.tick(p);
+      // a different slot draws again; a gun without a known type is ready at once
+      player.getInventory().setHeldItemSlot(4);
+      set("gun_type", "cannon");
+      player.getInventory().setItemInMainHand(gun);
+      timer.tick(p);
+      assertTrue(manager.isDrawn(player, "same-id"));
+      // a new draw in another slot whose look changes item type mid-draw, then put away:
+      // the sweep follows the item type and is cleared, so other items of that type aren't blocked
+      player.getInventory().setHeldItemSlot(5);
+      set("gun_type", "rifle");
+      player.getInventory().setItemInMainHand(gun);
+      timer.tick(p);
+      gun.setType(Material.CROSSBOW);
+      player.getInventory().setItemInMainHand(gun);
+      for (int i = 0; i < 4; i++) timer.tick(p);
+      verify(p, atLeastOnce()).setCooldown(eq(Material.CROSSBOW), intThat(t -> t > 0));
+      assertFalse(manager.isDrawn(player, "same-id"));
+      player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+      timer.tick(p);
+      verify(p).setCooldown(Material.CROSSBOW, 0);
+      gun.setType(Material.STICK);
+      // something else in the hand forgets the gun
+      player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+      timer.tick(p);
+      assertFalse(manager.isDrawn(player, "same-id"));
+      player.getInventory().setItemInMainHand(null);
+      timer.tick(p);
+      timer.forget(player);
+      // without draw times every gun is ready and nothing is tracked
+      Cache.drawBaseTicks = new java.util.HashMap<>();
+      timer.tick(p);
+      assertTrue(manager.isDrawn(player, "anything"));
+    } finally {
+      Cache.drawBaseTicks = old;
+    }
+  }
+
+  @Test
+  void everyPlayerIsTickedForDrawAndAim() {
+    manager.tickPlayers();
+    assertTrue(manager.isDrawn(player, "same-id"));
+    assertFalse(manager.isReloading(player));
+    assertNull(manager.skinOf(null));
+    assertNull(manager.skinOf(new ItemStack(Material.STICK)));
+    assertSame(skin, manager.skinOf(gun));
+    assertEquals(0, manager.loadedBullets(null));
+    var bare = mock(ItemStack.class);
+    when(bare.getType()).thenReturn(Material.STICK);
+    assertEquals(0, manager.loadedBullets(bare));
+    assertEquals(0, manager.loadedBullets(new ItemStack(Material.AIR)));
+    assertNull(DrawTimer.gunId(new ItemStack(Material.AIR)));
+    assertNull(manager.skinOf(bare));
+    assertNull(DrawTimer.gunId(bare));
+    assertNull(DrawTimer.gunId(null));
+    assertEquals(0, manager.loadedBullets(new ItemStack(Material.STICK)));
+    // the scope release's stand-in event has nothing to cancel
+    try {
+      var field = GunManager.class.getDeclaredField("RELEASE");
+      field.setAccessible(true);
+      var release = (org.bukkit.event.Cancellable) field.get(null);
+      release.setCancelled(true);
+      assertFalse(release.isCancelled());
+    } catch (ReflectiveOperationException e) {
+      fail(e);
+    }
+  }
+
+  void loaded() {
+    setInt("bullets_loaded", 2);
+    set("ammo_loaded", "shot");
+    player.getInventory().setItemInMainHand(gun);
+  }
+
+  @Test
+  void crouchingAimsALoadedDrawnGunAndSlowsTheWalk() {
+    try (var preserver = mockStatic(net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver.class);
+        var modelData = mockStatic(net.tfminecraft.gunsandgadgets.util.LegacyModelData.class)) {
+    boolean wasOn = Cache.aimingEnabled;
+    double oldSlow = Cache.aimSlow;
+    try {
+      var aim = manager.getAiming();
+      // aiming switched off
+      Cache.aimingEnabled = false;
+      loaded();
+      aim.onSneak(player, true);
+      assertFalse(aim.isAiming(player));
+      Cache.aimingEnabled = true;
+      Cache.aimSlow = 0.5;
+      // nothing to aim: no gun, an unknown design, an empty gun, a reload, an undrawn gun
+      player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+      aim.start(player);
+      set("skin_id", "missing");
+      player.getInventory().setItemInMainHand(gun);
+      aim.start(player);
+      set("skin_id", "test");
+      setInt("bullets_loaded", 0);
+      player.getInventory().setItemInMainHand(gun);
+      aim.start(player);
+      loaded();
+      try {
+        var reloading = GunManager.class.getDeclaredField("reloading");
+        reloading.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        var map = (java.util.Map<java.util.UUID, Boolean>) reloading.get(manager);
+        map.put(player.getUniqueId(), true);
+        aim.start(player);
+        map.clear();
+      } catch (ReflectiveOperationException e) {
+        fail(e);
+      }
+      var old = new java.util.HashMap<>(Cache.drawBaseTicks);
+      Cache.drawBaseTicks = new java.util.HashMap<>(java.util.Map.of(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE, 10));
+      aim.start(player);
+      Cache.drawBaseTicks = old;
+      assertFalse(aim.isAiming(player));
+
+      // aim: slower walk (the zoom), sights-up model; a second crouch changes nothing
+      player.setSneaking(true);
+      when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.AIM)).thenReturn(new ItemStack(Material.CROSSBOW));
+      aim.onSneak(player, true);
+      assertTrue(aim.isAiming(player));
+      aim.start(player);
+      var speed = player.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED);
+      assertNotNull(speed.getModifier(Aiming.ZOOM));
+      assertFalse(aim.isScoped(player, player.getInventory().getItemInMainHand()));
+      aim.tick(player); // still crouched, same loaded gun
+      assertTrue(aim.isAiming(player));
+      // letting go lowers it back to the loaded (charged crossbow) pose and ends the zoom
+      aim.onSneak(player, false);
+      assertFalse(aim.isAiming(player));
+      assertNull(speed.getModifier(Aiming.ZOOM));
+      assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+      aim.stop(player); // nothing to stop
+      // a design that vanished while aimed: the aim ends, the gun stays as it is
+      aim.start(player);
+      set("skin_id", "missing");
+      gun.setType(Material.CROSSBOW);
+      player.getInventory().setItemInMainHand(gun);
+      aim.stop(player);
+      assertFalse(aim.isAiming(player));
+      set("skin_id", "test");
+      player.getInventory().setItemInMainHand(gun);
+
+      // the aim ends by itself: crouch released, another item, an empty gun
+      gun = player.getInventory().getItemInMainHand();
+      aim.start(player);
+      player.setSneaking(false);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+      player.setSneaking(true);
+      aim.start(player);
+      player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+      player.getInventory().setItemInMainHand(gun);
+      aim.start(player);
+      setInt("bullets_loaded", 0);
+      player.getInventory().setItemInMainHand(gun);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+      aim.tick(player); // not aiming
+      // no slowdown configured: aiming adds no modifier
+      Cache.aimSlow = 0;
+      loaded();
+      aim.start(player);
+      assertNull(speed.getModifier(Aiming.ZOOM));
+      aim.stop(player);
+      // a player without a speed attribute just aims
+      var noSpeed = spy(player);
+      doReturn(null).when(noSpeed).getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED);
+      Aiming.zoom(noSpeed, true);
+    } finally {
+      Cache.aimingEnabled = wasOn;
+      Cache.aimSlow = oldSlow;
+    }
+    }
+  }
+
+  @Test
+  void scopedGunsLookThroughTheScopeAndFireOnRelease() {
+    try (var preserver = mockStatic(net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver.class);
+        var modelData = mockStatic(net.tfminecraft.gunsandgadgets.util.LegacyModelData.class)) {
+    boolean wasOn = Cache.aimingEnabled;
+    try {
+      Cache.aimingEnabled = true;
+      loaded();
+      var scope = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+      when(scope.hasOption(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption.SCOPED)).thenReturn(true);
+      try (var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class);
+          var shooter = mockStatic(ProjectileShooter.class)) {
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(null);
+        assertFalse(Aiming.scoped(gun));
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class)));
+        assertFalse(Aiming.scoped(gun));
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+        var aim = manager.getAiming();
+        player.setSneaking(true);
+        aim.start(player);
+        ItemStack held = player.getInventory().getItemInMainHand();
+        assertEquals(Material.SPYGLASS, held.getType());
+        assertTrue(aim.isScoped(player, held));
+        assertFalse(aim.isScoped(player, null));
+        // right-click looks through the scope: not fired, not cancelled
+        Cancellable click = use();
+        verify(click, never()).setCancelled(true);
+        shooter.verifyNoInteractions();
+        int oldSettle = Cache.scopeSettleTicks;
+        try {
+          Cache.scopeSettleTicks = 12;
+          // a quick tap lowers the scope without a shot
+          manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 5));
+          shooter.verifyNoInteractions();
+          // the steady cue comes once per hold, when the scope has been up long enough
+          var looker = mock(org.bukkit.entity.Player.class);
+          when(looker.getUniqueId()).thenReturn(player.getUniqueId());
+          when(looker.getLocation()).thenReturn(player.getLocation());
+          aim.settle(looker, held);
+          when(looker.isHandRaised()).thenReturn(true);
+          when(looker.getActiveItemUsedTime()).thenReturn(4);
+          aim.settle(looker, held);
+          when(looker.getActiveItemUsedTime()).thenReturn(12);
+          aim.settle(looker, held);
+          aim.settle(looker, held);
+          verify(looker, times(1)).playSound(any(org.bukkit.Location.class), eq(org.bukkit.Sound.BLOCK_TRIPWIRE_CLICK_ON), anyFloat(), anyFloat());
+          aim.settle(looker, gun);
+          aim.settle(looker, held);
+          verify(looker, times(2)).playSound(any(org.bukkit.Location.class), eq(org.bukkit.Sound.BLOCK_TRIPWIRE_CLICK_ON), anyFloat(), anyFloat());
+        } finally {
+          Cache.scopeSettleTicks = oldSettle;
+        }
+        // releasing it once steady fires
+        manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 20));
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()));
+        // releasing anything else does nothing
+        manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, new ItemStack(Material.BOW), 5));
+        // leaving the game ends the aim
+        manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (net.kyori.adventure.text.Component) null, org.bukkit.event.player.PlayerQuitEvent.QuitReason.DISCONNECTED));
+        assertFalse(aim.isAiming(player));
+      }
+    } finally {
+      Cache.aimingEnabled = wasOn;
+    }
+    }
+  }
+
+  @Test
+  void anAimedGunMovedDroppedOrLostOnDeathIsLowered() {
+    try (var preserver = mockStatic(net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver.class);
+        var modelData = mockStatic(net.tfminecraft.gunsandgadgets.util.LegacyModelData.class);
+        var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class)) {
+    boolean wasOn = Cache.aimingEnabled;
+    try {
+      Cache.aimingEnabled = true;
+      var scope = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+      when(scope.hasOption(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption.SCOPED)).thenReturn(true);
+      looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+      when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.AIM)).thenReturn(new ItemStack(Material.CROSSBOW));
+      when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.CARRY)).thenReturn(new ItemStack(Material.STONE_HOE));
+      var aim = manager.getAiming();
+      player.setSneaking(true);
+      assertFalse(aim.isAimedGun(player, gun)); // not aiming
+
+      // moved to another slot while scoped: it is lowered there, not left a spyglass
+      loaded();
+      aim.start(player);
+      ItemStack held = player.getInventory().getItemInMainHand();
+      assertEquals(Material.SPYGLASS, held.getType());
+      assertTrue(aim.isAimedGun(player, held));
+      assertFalse(aim.isAimedGun(player, new ItemStack(Material.STICK)));
+      player.getInventory().setItemInMainHand(null);
+      player.getInventory().setItem(7, held);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+      assertEquals(Material.CROSSBOW, player.getInventory().getItem(7).getType());
+      player.getInventory().setItem(7, null);
+
+      // on the cursor, emptied: back to the carry look
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      setInt("bullets_loaded", 0);
+      player.setItemOnCursor(gun);
+      aim.tick(player);
+      assertEquals(Material.STONE_HOE, player.getItemOnCursor().getType());
+
+      // a design that vanished stays as it is, in a slot or on the cursor
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      set("skin_id", "missing");
+      player.getInventory().setItem(7, gun);
+      aim.tick(player);
+      assertEquals(Material.SPYGLASS, player.getInventory().getItem(7).getType());
+      player.getInventory().setItem(7, null);
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      set("skin_id", "missing");
+      player.setItemOnCursor(gun);
+      aim.tick(player);
+      assertEquals(Material.SPYGLASS, player.getItemOnCursor().getType());
+      // gone from the inventory entirely: nothing to lower
+      player.setItemOnCursor(null);
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      player.getInventory().setItemInMainHand(null);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+
+      // dropped while scoped: it lands lowered
+      loaded();
+      aim.start(player);
+      held = player.getInventory().getItemInMainHand();
+      var drop = mock(org.bukkit.event.player.PlayerDropItemEvent.class);
+      when(drop.getPlayer()).thenReturn(player);
+      var entity = mock(org.bukkit.entity.Item.class);
+      when(drop.getItemDrop()).thenReturn(entity);
+      when(entity.getItemStack()).thenReturn(held);
+      ItemStack spare = held.clone(); // still a spyglass, for the death below
+      manager.onDropLower(drop);
+      verify(entity).setItemStack(argThat(i -> i.getType() == Material.CROSSBOW));
+      when(entity.getItemStack()).thenReturn(new ItemStack(Material.DIRT));
+      manager.onDropLower(drop);
+      gun = held.clone();
+      set("skin_id", "missing");
+      when(entity.getItemStack()).thenReturn(gun);
+      manager.onDropLower(drop);
+      when(drop.getItemDrop()).thenReturn(null);
+      manager.onDropLower(drop);
+      verify(entity, times(1)).setItemStack(any());
+
+      // dying while scoped: the gun drops lowered and the aim ends
+      var death = mock(org.bukkit.event.entity.PlayerDeathEvent.class);
+      when(death.getEntity()).thenReturn(player);
+      assertEquals(Material.SPYGLASS, spare.getType());
+      var drops = new java.util.ArrayList<>(java.util.List.of(spare, new ItemStack(Material.DIRT), gun));
+      when(death.getDrops()).thenReturn(drops);
+      manager.onDeath(death);
+      assertEquals(Material.CROSSBOW, drops.get(0).getType());
+      assertEquals(Material.DIRT, drops.get(1).getType());
+      assertSame(gun, drops.get(2)); // its design vanished: left as it is
+      assertFalse(aim.isAiming(player));
+    } finally {
+      Cache.aimingEnabled = wasOn;
+    }
+    }
+  }
+
+  @Test
+  void crouchEventsAndTheSwapKeyOnlyActOnGuns() {
+    manager.onSneak(new org.bukkit.event.player.PlayerToggleSneakEvent(player, true));
+    manager.onSneak(new org.bukkit.event.player.PlayerToggleSneakEvent(player, false));
+    player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+    var event = new org.bukkit.event.player.PlayerSwapHandItemsEvent(player, null, null);
+    manager.onSwapHands(event);
+    assertFalse(event.isCancelled());
+    // mid-reload the key is swallowed without switching shot
+    player.getInventory().setItemInMainHand(gun);
+    use();
+    var during = new org.bukkit.event.player.PlayerSwapHandItemsEvent(player, null, null);
+    manager.onSwapHands(during);
+    assertTrue(during.isCancelled());
+    assertNull(
+        player.getInventory().getItemInMainHand().getItemMeta().getPersistentDataContainer()
+            .get(key("ammo_selected"), PersistentDataType.STRING));
   }
 
   @Test
@@ -544,15 +961,44 @@ class GunManagerTest {
   @Test
   void missingStampedPartsMarkGunBrokenAndBlockUse() {
     when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
-    new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
-            List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
-        .applyTo(gun);
-    player.getInventory().setItemInMainHand(gun);
-    verify(use()).setCancelled(true);
-    assertTrue(
-        net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
-            player.getInventory().getItemInMainHand()));
-    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    PartLoader.clear();
+    PartLoader.getOrdered().add(mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class)); // parts loaded cleanly
+    try {
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertTrue(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      assertEquals(5, player.getInventory().getItem(1).getAmount());
+      // a forged part gone missing is a config mistake: the shot is refused but nothing is marked,
+      // so the gun works again once the config is fixed
+      gun = player.getInventory().getItemInMainHand();
+      net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.clearBroken(gun);
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("barrel@steel", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      // so is any part while the part files failed to load
+      PartLoader.clear();
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      assertEquals(5, player.getInventory().getItem(1).getAmount());
+    } finally {
+      PartLoader.clear();
+    }
   }
 
   @Test
@@ -604,6 +1050,30 @@ class GunManagerTest {
           .thenReturn(result);
       assertSame(result, manager.applyModel(gun, skin, SkinState.AIM));
     }
+  }
+
+  @Test
+  void forgedSkinsSetThePoseModelAndKeepThePartStrings() {
+    when(skin.isForged()).thenReturn(true);
+    when(skin.getForgedModel(SkinState.AIM)).thenReturn(NamespacedKey.fromString("tfmc_guns:rifle_aim"));
+    when(skin.parseModel(SkinState.AIM)).thenReturn(new ItemStack(Material.CROSSBOW));
+    var meta = mock(org.bukkit.inventory.meta.ItemMeta.class);
+    var item = spy(new ItemStack(Material.STONE_HOE));
+    doNothing().when(item).setType(any(Material.class));
+    doReturn(meta).when(item).getItemMeta();
+    doReturn(true).when(item).setItemMeta(any());
+    try (var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class)) {
+      assertSame(item, manager.applyModel(item, skin, SkinState.AIM));
+      verify(item).setType(Material.CROSSBOW);
+      looks.verify(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stamp(eq(meta), eq(skin), eq(SkinState.AIM), any()));
+      verify(item).setItemMeta(meta);
+    }
+    // an item without meta just changes material
+    var bare = spy(new ItemStack(Material.STONE_HOE));
+    doNothing().when(bare).setType(any(Material.class));
+    doReturn(null).when(bare).getItemMeta();
+    assertSame(bare, manager.applyModel(bare, skin, SkinState.AIM));
+    verify(bare, never()).setItemMeta(any());
   }
 
   @Test
@@ -1168,27 +1638,34 @@ class GunManagerTest {
         .get(key("ammo_selected"), PersistentDataType.STRING);
   }
 
+  org.bukkit.event.player.PlayerSwapHandItemsEvent swap() {
+    var event =
+        new org.bukkit.event.player.PlayerSwapHandItemsEvent(
+            player, player.getInventory().getItemInOffHand(), player.getInventory().getItemInMainHand());
+    manager.onSwapHands(event);
+    return event;
+  }
+
   @Test
-  void crouchClickCyclesCarriedCalibersWithoutFiringOrReloading() {
+  void swapHandsKeyCyclesCarriedCalibersWithoutFiringOrReloading() {
     threeCalibers();
     setInt("bullets_loaded", 1);
     set("ammo_loaded", "iron");
     player.getInventory().setItemInMainHand(gun);
     player.getInventory().setItem(2, new ItemStack(Material.COPPER_INGOT, 4));
-    player.setSneaking(true);
     try (var shooter = mockStatic(ProjectileShooter.class)) {
-      verify(use()).setCancelled(true);
+      assertTrue(swap().isCancelled());
       // Iron loads by default, steel is not carried, so the first pick is bronze.
       assertEquals("bronze", selected());
       assertTrue(actionBar().matches("Next load: .*Copper.* \\(4 carried\\)"));
-      // Further events of the same click, even a tick or two later, must not switch again.
-      use();
+      // Further events of the same press, even a tick or two later, must not switch again.
+      swap();
       server.getScheduler().performTicks(2);
-      use();
+      swap();
       assertEquals("bronze", selected());
       assertNull(player.nextActionBar());
       server.getScheduler().performTicks(1);
-      use();
+      swap();
       assertEquals("iron", selected());
       assertTrue(actionBar().contains("(5 carried)"));
       shooter.verifyNoInteractions();
@@ -1199,12 +1676,11 @@ class GunManagerTest {
   }
 
   @Test
-  void crouchClickWithoutUsableAmmoSaysSo() {
+  void swapHandsWithoutUsableAmmoSaysSo() {
     threeCalibers();
     player.getInventory().setItem(1, null);
-    player.setSneaking(true);
-    use();
-    assertEquals("You carry no shot this weapon can fire.", actionBar());
+    swap();
+    assertEquals("You carry no shot this gun can fire.", actionBar());
     assertNull(selected());
   }
 
@@ -1233,7 +1709,7 @@ class GunManagerTest {
     player.getInventory().setItemInMainHand(gun);
     use();
     assertTrue(
-        actionBar().matches("You have no .*Gold.* left\\. Crouch and right-click to choose another\\."));
+        actionBar().matches("You have no .*Gold.* left\\. Press .+ to choose another\\."));
     assertEquals(5, player.getInventory().getItem(1).getAmount());
     assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "reload_amount"));
     // The refusal must not leave the player stuck in a reload.
@@ -1262,13 +1738,12 @@ class GunManagerTest {
   @Test
   void ammoMessagesHoldMmoCoreBarAndYieldToBusierOnes() {
     threeCalibers();
-    player.setSneaking(true);
-    use();
+    swap();
     verify(mmoPlayer.getActionBar()).show(30, 40L, (String) null);
     assertNotNull(player.nextActionBar());
     when(mmoPlayer.getActionBar().show(anyInt(), anyLong(), nullable(String.class))).thenReturn(false);
     server.getScheduler().performTicks(3);
-    use();
+    swap();
     assertEquals("iron", selected());
     assertNull(player.nextActionBar());
   }
@@ -1277,5 +1752,59 @@ class GunManagerTest {
   void singleCaliberReloadShowsNoAmmoName() {
     use();
     assertNull(player.nextActionBar());
+  }
+
+  @Test
+  void retiredPartsBlockUseOnlyWhileTheSwitchIsOn() {
+    when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
+    var retired = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+    when(retired.isDisabled()).thenReturn(true);
+    when(retired.getId()).thenReturn("old");
+    var live = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+    PartLoader.get().put("old", retired);
+    PartLoader.get().put("live", live);
+    boolean previous = net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns;
+    try {
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(
+                  new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("live", 1),
+                  new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("old", 1)),
+              1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = true;
+      use();
+      use();
+      server.getScheduler().performTicks(12);
+      assertEquals(0, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+      assertEquals("§cThis gun's design has been retired. It can no longer be used.", player.nextMessage());
+      assertNull(player.nextMessage());
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      // Turning the switch off restores the gun: nothing was written to it.
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = false;
+      use();
+      server.getScheduler().performTicks(12);
+      assertEquals(3, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+      // A gun made only from live parts is never retired.
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = true;
+      var fresh = new ItemStack(gun);
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("live", 1)), 1)
+          .applyTo(fresh);
+      var m = fresh.getItemMeta();
+      m.getPersistentDataContainer().remove(key("bullets_loaded"));
+      fresh.setItemMeta(m);
+      player.getInventory().setItemInMainHand(fresh);
+      use();
+      server.getScheduler().performTicks(12);
+      // Two shots were left in the pouch after the first reload.
+      assertEquals(2, readInt(player.getInventory().getItemInMainHand(), "bullets_loaded"));
+    } finally {
+      net.tfminecraft.gunsandgadgets.cache.Cache.retireDisabledPartGuns = previous;
+      PartLoader.get().remove("old");
+      PartLoader.get().remove("live");
+    }
   }
 }

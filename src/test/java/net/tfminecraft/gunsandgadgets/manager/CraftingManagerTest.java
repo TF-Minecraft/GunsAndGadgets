@@ -114,7 +114,7 @@ class CraftingManagerTest {
     }
     verify(inventory, never()).addItem(any(ItemStack.class));
     verify(player, never()).closeInventory();
-    verify(player, times(3)).sendMessage(contains("could not be created"));
+    verify(player, times(3)).sendMessage(contains("could not be made"));
   }
 
   @Test
@@ -145,7 +145,7 @@ class CraftingManagerTest {
     manager.onCraft(click);
     assertEquals(2, material.getAmount());
     verify(inventory, never()).addItem(any(ItemStack.class));
-    verify(player).sendMessage("§cYou lack the materials for this weapon.");
+    verify(player).sendMessage("§cYou lack the materials for this gun.");
   }
 
   @Test
@@ -192,6 +192,40 @@ class CraftingManagerTest {
     assertEquals(2, other.getAmount());
     assertEquals(Map.of("iron", 7), GunCraftInputs.readFrom(crafted));
     verify(inventory).addItem(crafted);
+  }
+
+  @Test
+  void anOldGunClickedOnTheStationIsTakenApartInstead() {
+    var event = mock(org.bukkit.event.player.PlayerInteractEvent.class);
+    var block = mock(org.bukkit.block.Block.class);
+    when(event.getPlayer()).thenReturn(player);
+    when(event.getAction()).thenReturn(org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK);
+    when(event.getHand()).thenReturn(EquipmentSlot.HAND);
+    when(event.getClickedBlock()).thenReturn(block);
+    var api = mock(net.tfminecraft.tlibs.objects.api.BlockAPI.class, RETURNS_DEEP_STUBS);
+    libs.when(TLibs::getBlockAPI).thenReturn(api);
+    when(api.getChecker().checkBlock(block, Cache.station)).thenReturn(true);
+    ItemStack old = new ItemStack(Material.STICK);
+    when(inventory.getItemInMainHand()).thenReturn(old);
+    Cache.refundsEnabled = true;
+    try (var refunder = mockStatic(net.tfminecraft.gunsandgadgets.utils.GunRefunder.class)) {
+      refunder
+          .when(() -> net.tfminecraft.gunsandgadgets.utils.GunRefunder.takeApart(eq(player), eq(old), any()))
+          .thenAnswer(call -> {
+            call.<Runnable>getArgument(2).run();
+            return true;
+          })
+          .thenReturn(false);
+      manager.onStationOpen(event);
+      verify(inventory).setItemInMainHand(null);
+      verify(event).setCancelled(true);
+      verifyNoInteractions(assembly);
+      // any other item opens the gunsmith
+      manager.onStationOpen(event);
+      verify(assembly).openCraftingInventory(player);
+    } finally {
+      Cache.refundsEnabled = false;
+    }
   }
 
   @Test

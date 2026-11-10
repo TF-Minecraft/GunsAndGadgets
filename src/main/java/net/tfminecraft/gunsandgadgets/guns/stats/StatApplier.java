@@ -52,7 +52,9 @@ public class StatApplier {
             int value = totals.get(stat);
 
             String valueColor;
-            if (value < 0) {
+            if (stat == Stats.SPREAD) {
+                valueColor = "#FFFF55"; // a pellet cone is a shape, not a better or worse number
+            } else if (value < 0) {
                 valueColor = "#FF5555";
             } else if (value == 0) {
                 valueColor = "#AAAAAA";
@@ -66,7 +68,7 @@ public class StatApplier {
 
             String statColor = "#c2b48a";
 
-            String line = "§7■ " + statColor + stat.getDisplayName() + "§e: " + valueColor + value;
+            String line = "§7■ " + statColor + stat.getDisplayName() + "§e: " + valueColor + value + " §8· " + stat.getHint();
             line = StringFormatter.formatHex(line);
 
             lore.add(line);
@@ -93,7 +95,7 @@ public class StatApplier {
                 lore.addAll(CostFormatter.getCostsFormatted(cost));
                 lore.add("");
             }
-            lore.add("§e§lClick to Craft");
+            lore.add("§e§lClick to craft");
         }
         Multimap<Attribute, AttributeModifier> empty = HashMultimap.create();
         meta.setAttributeModifiers(empty);

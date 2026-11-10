@@ -14,8 +14,8 @@ commands:
 
 permissions:
   gunsandgadgets.reload:
-    description: Reload GunsAndGadgets configs (skins, parts, ammunition, config)
+    description: Reload GunsAndGadgets configs (skins, parts, metals, ammunition, config)
     default: op
   gunsandgadgets.give:
-    description: Give completed weapons (default give-permission)
+    description: Give completed guns (default give-permission)
     default: op

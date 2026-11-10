@@ -26,6 +26,7 @@ import net.tfminecraft.gunsandgadgets.manager.inventory.AssemblyHolder;
 import net.tfminecraft.gunsandgadgets.manager.inventory.InventoryManager;
 import net.tfminecraft.gunsandgadgets.manager.inventory.TypeSelectionManager;
 import net.tfminecraft.gunsandgadgets.util.CostFormatter;
+import net.tfminecraft.gunsandgadgets.utils.GunRefunder;
 
 public class CraftingManager implements Listener {
 
@@ -41,9 +42,17 @@ public class CraftingManager implements Listener {
         if (event.getClickedBlock() == null) return;
 
         if(!TLibs.getBlockAPI().getChecker().checkBlock(event.getClickedBlock(), Cache.station)) return;
-        if (event.getPlayer().isSneaking()) return;
-        event.setCancelled(true);
         Player player = event.getPlayer();
+        // An old gun clicked on the station is taken apart for its materials instead.
+        if (Cache.refundsEnabled) {
+            ItemStack hand = player.getInventory().getItemInMainHand();
+            if (GunRefunder.takeApart(player, hand, () -> player.getInventory().setItemInMainHand(null))) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+        if (player.isSneaking()) return;
+        event.setCancelled(true);
         inv.openCraftingInventory(player);
     }
 
@@ -79,13 +88,13 @@ public class CraftingManager implements Listener {
             // Rebuild the final item (no GUI lines)
             ItemStack crafted = inv.createOutputItem(chosenType, parts, false);
             if (crafted == null || crafted.getType().isAir() || crafted.getType() == Material.BARRIER) {
-                player.sendMessage("§cThis weapon could not be created. Your materials were preserved.");
+                player.sendMessage("§cThis gun could not be made. Your materials were kept.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
 
             if(!hasInputs(player, parts)) {
-                player.sendMessage("§cYou lack the materials for this weapon.");
+                player.sendMessage("§cYou lack the materials for this gun.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }

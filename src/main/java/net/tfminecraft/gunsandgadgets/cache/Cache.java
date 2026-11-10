@@ -31,6 +31,47 @@ public class Cache {
     public static double maxSpreadDegrees = Double.POSITIVE_INFINITY; // no cap unless configured
     public static double falloffStartDistance = 0.0;
     public static double falloffMinMultiplier = 1.0;
+    // Accuracy above 5 tightens spread by 5% a point instead of the old line that reaches 0.07° at 30.
+    public static boolean smoothAccuracy = false;
+    // Pellet cone (a shotgun barrel's spread stat): each accuracy point tightens it, to a floor.
+    public static double coneTightenPerAccuracy = 0.03;
+    public static double coneMinFactor = 0.4;
+
+    // Guns stamped with a disabled or missing part refuse to fire or reload.
+    public static boolean retireDisabledPartGuns = false;
+    /** Old guns are taken apart for their materials (refunds.enabled). */
+    public static boolean refundsEnabled = false;
+    /** ...also on join, hotbar select, inventory clicks and opening storage, not just at the station. */
+    public static boolean refundsAutomatic = false;
+
+    /** Draw time per gun type in ticks (handling.draw.base-seconds); empty = no draw time. */
+    public static Map<GunType, Integer> drawBaseTicks = new HashMap<>();
+    /** How much longer drawing takes by stance (handling.draw.stance). */
+    public static double drawMoving = 1.0;
+    public static double drawSprinting = 1.0;
+    public static double drawAirborne = 1.0;
+    public static double drawMounted = 1.0;
+    public static double drawSneaking = 1.0;
+
+    /** Crouch to aim (aiming.enabled), and how much aiming slows walking (aiming.slow, which zooms). */
+    public static boolean aimingEnabled = false;
+    public static double aimSlow = 0.0;
+    /** How long right-click must be held in a scope before releasing fires (aiming.scope-settle-seconds). */
+    public static int scopeSettleTicks = 0;
+    /** Spread multiplier for shots fired without aiming (handling.spread-multipliers.hip; aiming on only). */
+    public static double spreadHip = 1.0;
+    /**
+     * Rocket blasts by distance flown (handling.rockets): the multiplier up to safe-distance, rising
+     * to full damage at full-damage-distance. A full distance of 0 keeps the old arming time.
+     */
+    public static double rocketSafeDistance = 4.0;
+    public static double rocketMinMultiplier = 0.1;
+    public static double rocketFullDistance = 0.0;
+    /** Item model prefix for the gun type buttons (type-icons): <prefix><type>_carry, a steel build. */
+    public static String typeIconPrefix = "";
+
+    /** Item model prefix for forged part icons in the menus (part-icons); blank = the part's own item. */
+    public static String partIconPrefix = "";
 
     public static Map<GunType, List<String>> requiredParts = new HashMap<>();
 
@@ -41,6 +82,7 @@ public class Cache {
     /** Drop YAML-backed registries so a reload does not append. */
     public static void clear() {
         outputItems.clear();
+        drawBaseTicks.clear();
         requiredParts.clear();
         attributes.clear();
     }

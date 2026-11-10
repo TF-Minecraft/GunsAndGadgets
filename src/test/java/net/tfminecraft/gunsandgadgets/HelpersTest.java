@@ -194,7 +194,7 @@ class HelpersTest extends GunsTestSupport {
       ItemStack item = new ItemStack(Material.STICK);
       StatApplier.apply(item, List.of(cost, cost, empty), true);
       assertTrue(item.getItemMeta().getLore().stream().anyMatch(s -> s.endsWith("4")));
-      assertEquals("§e§lClick to Craft", item.getItemMeta().getLore().getLast());
+      assertEquals("§e§lClick to craft", item.getItemMeta().getLore().getLast());
       StatApplier.apply(item, List.of(empty), true);
     }
   }

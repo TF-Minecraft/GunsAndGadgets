@@ -20,6 +20,16 @@ public class SkinResolver {
      * @return SkinData or null if nothing matched.
      */
     public SkinData resolve(GunType type, Collection<GunPart> parts) {
+        // 0. A gun built only from forged parts is drawn part by part when the pack has a forged
+        //    model for its type (skins.yml forged-model).
+        if (!parts.isEmpty() && parts.stream().allMatch(GunPart::isForged)) {
+            for (SkinData skin : skins.values()) {
+                if (skin.isForged() && skin.getTypes().contains(type.name().toLowerCase())) {
+                    return skin;
+                }
+            }
+        }
+
         // 1. Collect all skin-impact votes
         Map<String, Integer> votes = new HashMap<>();
         for (GunPart part : parts) {
@@ -47,7 +57,9 @@ public class SkinResolver {
                 .findFirst().orElse(null);
 
         if (action != null) {
-            String actionId = action.getId().toLowerCase();
+            // Forged actions match by their part (matchlock, not matchlock@steel); a new action can
+            // borrow an existing design with skin-base.
+            String actionId = action.getSkinBase().toLowerCase();
 
             for (SkinData skin : skins.values()) {
                 // must support this gun type

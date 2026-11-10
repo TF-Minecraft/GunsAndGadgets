@@ -130,7 +130,51 @@ handling:
     assertEquals(45.0, Cache.maxSpreadDegrees);
     assertEquals(24.0, Cache.falloffStartDistance);
     assertEquals(0.5, Cache.falloffMinMultiplier);
+    assertEquals(26, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE));
+    assertEquals(12, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.PISTOL));
+    assertEquals(2.0, Cache.drawSprinting);
+    assertEquals(0.8, Cache.drawSneaking);
+    assertTrue(Cache.aimingEnabled);
+    assertEquals(0.5, Cache.aimSlow);
+    assertEquals("tfmc_guns:part/", Cache.partIconPrefix);
+    assertEquals("tfmc_guns:", Cache.typeIconPrefix);
+    assertEquals(12, Cache.scopeSettleTicks);
+    assertEquals(1.75, Cache.spreadHip);
+    assertEquals(4.0, Cache.rocketSafeDistance);
+    assertEquals(0.1, Cache.rocketMinMultiplier);
+    assertEquals(40.0, Cache.rocketFullDistance);
+    assertFalse(Cache.refundsEnabled);
+    assertFalse(Cache.refundsAutomatic);
+    // Bad draw entries: an unknown gun type is skipped, a non-number gives no draw time.
+    loader.loadConfig(
+        file(
+                "draw.yml",
+                """
+handling:
+  draw:
+    base-seconds: {rifle: .nan, pistol: -2, cannon: 3}
+    stance: {moving: .nan, sprinting: 0}
+  rockets: {safe-distance: -1, min-multiplier: 3, full-damage-distance: -5}
+aiming: {enabled: true, slow: 5}
+refunds: {enabled: true, automatic: true}
+""")
+            .toFile());
+    assertEquals(0, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.RIFLE));
+    assertEquals(0, Cache.drawBaseTicks.get(net.tfminecraft.gunsandgadgets.guns.GunType.PISTOL));
+    assertEquals(2, Cache.drawBaseTicks.size());
+    assertEquals(1.0, Cache.drawMoving);
+    assertEquals(0.1, Cache.drawSprinting);
+    assertEquals(0.9, Cache.aimSlow);
+    assertTrue(Cache.refundsEnabled && Cache.refundsAutomatic);
+    assertEquals(0.0, Cache.rocketSafeDistance);
+    assertEquals(1.0, Cache.rocketMinMultiplier);
+    assertEquals(0.0, Cache.rocketFullDistance);
     loader.loadConfig(file("empty2.yml", "{}").toFile());
+    assertEquals(0, Cache.scopeSettleTicks);
+    assertEquals(1.0, Cache.spreadHip);
+    assertEquals("", Cache.typeIconPrefix);
+    assertTrue(Cache.drawBaseTicks.isEmpty());
+    assertFalse(Cache.aimingEnabled);
     loader.loadConfig(temp.resolve("missing").toFile());
     loader.loadConfig(file("bad.yml", "x: [").toFile());
   }
@@ -165,7 +209,13 @@ handling:
       loader.load(file(UUID.randomUUID() + ".yml", "x: [").toFile());
     }
     assertTrue(PartDataLoader.get().isEmpty());
-    assertTrue(PartLoader.get().isEmpty());
+    // a parts file that can't be read keeps the parts already loaded and pauses missing-part refunds
+    assertNotNull(PartLoader.getByString("barrel"));
+    assertFalse(PartLoader.isHealthy());
+    parts.load(partFile.toFile());
+    assertTrue(PartLoader.isHealthy());
+    PartLoader.clear();
+    assertFalse(PartLoader.isHealthy()); // nothing loaded
     assertTrue(AmmunitionLoader.get().isEmpty());
     assertTrue(SkinLoader.get().isEmpty());
   }

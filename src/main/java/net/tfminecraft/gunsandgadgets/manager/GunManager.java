@@ -11,11 +11,14 @@ import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.attributes.AttributeReader;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
+import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
+import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
+import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
 import net.tfminecraft.gunsandgadgets.shooter.ProjectileShooter;
 import net.tfminecraft.gunsandgadgets.util.Caliber;
@@ -38,13 +41,19 @@ import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
+
+import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CrossbowMeta;
@@ -56,6 +65,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import io.lumine.mythic.lib.api.item.NBTItem;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.message.actionbar.ActionBarPriority;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.tlibs.character.Characters;
@@ -131,7 +142,114 @@ public class GunManager implements Listener {
         return false;
     }
 
+    /** Draw times and aiming, ticked once a tick for every player (see {@link #tickPlayers()}). */
+    private final DrawTimer draw = new DrawTimer();
+    private final Aiming aiming = new Aiming(this);
+
+    /** Event stand-in for firing from the scope release, which has nothing to cancel. */
+    private static final Cancellable RELEASE = new Cancellable() {
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public void setCancelled(boolean cancel) {
+        }
+    };
+
+    public void tickPlayers() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            draw.tick(player);
+            aiming.tick(player);
+        }
+    }
+
+    public boolean isDrawn(Player player, String gunId) {
+        return draw.isReady(player, gunId);
+    }
+
+    public boolean isReloading(Player player) {
+        return reloading.getOrDefault(player.getUniqueId(), false);
+    }
+
+    public Aiming getAiming() {
+        return aiming;
+    }
+
+    /** Lowers an aimed gun and ends the slowdown (plugin disable). */
+    public void stopAiming(Player player) {
+        aiming.stop(player);
+    }
+
+    DrawTimer drawTimer() {
+        return draw;
+    }
+
+    public int loadedBullets(ItemStack item) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return 0;
+        // read in place: aiming checks this every tick
+        return item.getPersistentDataContainer().getOrDefault(bulletsKey, PersistentDataType.INTEGER, 0);
+    }
+
+    public SkinData skinOf(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        String skinId = item.getItemMeta().getPersistentDataContainer().get(skinKey, PersistentDataType.STRING);
+        return skinId == null ? null : SkinLoader.get().get(skinId);
+    }
+
+    /** Back to the loaded pose: the aim model, with the crossbow charged again. */
+    public ItemStack showLoaded(ItemStack item, SkinData skin) {
+        item = applyModel(item, skin, SkinState.AIM);
+        if (item.getType() == Material.CROSSBOW) {
+            String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+            chargeCrossbow(item, ammoId, loadedBullets(item));
+        }
+        return item;
+    }
+
+    /** Crouch aims; letting go lowers the gun. */
+    @EventHandler
+    public void onSneak(PlayerToggleSneakEvent event) {
+        aiming.onSneak(event.getPlayer(), event.isSneaking());
+    }
+
+    /** Releasing right-click while looking through a scope fires. */
+    @EventHandler
+    public void onStopUsing(PlayerStopUsingItemEvent event) {
+        if (!aiming.isScoped(event.getPlayer(), event.getItem())) {
+            return;
+        }
+        // A quick tap lowers the scope without firing: the shot needs a steady scope.
+        if (event.getTicksHeldFor() < Cache.scopeSettleTicks) {
+            sendActionBar(event.getPlayer(), "§7Hold the scope until it steadies to fire.");
+            return;
+        }
+        handleGunUse(event.getPlayer(), RELEASE, true);
+    }
+
+    /** The swap-hands key with a gun in hand picks the next shot instead of swapping hands. */
+    @EventHandler
+    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (DrawTimer.gunId(item) == null) return;
+        event.setCancelled(true);
+        UUID id = player.getUniqueId();
+        if (reloading.getOrDefault(id, false)) return;
+        int tick = Bukkit.getCurrentTick();
+        Integer last = lastAmmoSwitchTick.get(id);
+        if (last == null || tick - last > AMMO_SWITCH_BURST_TICKS) {
+            lastAmmoSwitchTick.put(id, tick);
+            cycleAmmo(player, item);
+        }
+    }
+
     public void handleGunUse(Player player, Cancellable event) {
+        handleGunUse(player, event, false);
+    }
+
+    void handleGunUse(Player player, Cancellable event, boolean release) {
         //quick offhand check just cancel
         ItemStack item = player.getInventory().getItemInOffHand();
         if(item != null) {
@@ -143,8 +261,8 @@ public class GunManager implements Listener {
                 }
             }
         }
-        
-        
+
+
         item = player.getInventory().getItemInMainHand();
         if(item == null) return;
         if (!item.hasItemMeta()) return;
@@ -164,6 +282,10 @@ public class GunManager implements Listener {
             event.setCancelled(true);
             return;
         }
+        // Looking through a scope: right-click scopes in (the spyglass), releasing it fires.
+        if (!release && aiming.isScoped(player, item)) {
+            return;
+        }
         event.setCancelled(true);
         var session = Characters.currentSession(player).orElse(null);
         if (session == null && Characters.available()) return;
@@ -172,13 +294,8 @@ public class GunManager implements Listener {
         if (reloading.getOrDefault(id, false)) {
             return;
         }
-        if (player.isSneaking()) {
-            int tick = Bukkit.getCurrentTick();
-            Integer last = lastAmmoSwitchTick.get(id);
-            if (last == null || tick - last > AMMO_SWITCH_BURST_TICKS) {
-                lastAmmoSwitchTick.put(id, tick);
-                cycleAmmo(player, item);
-            }
+        if (!draw.isReady(player, gunId)) {
+            sendActionBar(player, "§7Still drawing your gun.");
             return;
         }
         reloading.put(id, true);
@@ -257,8 +374,8 @@ public class GunManager implements Listener {
 
         if (taken.equals("none")) {
             if (selected != null) {
-                sendActionBar(player, "§cYou have no " + getAmmoName(selected)
-                        + "§c left. Crouch and right-click to choose another.");
+                sendActionBar(player, LegacyComponentSerializer.legacySection().deserialize("§cYou have no "
+                        + getAmmoName(selected) + "§c left. ").append(SWAP_KEY_HINT));
             }
             reloading.remove(id);
             return;
@@ -482,6 +599,8 @@ public class GunManager implements Listener {
     // Runs before the player is saved, so the ammunition goes back into the saved inventory.
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        aiming.stop(event.getPlayer());
+        draw.forget(event.getPlayer());
         cancelActiveReload(event.getPlayer());
     }
 
@@ -516,6 +635,23 @@ public class GunManager implements Listener {
         }
     }
 
+    /**
+     * With retire-disabled-part-guns on, a gun built from a disabled (retired) part cannot be used.
+     * Unlike a broken gun nothing is written to the item, so turning the switch off restores it.
+     */
+    private boolean blockIfRetired(Player player, ItemStack item, List<GunPart> parts) {
+        if (!Cache.retireDisabledPartGuns) {
+            return false;
+        }
+        List<String> retired = parts.stream().filter(GunPart::isDisabled).map(GunPart::getId).toList();
+        if (retired.isEmpty()) {
+            return false;
+        }
+        String gunId = item.getItemMeta().getPersistentDataContainer().get(gunKey, PersistentDataType.STRING);
+        GunBrokenMarker.notifyRetired(player, gunId, retired);
+        return true;
+    }
+
     private boolean blockIfBroken(Player player, ItemStack item) {
         if (GunBrokenMarker.isBroken(item)) {
             return true;
@@ -526,22 +662,36 @@ public class GunManager implements Listener {
         }
         GunCraftProvenance.ResolvedParts resolved = provenance.resolveStampedParts();
         if (resolved.missingIds().isEmpty()) {
-            return false;
+            return blockIfRetired(player, item, resolved.live());
         }
         ItemMeta brokenMeta = item.getItemMeta();
         String gunId = brokenMeta.getPersistentDataContainer().get(gunKey, PersistentDataType.STRING);
-        GunBrokenMarker.markBroken(item, resolved.missingIds());
+        // A forged part or a part file that failed to load is a config mistake: refuse the shot but
+        // leave no mark, so the gun works again once the config is fixed.
+        if (PartLoader.isHealthy() && resolved.missingIds().stream().noneMatch(id -> id.contains("@"))) {
+            GunBrokenMarker.markBroken(item, resolved.missingIds());
+        }
         GunBrokenMarker.notifyBroken(player, item, gunId, resolved.missingIds());
         return true;
     }
 
-    
+
 
     // This path mutates the existing ItemStack; replacing it would change aliases held by callers.
     @SuppressWarnings("deprecation")
     public ItemStack applyModel(ItemStack i, SkinData data, SkinState state) {
         ItemStack skin = data.parseModel(state);
         if (skin == null || skin.getType().isAir()) {
+            return i;
+        }
+        if (data.isForged()) {
+            // The pose's model and material; the strings follow the gun's stamped parts.
+            i.setType(skin.getType());
+            ItemMeta forged = i.getItemMeta();
+            if (forged != null) {
+                ForgedLook.stamp(forged, data, state, ForgedLook.stampedParts(i));
+                i.setItemMeta(forged);
+            }
             return i;
         }
         if (ItemSkinPreserver.hasSkinData(skin)) {
@@ -571,6 +721,37 @@ public class GunManager implements Listener {
         }
         cbMeta.addChargedProjectile(arrow);
         crossbow.setItemMeta(cbMeta);
+    }
+
+    /**
+     * A gun dropped on death while aimed falls in its normal look, not as a spyglass. Runs first so
+     * plugins that copy the inventory (graves) see the lowered gun too.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        List<ItemStack> drops = event.getDrops();
+        for (int i = 0; i < drops.size(); i++) {
+            if (aiming.isAimedGun(player, drops.get(i))) {
+                ItemStack lowered = aiming.lowered(drops.get(i));
+                if (lowered != null) {
+                    drops.set(i, lowered);
+                }
+            }
+        }
+        aiming.stop(player);
+    }
+
+    /** Dropped while aimed: once no plugin cancelled the drop, it lands in its normal look. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDropLower(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        if (event.getItemDrop() != null && aiming.isAimedGun(player, event.getItemDrop().getItemStack())) {
+            ItemStack lowered = aiming.lowered(event.getItemDrop().getItemStack());
+            if (lowered != null) {
+                event.getItemDrop().setItemStack(lowered);
+            }
+        }
     }
 
     @EventHandler
@@ -684,7 +865,7 @@ public class GunManager implements Listener {
     }
 
     /**
-     * Crouch + right-click: pick the next caliber the player carries for the next reload.
+     * The swap-hands key: pick the next caliber the player carries for the next reload.
      * Bullets already loaded stay loaded.
      */
     private void cycleAmmo(Player player, ItemStack item) {
@@ -694,7 +875,7 @@ public class GunManager implements Listener {
             if (countStacks(findAmmo(player, ammo)) > 0) carried.add(ammo);
         }
         if (carried.isEmpty()) {
-            sendActionBar(player, "§cYou carry no shot this weapon can fire.");
+            sendActionBar(player, "§cYou carry no shot this gun can fire.");
             return;
         }
 
@@ -722,11 +903,20 @@ public class GunManager implements Listener {
         return StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(ammo.getInput())).trim();
     }
 
-    private void sendActionBar(Player player, String legacyText) {
+    void sendActionBar(Player player, String legacyText) {
+        sendActionBar(player, LegacyComponentSerializer.legacySection().deserialize(legacyText));
+    }
+
+    void sendActionBar(Player player, Component text) {
         // Hold MMOCore's stat bar back for two seconds so the message can be read; a null text only reserves it.
         if (!MMOPlayerData.get(player).getActionBar().show(ActionBarPriority.NORMAL, 40L, (String) null)) return;
-        player.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(legacyText));
+        player.sendActionBar(text);
     }
+
+    /** "Press [the player's own swap-hands key] to choose another.", whatever key they bound. */
+    static final Component SWAP_KEY_HINT = Component.text("Press ", NamedTextColor.RED)
+            .append(Component.keybind("key.swapOffhand", NamedTextColor.YELLOW))
+            .append(Component.text(" to choose another.", NamedTextColor.RED));
 
 
     /**

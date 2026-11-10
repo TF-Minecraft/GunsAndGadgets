@@ -1,0 +1,149 @@
+# Materials forged gun parts are made from (GunsAndGadgets forging).
+# A part's tendencies in parts.yml are written for steel (stocks: maplewood). Each material
+# multiplies a part's upsides by 'better' and its downsides by 'worse': a number sets every
+# stat, a section sets 'default' plus per-stat factors. Barrels load shot up to their tier.
+# New materials (alloys) only need an entry here; every forged part of their kind gains them.
+# Never remove or rename a material: guns forged from it would lose that part and break.
+
+iron:
+  name: "#d8d8d8Iron"
+  kind: metal
+  tier: 1
+  color: "d8d8d8"
+  cost: v.iron_ingot
+  permission: professions.iron_smith
+  description:
+    - "§7Cheap and crude: smaller upsides,"
+    - "§7harsher downsides."
+  sound-pitch: 0.94
+  flash: "#ffb35a"
+  trail: "#9a9a9a"
+  better: 0.8
+  worse: 1.25
+
+steel:
+  name: "#9a949bSteel"
+  kind: metal
+  tier: 2
+  color: "9a949b"
+  cost: m.materials.steel_ingot
+  permission: professions.steel_smith
+  description:
+    - "§7Reliable: every part works as designed."
+  flash: "#fff1c4"
+  trail: "#f4f4f4"
+  better: 1
+  worse: 1
+
+abyssalite:
+  name: "#5a7299Abyssalite"
+  kind: metal
+  tier: 3
+  color: "5a7299"
+  cost: m.materials.abyssalite_ingot
+  permission: professions.abyssalite_smith
+  description:
+    - "§7Dense: the most accurate and piercing,"
+    - "§7but slow to reload and heavy on the move."
+  sound-pitch: 0.86
+  sound-volume: 1.15
+  flash: "#b28cff"
+  trail: "#c27a46"
+  better:
+    default: 1.15
+    accuracy: 1.35
+    pierce: 1.4
+    falloff: 1.6
+    range: 1.4
+    sneaking: 1.4
+  worse:
+    default: 0.85
+    reload: 1.3
+    moving: 1.3
+    mounted: 1.3
+
+mythril:
+  name: "#7fbfe6Mythril"
+  kind: metal
+  tier: 4
+  color: "7fbfe6"
+  cost: m.materials.mythril_ingot
+  permission: professions.mythril_smith
+  description:
+    - "§7Light and strong: the fastest and steadiest,"
+    - "§7with the mildest downsides."
+  sound-pitch: 1.1
+  sounds:
+    - shoot minecraft:block.amethyst_block.chime pitch=1.5 volume=0.4
+  flash: "#a8f6ff"
+  trail: "#8ff0ff"
+  better:
+    default: 1.25
+    accuracy: 1.2
+    speed: 1.6
+    reload: 1.3
+    fire_rate: 1.3
+    moving: 1.5
+    mounted: 1.5
+  worse: 0.75
+
+barkwood:
+  name: "#7d5a33Barkwood"
+  kind: wood
+  tier: 1
+  color: "7d5a33"
+  cost: m.materials.refined_barkwood
+  permission: professions.iron_smith
+  description:
+    - "§7Cheap and crude: smaller upsides,"
+    - "§7harsher downsides."
+  better: 0.8
+  worse: 1.25
+
+maplewood:
+  name: "#a8975fMaplewood"
+  kind: wood
+  tier: 2
+  color: "a8975f"
+  cost: m.materials.refined_maplewood
+  permission: professions.steel_smith
+  description:
+    - "§7Light: steadier on the move and in the saddle."
+  better:
+    default: 1
+    fire_rate: 1.2
+    moving: 1.3
+    mounted: 1.3
+  worse: 1
+
+elderwood:
+  name: "#788265Elderwood"
+  kind: wood
+  tier: 3
+  color: "788265"
+  cost: m.materials.refined_elderwood
+  permission: professions.abyssalite_smith
+  description:
+    - "§7Steady: the most accurate stock wood."
+  better:
+    default: 1.15
+    accuracy: 1.35
+    sneaking: 1.4
+  worse: 0.9
+
+demonwood:
+  name: "#a23737Demonwood"
+  kind: wood
+  tier: 4
+  color: "a23737"
+  cost: m.materials.refined_demonwood
+  permission: professions.mythril_smith
+  description:
+    - "§7Strong and light, with the mildest downsides."
+  better:
+    default: 1.25
+    accuracy: 1.2
+    fire_rate: 1.3
+    moving: 1.5
+    mounted: 1.5
+  worse: 0.75

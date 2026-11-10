@@ -3,6 +3,7 @@ package net.tfminecraft.gunsandgadgets.guns.skins;
 import net.tfminecraft.gunsandgadgets.util.LegacyModelData;
 
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -19,8 +20,11 @@ public class SkinData {
     private final String carry;
     private final String reload;
     private final String aim;
+    private final String ads;
     private final List<String> types;
     private final List<String> options;
+    // Forged guns: the item model prefix; the pose is appended (_carry, _reload, _aim).
+    private final String forgedModel;
 
     public SkinData(String key, ConfigurationSection config) {
         this.id = key;
@@ -28,11 +32,26 @@ public class SkinData {
         this.carry = config.getString("carry", "");
         this.reload = config.getString("reload", "");
         this.aim = config.getString("aim", "");
+        this.ads = config.getString("ads", aim);
 
         this.types = new ArrayList<>(config.getStringList("types"));
         this.options = config.contains("options")
                 ? new ArrayList<>(config.getStringList("options"))
                 : new ArrayList<>();
+        this.forgedModel = config.getString("forged-model", "").trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** A skin drawn by the pack's forged gun models (see ForgedLook) rather than one fixed model. */
+    public boolean isForged() {
+        return !forgedModel.isEmpty();
+    }
+
+    /** The item model for this pose, e.g. tfmc_guns:rifle_aim; null when this isn't a forged skin. */
+    public NamespacedKey getForgedModel(SkinState state) {
+        if (!isForged()) {
+            return null;
+        }
+        return NamespacedKey.fromString(forgedModel + "_" + state.name().toLowerCase(Locale.ROOT));
     }
 
     // Getters
@@ -67,6 +86,7 @@ public class SkinData {
     public ItemStack parseModel(SkinState state) {
         String path = switch (state) {
             case AIM -> aim;
+            case ADS -> ads;
             case CARRY -> carry;
             case RELOAD -> reload;
         };
