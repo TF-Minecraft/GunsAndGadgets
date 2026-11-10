@@ -173,6 +173,9 @@ old: {part-type: barrel, type: [rifle], smoke: .nan}
     assertEquals(Color.fromRGB(0xf4f4f4), fx.trail());
     assertEquals(15, fx.smokeCount());
     assertEquals(fx, ShotFx.decode(fx.encode()));
+    ShotFx flashOnly = new ShotFx(null, 1.0, ShotFx.DEFAULT_CONE, false, Color.fromRGB(0xfff1c4), null);
+    assertFalse(flashOnly.encode().contains("trail="));
+    assertEquals(flashOnly, ShotFx.decode(flashOnly.encode()));
 
     ShotFx bare = ShotFx.of(gun("old", "loader@steel"));
     assertNull(bare.flash());
