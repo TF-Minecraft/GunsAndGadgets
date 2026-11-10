@@ -22,9 +22,19 @@ import net.tfminecraft.gunsandgadgets.utils.RevisionTracker;
 public class PartLoader implements LoaderInterface{
 	static HashMap<String, GunPart> oList = new HashMap<>();
 	private static List<GunPart> ordered = new ArrayList<>();
+	/** The last parts.yml or retired-parts.yml read failed: guns can't be trusted to be "old". */
+	private static boolean loadFailed = false;
 	public static void clear() {
 		oList.clear();
 		ordered.clear();
+		loadFailed = false;
+	}
+	/**
+	 * Whether the loaded parts can decide which guns are old: both files read and some parts
+	 * loaded. Refunds of guns with missing parts wait while this is false.
+	 */
+	public static boolean isHealthy() {
+		return !loadFailed && !ordered.isEmpty();
 	}
 	public static List<GunPart> getOrdered() {
 		return ordered;
@@ -37,13 +47,18 @@ public class PartLoader implements LoaderInterface{
 		return null;
 	}
 	public void load(File configFile) {
-		clear();
 		FileConfiguration config = new YamlConfiguration();
         try {
         	config.load(configFile);
         } catch (IOException | InvalidConfigurationException e) {
-            e.printStackTrace();
+            // keep the parts already loaded (none at startup) rather than breaking every gun
+            GunsAndGadgets.getInstance().getLogger().severe(
+                    "Could not read " + configFile.getName() + "; kept the parts already loaded, refunds of guns with missing parts paused: " + e.getMessage());
+            loadFailed = true;
+            return;
         }
+        clear();
+        loadFailed = false;
         Set<String> set = config.getKeys(false);
 
 		List<String> list = new ArrayList<String>(set);
@@ -74,7 +89,9 @@ public class PartLoader implements LoaderInterface{
 		try {
 			config.load(configFile);
 		} catch (IOException | InvalidConfigurationException e) {
-			e.printStackTrace();
+			GunsAndGadgets.getInstance().getLogger().severe(
+					"Could not read " + configFile.getName() + "; refunds of guns with missing parts paused: " + e.getMessage());
+			loadFailed = true;
 			return;
 		}
 		for (String key : config.getKeys(false)) {
@@ -83,6 +100,7 @@ public class PartLoader implements LoaderInterface{
 				continue;
 			}
 			section.set("disabled", true);
+			section.set("retired", true);
 			add(key, section);
 		}
 	}

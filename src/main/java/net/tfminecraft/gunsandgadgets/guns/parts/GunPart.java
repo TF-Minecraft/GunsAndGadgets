@@ -38,6 +38,8 @@ public class GunPart {
 
     private int revision = 0;
     private final boolean disabled;
+    /** Loaded from retired-parts.yml: guns built with it count as old (refunds). */
+    private final boolean retired;
     private final int tier;
 
     // Forged parts (PartForge): the definition and material this variant was forged from, the
@@ -65,6 +67,7 @@ public class GunPart {
         this.id = key;
         this.name = StringFormatter.formatHex(config.getString("name", key));
         this.disabled = config.getBoolean("disabled", false);
+        this.retired = config.getBoolean("retired", false);
         this.tier = config.getInt("tier", 0);
 
         PartData data = PartDataLoader.getByString(config.getString("part-type", "barrel"));
@@ -233,6 +236,8 @@ public class GunPart {
     public void setRevision(int revision) { this.revision = revision; }
 
     public boolean isDisabled() { return disabled; }
+
+    public boolean isRetired() { return retired; }
 
     public boolean isEnabledForCrafting() { return !disabled; }
 

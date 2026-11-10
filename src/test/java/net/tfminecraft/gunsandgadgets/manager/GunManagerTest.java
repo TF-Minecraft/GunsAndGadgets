@@ -138,7 +138,7 @@ class GunManagerTest {
 
   org.bukkit.entity.Player drawer() {
     var p = spy(player);
-    doNothing().when(p).setCooldown(any(ItemStack.class), anyInt());
+    doNothing().when(p).setCooldown(any(Material.class), anyInt());
     doReturn(true).when(p).isOnGround();
     doReturn(null).when(p).getCurrentInput();
     return p;
@@ -154,16 +154,16 @@ class GunManagerTest {
       var p = drawer();
       var timer = manager.drawTimer();
       timer.tick(p);
-      verify(p).setCooldown(any(ItemStack.class), eq(5));
+      verify(p).setCooldown(eq(Material.STICK), eq(5));
       assertFalse(manager.isDrawn(player, "same-id"));
       use();
       assertEquals("Still drawing your gun.", actionBar());
       assertEquals(5, player.getInventory().getItem(1).getAmount());
       for (int i = 0; i < 4; i++) timer.tick(p);
-      verify(p).setCooldown(any(ItemStack.class), eq(1)); // the sweep refreshes every few ticks
+      verify(p).setCooldown(eq(Material.STICK), eq(1)); // the sweep refreshes every few ticks
       assertFalse(manager.isDrawn(player, "same-id"));
       timer.tick(p);
-      verify(p).setCooldown(any(ItemStack.class), eq(0));
+      verify(p).setCooldown(eq(Material.STICK), eq(0));
       assertTrue(manager.isDrawn(player, "same-id"));
       assertFalse(manager.isDrawn(player, "other"));
       timer.tick(p); // stays drawn
@@ -185,6 +185,21 @@ class GunManagerTest {
       player.getInventory().setItemInMainHand(gun);
       timer.tick(p);
       assertTrue(manager.isDrawn(player, "same-id"));
+      // a new draw in another slot whose look changes item type mid-draw, then put away:
+      // the sweep follows the item type and is cleared, so other items of that type aren't blocked
+      player.getInventory().setHeldItemSlot(5);
+      set("gun_type", "rifle");
+      player.getInventory().setItemInMainHand(gun);
+      timer.tick(p);
+      gun.setType(Material.CROSSBOW);
+      player.getInventory().setItemInMainHand(gun);
+      for (int i = 0; i < 4; i++) timer.tick(p);
+      verify(p, atLeastOnce()).setCooldown(eq(Material.CROSSBOW), intThat(t -> t > 0));
+      assertFalse(manager.isDrawn(player, "same-id"));
+      player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
+      timer.tick(p);
+      verify(p).setCooldown(Material.CROSSBOW, 0);
+      gun.setType(Material.STICK);
       // something else in the hand forgets the gun
       player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
       timer.tick(p);
@@ -403,6 +418,114 @@ class GunManagerTest {
         manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (net.kyori.adventure.text.Component) null, org.bukkit.event.player.PlayerQuitEvent.QuitReason.DISCONNECTED));
         assertFalse(aim.isAiming(player));
       }
+    } finally {
+      Cache.aimingEnabled = wasOn;
+    }
+    }
+  }
+
+  @Test
+  void anAimedGunMovedDroppedOrLostOnDeathIsLowered() {
+    try (var preserver = mockStatic(net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver.class);
+        var modelData = mockStatic(net.tfminecraft.gunsandgadgets.util.LegacyModelData.class);
+        var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class)) {
+    boolean wasOn = Cache.aimingEnabled;
+    try {
+      Cache.aimingEnabled = true;
+      var scope = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+      when(scope.hasOption(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption.SCOPED)).thenReturn(true);
+      looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+      when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.AIM)).thenReturn(new ItemStack(Material.CROSSBOW));
+      when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.CARRY)).thenReturn(new ItemStack(Material.STONE_HOE));
+      var aim = manager.getAiming();
+      player.setSneaking(true);
+      assertFalse(aim.isAimedGun(player, gun)); // not aiming
+
+      // moved to another slot while scoped: it is lowered there, not left a spyglass
+      loaded();
+      aim.start(player);
+      ItemStack held = player.getInventory().getItemInMainHand();
+      assertEquals(Material.SPYGLASS, held.getType());
+      assertTrue(aim.isAimedGun(player, held));
+      assertFalse(aim.isAimedGun(player, new ItemStack(Material.STICK)));
+      player.getInventory().setItemInMainHand(null);
+      player.getInventory().setItem(7, held);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+      assertEquals(Material.CROSSBOW, player.getInventory().getItem(7).getType());
+      player.getInventory().setItem(7, null);
+
+      // on the cursor, emptied: back to the carry look
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      setInt("bullets_loaded", 0);
+      player.setItemOnCursor(gun);
+      aim.tick(player);
+      assertEquals(Material.STONE_HOE, player.getItemOnCursor().getType());
+
+      // a design that vanished stays as it is, in a slot or on the cursor
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      set("skin_id", "missing");
+      player.getInventory().setItem(7, gun);
+      aim.tick(player);
+      assertEquals(Material.SPYGLASS, player.getInventory().getItem(7).getType());
+      player.getInventory().setItem(7, null);
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      gun = player.getInventory().getItemInMainHand();
+      player.getInventory().setItemInMainHand(null);
+      set("skin_id", "missing");
+      player.setItemOnCursor(gun);
+      aim.tick(player);
+      assertEquals(Material.SPYGLASS, player.getItemOnCursor().getType());
+      // gone from the inventory entirely: nothing to lower
+      player.setItemOnCursor(null);
+      set("skin_id", "test");
+      loaded();
+      aim.start(player);
+      player.getInventory().setItemInMainHand(null);
+      aim.tick(player);
+      assertFalse(aim.isAiming(player));
+
+      // dropped while scoped: it lands lowered
+      loaded();
+      aim.start(player);
+      held = player.getInventory().getItemInMainHand();
+      var drop = mock(org.bukkit.event.player.PlayerDropItemEvent.class);
+      when(drop.getPlayer()).thenReturn(player);
+      var entity = mock(org.bukkit.entity.Item.class);
+      when(drop.getItemDrop()).thenReturn(entity);
+      when(entity.getItemStack()).thenReturn(held);
+      manager.onDrop(drop);
+      verify(entity).setItemStack(argThat(i -> i.getType() == Material.CROSSBOW));
+      when(drop.isCancelled()).thenReturn(true);
+      manager.onDrop(drop);
+      when(drop.isCancelled()).thenReturn(false);
+      when(entity.getItemStack()).thenReturn(new ItemStack(Material.DIRT));
+      manager.onDrop(drop);
+      gun = held.clone();
+      set("skin_id", "missing");
+      when(entity.getItemStack()).thenReturn(gun);
+      manager.onDrop(drop);
+      verify(entity, times(1)).setItemStack(any());
+
+      // dying while scoped: the gun drops lowered and the aim ends
+      var death = mock(org.bukkit.event.entity.PlayerDeathEvent.class);
+      when(death.getEntity()).thenReturn(player);
+      var drops = new java.util.ArrayList<>(java.util.List.of(held, new ItemStack(Material.DIRT), gun));
+      when(death.getDrops()).thenReturn(drops);
+      manager.onDeath(death);
+      assertEquals(Material.CROSSBOW, drops.get(0).getType());
+      assertEquals(Material.DIRT, drops.get(1).getType());
+      assertSame(gun, drops.get(2)); // its design vanished: left as it is
+      assertFalse(aim.isAiming(player));
     } finally {
       Cache.aimingEnabled = wasOn;
     }

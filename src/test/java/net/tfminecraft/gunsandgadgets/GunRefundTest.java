@@ -33,28 +33,37 @@ class GunRefundTest extends GunsTestSupport {
   }
 
   ItemStack gun(String name, Map<String, Integer> inputs) {
+    return gun(name, inputs, "barrel");
+  }
+
+  ItemStack gun(String name, Map<String, Integer> inputs, String partId) {
     ItemStack gun = new ItemStack(Material.STICK, 2);
     var meta = gun.getItemMeta();
     if (name != null) meta.setDisplayName(name);
     meta.getPersistentDataContainer()
         .set(new NamespacedKey(plugin, "gun_id"), PersistentDataType.STRING, "old-gun");
     gun.setItemMeta(meta);
-    new GunCraftProvenance(List.of(new GGCraftPart("barrel", 1)), 1).applyTo(gun);
+    new GunCraftProvenance(List.of(new GGCraftPart(partId, 1)), 1).applyTo(gun);
     if (inputs != null) GunCraftInputs.applyTo(gun, inputs);
     return gun;
   }
 
-  GunPart part(boolean disabled, Map<String, Integer> cost) {
+  GunPart part(boolean retired, Map<String, Integer> cost) {
     GunPart part = mock(GunPart.class);
     when(part.getId()).thenReturn("barrel");
-    when(part.isDisabled()).thenReturn(disabled);
+    when(part.isDisabled()).thenReturn(retired);
+    when(part.isRetired()).thenReturn(retired);
     when(part.getCost()).thenReturn(cost);
     PartLoader.get().put("barrel", part);
     return part;
   }
 
+  void healthyParts() throws Exception {
+    new PartLoader().load(file("parts.yml", "other: {stats: ['damage 1']}").toFile());
+  }
+
   @Test
-  void oldGunsArePricedAndThoseWithoutAPriceGiveNothing() {
+  void oldGunsArePricedAndThoseWithoutAPriceGiveNothing() throws Exception {
     ItemStack old = gun("Old", Map.of("v.iron_ingot", 3, "v.flint", 0));
     part(true, Map.of("v.iron_ingot", 4));
     assertNull(GunRefunder.refundFor(old)); // refunds off
@@ -71,10 +80,21 @@ class GunRefundTest extends GunsTestSupport {
     part(false, Map.of("v.iron_ingot", 4));
     assertFalse(GunRefunder.isOld(old));
     assertNull(GunRefunder.refundFor(old));
-    // a removed part still refunds what the crafting took
+    // a part only disabled in parts.yml (no new crafts) leaves its guns alone
+    when(PartLoader.getByString("barrel").isDisabled()).thenReturn(true);
+    assertFalse(GunRefunder.isOld(old));
+    // a removed part still refunds what the crafting took, once the part files loaded cleanly
     PartLoader.clear();
+    assertFalse(GunRefunder.isOld(old)); // no parts loaded at all
+    healthyParts();
     assertTrue(GunRefunder.isOld(old));
     assertEquals(Map.of("v.iron_ingot", 6), GunRefunder.refundFor(old));
+    // a parts file that failed to read pauses it
+    new PartLoader().load(file("broken.yml", "x: [").toFile());
+    assertFalse(GunRefunder.isOld(old));
+    healthyParts();
+    // a forged part never counts as removed (a material taken out of metals.yml by mistake)
+    assertFalse(GunRefunder.isOld(gun("Forged", Map.of(), "barrel@steel")));
     // crafted before inputs were recorded: the parts' costs, nothing when a part is gone
     ItemStack older = gun("Older", null);
     assertEquals(Map.of(), GunRefunder.refundFor(older));
@@ -130,6 +150,26 @@ class GunRefundTest extends GunsTestSupport {
       // a free gun is just removed
       assertTrue(GunRefunder.takeApart(player, gun(null, Map.of()), remove));
       verify(player).sendMessage("§eYour old gun§e was retired and removed.");
+      verify(player, never()).sendMessage("§7Its loaded shots were returned too.");
+      // loaded shots come back with it: three in each of the two guns
+      ItemStack loaded = gun("Loaded", Map.of());
+      assertNull(GunRefunder.loadedShots(loaded)); // empty
+      var meta = loaded.getItemMeta();
+      meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "bullets_loaded"), PersistentDataType.INTEGER, 3);
+      meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "ammo_loaded"), PersistentDataType.STRING, "ball");
+      loaded.setItemMeta(meta);
+      assertNull(GunRefunder.loadedShots(loaded)); // unknown shot
+      var ball = mock(net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition.class);
+      when(ball.getInput()).thenReturn("m.utils.ball");
+      net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader.get().put("ball", ball);
+      when(api.getCreator().getItemFromPath("m.utils.ball")).thenReturn(null);
+      assertNull(GunRefunder.loadedShots(loaded));
+      when(api.getCreator().getItemFromPath("m.utils.ball")).thenReturn(new ItemStack(Material.AIR));
+      assertNull(GunRefunder.loadedShots(loaded));
+      when(api.getCreator().getItemFromPath("m.utils.ball")).thenReturn(new ItemStack(Material.IRON_NUGGET));
+      assertEquals(6, GunRefunder.loadedShots(loaded).getAmount());
+      assertTrue(GunRefunder.takeApart(player, loaded, remove));
+      verify(player).sendMessage("§7Its loaded shots were returned too.");
     }
   }
 
@@ -182,11 +222,26 @@ class GunRefundTest extends GunsTestSupport {
       new GunRefreshListener().onInventoryOpen(open);
       server.getScheduler().performOneTick();
       verify(chest, never()).setItem(anyInt(), any());
-      // opened by a player: the gun is taken apart for them
+      // opened by a player: still only refreshed, it may not be theirs
       when(open.getPlayer()).thenReturn(player);
       new GunRefreshListener().onInventoryOpen(open);
       server.getScheduler().performOneTick();
-      verify(chest).setItem(0, null);
+      verify(chest, never()).setItem(anyInt(), any());
+      // clicking it in the chest neither; in the player's own inventory it is taken apart
+      var click = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+      when(click.getWhoClicked()).thenReturn(player);
+      when(click.getClickedInventory()).thenReturn(chest);
+      when(click.getSlot()).thenReturn(0);
+      when(chest.getItem(0)).thenReturn(old);
+      new GunRefreshListener().onInventoryClick(click);
+      server.getScheduler().performOneTick();
+      verify(chest, never()).setItem(anyInt(), any());
+      player.getInventory().setItem(5, old);
+      when(click.getClickedInventory()).thenReturn(player.getInventory());
+      when(click.getSlot()).thenReturn(5);
+      new GunRefreshListener().onInventoryClick(click);
+      server.getScheduler().performOneTick();
+      assertNull(player.getInventory().getItem(5));
     }
   }
 }

@@ -40,8 +40,10 @@ import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -711,10 +713,34 @@ public class GunManager implements Listener {
         crossbow.setItemMeta(cbMeta);
     }
 
+    /** A gun dropped on death while aimed falls in its normal look, not as a spyglass. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        List<ItemStack> drops = event.getDrops();
+        for (int i = 0; i < drops.size(); i++) {
+            if (aiming.isAimedGun(player, drops.get(i))) {
+                ItemStack lowered = aiming.lowered(drops.get(i));
+                if (lowered != null) {
+                    drops.set(i, lowered);
+                }
+            }
+        }
+        aiming.stop(player);
+    }
+
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
         UUID id = player.getUniqueId();
+        if (!event.isCancelled() && !reloading.containsKey(id) && event.getItemDrop() != null
+                && aiming.isAimedGun(player, event.getItemDrop().getItemStack())) {
+            // dropped while aimed: it lands in its normal look
+            ItemStack lowered = aiming.lowered(event.getItemDrop().getItemStack());
+            if (lowered != null) {
+                event.getItemDrop().setItemStack(lowered);
+            }
+        }
 
         if (reloading.containsKey(id)) {
             // prevent dropping the gun in hand while reloading

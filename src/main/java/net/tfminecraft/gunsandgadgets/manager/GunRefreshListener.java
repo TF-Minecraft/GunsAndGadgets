@@ -47,9 +47,11 @@ public class GunRefreshListener implements Listener {
         }
         Inventory clicked = event.getClickedInventory();
         int slot = event.getSlot();
+        // only the player's own inventory refunds to them; a gun in a chest waits until taken
+        Player owner = clicked == player.getInventory() ? player : null;
         Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> {
             if (clicked != null) {
-                tryRefresh(player, clicked.getItem(slot), item -> clicked.setItem(slot, item));
+                tryRefresh(owner, clicked.getItem(slot), item -> clicked.setItem(slot, item));
             }
             tryRefresh(player, player.getItemOnCursor(), player::setItemOnCursor);
         });
@@ -78,15 +80,18 @@ public class GunRefreshListener implements Listener {
         });
     }
 
-    /** Chests, barrels and storage entities are checked when opened (refunds go to the opener); plugin menus are left alone. */
+    /**
+     * Guns in chests, barrels and storage entities are brought up to date when opened; plugin menus
+     * are left alone. Old guns there are not refunded to the opener (it may not be theirs): they are
+     * taken apart once someone takes them into their own inventory.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
         Inventory inventory = event.getInventory();
         if (!isWorldStorage(inventory.getHolder(false))) {
             return;
         }
-        Player player = event.getPlayer() instanceof Player opener ? opener : null;
-        Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> sweep(player, inventory));
+        Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> sweep(null, inventory));
     }
 
     /** Players are entities too, but a menu owned by a player is not storage. */

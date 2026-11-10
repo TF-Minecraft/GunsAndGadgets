@@ -101,8 +101,11 @@ public final class Aiming {
         }
         ItemStack held = player.getInventory().getItemInMainHand();
         String gunId = DrawTimer.gunId(held);
+        if (gunId == null) {
+            return;
+        }
         SkinData skin = guns.skinOf(held);
-        if (gunId == null || skin == null || guns.loadedBullets(held) <= 0
+        if (skin == null || guns.loadedBullets(held) <= 0
                 || guns.isReloading(player) || !guns.isDrawn(player, gunId)) {
             return;
         }
@@ -126,10 +129,47 @@ public final class Aiming {
         }
         zoom(player, false);
         ItemStack held = player.getInventory().getItemInMainHand();
-        SkinData skin = guns.skinOf(held);
-        if (gunId.equals(DrawTimer.gunId(held)) && skin != null && guns.loadedBullets(held) > 0) {
-            player.getInventory().setItemInMainHand(guns.showLoaded(held, skin));
+        if (gunId.equals(DrawTimer.gunId(held))) {
+            // an emptied gun already shows its carry or reload pose
+            SkinData skin = guns.skinOf(held);
+            if (skin != null && guns.loadedBullets(held) > 0) {
+                player.getInventory().setItemInMainHand(guns.showLoaded(held, skin));
+            }
+            return;
         }
+        // moved or swapped away while aimed: it must not stay a spyglass in the aiming pose
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            if (gunId.equals(DrawTimer.gunId(contents[slot]))) {
+                ItemStack lowered = lowered(contents[slot]);
+                if (lowered != null) {
+                    player.getInventory().setItem(slot, lowered);
+                }
+                return;
+            }
+        }
+        ItemStack cursor = player.getItemOnCursor();
+        if (gunId.equals(DrawTimer.gunId(cursor))) {
+            ItemStack lowered = lowered(cursor);
+            if (lowered != null) {
+                player.setItemOnCursor(lowered);
+            }
+        }
+    }
+
+    /** Whether this item is the gun the player is aiming. */
+    boolean isAimedGun(Player player, ItemStack item) {
+        String gunId = aimed.get(player.getUniqueId());
+        return gunId != null && gunId.equals(DrawTimer.gunId(item));
+    }
+
+    /** The gun out of its aiming look: the loaded pose, or carried when empty; null without a skin. */
+    ItemStack lowered(ItemStack gun) {
+        SkinData skin = guns.skinOf(gun);
+        if (skin == null) {
+            return null;
+        }
+        return guns.loadedBullets(gun) > 0 ? guns.showLoaded(gun, skin) : guns.applyModel(gun, skin, SkinState.CARRY);
     }
 
     /** Lower the walking speed while aiming; the client narrows the field of view with it. */

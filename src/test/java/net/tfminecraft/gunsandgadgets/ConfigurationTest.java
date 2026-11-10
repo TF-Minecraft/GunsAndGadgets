@@ -209,7 +209,13 @@ refunds: {enabled: true, automatic: true}
       loader.load(file(UUID.randomUUID() + ".yml", "x: [").toFile());
     }
     assertTrue(PartDataLoader.get().isEmpty());
-    assertTrue(PartLoader.get().isEmpty());
+    // a parts file that can't be read keeps the parts already loaded and pauses missing-part refunds
+    assertNotNull(PartLoader.getByString("barrel"));
+    assertFalse(PartLoader.isHealthy());
+    parts.load(partFile.toFile());
+    assertTrue(PartLoader.isHealthy());
+    PartLoader.clear();
+    assertFalse(PartLoader.isHealthy()); // nothing loaded
     assertTrue(AmmunitionLoader.get().isEmpty());
     assertTrue(SkinLoader.get().isEmpty());
   }

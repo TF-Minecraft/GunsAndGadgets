@@ -5,7 +5,8 @@
 # 'ammo-filter' (powered/plain) limits the gun's shot; 'skin-base' borrows a gun design.
 # Use disabled: true to retire a part from new crafts (do not delete ids). Old parts whose ids
 # forged parts now use go in retired-parts.yml: they load disabled so old guns still resolve,
-# and retire-disabled-part-guns in config.yml decides whether those guns still fire.
+# and retire-disabled-part-guns in config.yml decides whether those guns still fire. With
+# refunds on, guns with a retired part are taken apart; a part only disabled here keeps its guns.
 
 # Barrels
 smoothbore_barrel_long:

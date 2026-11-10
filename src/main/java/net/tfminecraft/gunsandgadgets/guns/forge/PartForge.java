@@ -107,7 +107,12 @@ public final class PartForge {
         variant.set("forge.metal", metal.getId());
         variant.set("forge.name", baseName);
         variant.set("forge.tendencies", definition.getStringList("tendencies"));
-        variant.set("forge.fixed", definition.getStringList("fixed"));
+        List<String> fixed = new ArrayList<>(definition.getStringList("fixed"));
+        ConfigurationSection byMetal = definition.getConfigurationSection("by-metal");
+        if (byMetal != null) {
+            fixed.addAll(byMetal.getStringList(metal.getId()));
+        }
+        variant.set("forge.fixed", fixed);
         return variant;
     }
 

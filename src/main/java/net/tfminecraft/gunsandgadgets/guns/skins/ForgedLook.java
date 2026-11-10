@@ -32,7 +32,7 @@ public final class ForgedLook {
 
     static final String[] SLOTS = {"barrel", "loader", "chamber", "action", "stock"};
     public static final String NONE = "none";
-    /** Pistols have no stock to choose: their grip is barkwood. */
+    /** The wood string when a gun has no stock or grip (launchers). */
     public static final String DEFAULT_WOOD = "barkwood";
 
     private ForgedLook() {}

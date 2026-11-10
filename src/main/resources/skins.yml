@@ -63,7 +63,8 @@ launcher:
     - launcher
 
 # Forged guns (every part forged) are drawn part by part by the pack's tfmc_guns item models:
-# forged-model + _carry/_reload/_aim, on the material for that pose (crossbow keeps the aiming hold).
+# forged-model + _carry/_reload/_aim/_ads, on the material for that pose (crossbow keeps the aiming hold;
+# ads defaults to the aim material).
 # Remove these to show forged guns with the designs above instead.
 forged_rifle:
   forged-model: tfmc_guns:rifle

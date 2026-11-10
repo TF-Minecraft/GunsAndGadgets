@@ -155,6 +155,7 @@ heavy:
     assertEquals(1, iron.getInt("tier"));
     // accuracy (4 + 1) * 0.8 = 4, speed 10 * 0.8 = 8, reload -2 * 1.25 = -2.5 rounds away from zero.
     assertEquals(List.of("accuracy 4", "speed 8", "reload -3", "capacity 1"), iron.getStringList("stats"));
+    assertEquals(List.of("capacity 1"), iron.getStringList("forge.fixed"));
     assertEquals(List.of("v.iron_ingot(6)", "v.leather(2)"), iron.getStringList("cost"));
     assertEquals(List.of(), iron.getStringList("permissions"));
     assertEquals("professions.iron_smith", iron.getString("forge.permission"));
@@ -166,6 +167,8 @@ heavy:
 
     ConfigurationSection mythril = variants.get("heavy@mythril");
     assertEquals(List.of("accuracy 6", "speed 16", "reload -1", "capacity 4"), mythril.getStringList("stats"));
+    // the material's own extras show in its lore (the multi-tube's rockets per material)
+    assertEquals(List.of("capacity 1", "capacity 3"), mythril.getStringList("forge.fixed"));
     assertEquals(List.of("extra", "ironshot", "ironshot_powered", "mythrilshot"), mythril.getStringList("caliber"));
 
     // A part limited to some materials, a wood part, and a material without cost or permission.
@@ -432,6 +435,9 @@ handling:
     // The old id resolves for old guns, disabled; the forged variants are separate parts.
     GunPart old = PartLoader.getByString("matchlock");
     assertTrue(old.isDisabled());
+    assertTrue(old.isRetired());
+    assertFalse(PartLoader.getByString("kept").isRetired());
+    assertTrue(PartLoader.isHealthy());
     assertFalse(old.isForged());
     assertFalse(PartLoader.getByString("matchlock@iron").isDisabled());
     // parts.yml wins over a retired part with the same id.
@@ -440,8 +446,10 @@ handling:
     assertNull(PartLoader.getByString("loose"));
     int count = PartLoader.getOrdered().size();
     loader.loadRetired(temp.resolve("absent.yml").toFile());
+    assertTrue(PartLoader.isHealthy());
     loader.loadRetired(file("broken-retired.yml", "x: [").toFile());
     assertEquals(count, PartLoader.getOrdered().size());
+    assertFalse(PartLoader.isHealthy()); // old guns would look like they lost a part
   }
 
   java.io.File resource(String name) throws Exception {

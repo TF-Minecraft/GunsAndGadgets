@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -36,6 +37,8 @@ public final class DrawTimer {
         double progress;
         int age;
         boolean ready;
+        /** The item type the cooldown sweep was put on (cooldowns are per item type). */
+        Material sweep;
 
         State(String gunId, int slot, double needed) {
             this.gunId = gunId;
@@ -54,19 +57,20 @@ public final class DrawTimer {
         String gunId = gunId(held);
         UUID id = player.getUniqueId();
         if (gunId == null) {
-            states.remove(id);
+            clearSweep(player, states.remove(id));
             return;
         }
         int slot = player.getInventory().getHeldItemSlot();
         State state = states.get(id);
         if (state == null || !state.gunId.equals(gunId) || state.slot != slot) {
+            clearSweep(player, state);
             state = new State(gunId, slot, neededTicks(held));
             states.put(id, state);
             if (state.needed <= 0) {
                 state.ready = true;
                 return;
             }
-            player.setCooldown(held, (int) Math.ceil(state.needed * Handling.drawMultiplier(player)));
+            sweep(player, state, held, (int) Math.ceil(state.needed * Handling.drawMultiplier(player)));
             return;
         }
         if (state.ready) {
@@ -76,11 +80,30 @@ public final class DrawTimer {
         state.progress += 1.0 / multiplier;
         if (state.progress >= state.needed) {
             state.ready = true;
-            player.setCooldown(held, 0);
+            clearSweep(player, state);
             return;
         }
         if (++state.age % REFRESH_TICKS == 0) {
-            player.setCooldown(held, (int) Math.ceil((state.needed - state.progress) * multiplier));
+            sweep(player, state, held, (int) Math.ceil((state.needed - state.progress) * multiplier));
+        }
+    }
+
+    private static void sweep(Player player, State state, ItemStack held, int ticks) {
+        if (state.sweep != null && state.sweep != held.getType()) {
+            player.setCooldown(state.sweep, 0);
+        }
+        state.sweep = held.getType();
+        player.setCooldown(state.sweep, ticks);
+    }
+
+    /**
+     * Ends an unfinished draw's sweep: cooldowns belong to the item type, so other items of that
+     * type (another plugin's crossbow) would stay blocked after the player put the gun away.
+     */
+    private static void clearSweep(Player player, State state) {
+        if (state != null && state.sweep != null) {
+            player.setCooldown(state.sweep, 0);
+            state.sweep = null;
         }
     }
 
