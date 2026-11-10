@@ -104,9 +104,11 @@ public final class Aiming {
         if (gunId == null) {
             return;
         }
+        if (guns.loadedBullets(held) <= 0 || guns.isReloading(player) || !guns.isDrawn(player, gunId)) {
+            return;
+        }
         SkinData skin = guns.skinOf(held);
-        if (skin == null || guns.loadedBullets(held) <= 0
-                || guns.isReloading(player) || !guns.isDrawn(player, gunId)) {
+        if (skin == null) {
             return;
         }
         aimed.put(player.getUniqueId(), gunId);

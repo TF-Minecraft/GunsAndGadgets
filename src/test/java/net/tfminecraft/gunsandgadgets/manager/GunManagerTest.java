@@ -503,23 +503,24 @@ class GunManagerTest {
       var entity = mock(org.bukkit.entity.Item.class);
       when(drop.getItemDrop()).thenReturn(entity);
       when(entity.getItemStack()).thenReturn(held);
-      manager.onDrop(drop);
+      ItemStack spare = held.clone(); // still a spyglass, for the death below
+      manager.onDropLower(drop);
       verify(entity).setItemStack(argThat(i -> i.getType() == Material.CROSSBOW));
-      when(drop.isCancelled()).thenReturn(true);
-      manager.onDrop(drop);
-      when(drop.isCancelled()).thenReturn(false);
       when(entity.getItemStack()).thenReturn(new ItemStack(Material.DIRT));
-      manager.onDrop(drop);
+      manager.onDropLower(drop);
       gun = held.clone();
       set("skin_id", "missing");
       when(entity.getItemStack()).thenReturn(gun);
-      manager.onDrop(drop);
+      manager.onDropLower(drop);
+      when(drop.getItemDrop()).thenReturn(null);
+      manager.onDropLower(drop);
       verify(entity, times(1)).setItemStack(any());
 
       // dying while scoped: the gun drops lowered and the aim ends
       var death = mock(org.bukkit.event.entity.PlayerDeathEvent.class);
       when(death.getEntity()).thenReturn(player);
-      var drops = new java.util.ArrayList<>(java.util.List.of(held, new ItemStack(Material.DIRT), gun));
+      assertEquals(Material.SPYGLASS, spare.getType());
+      var drops = new java.util.ArrayList<>(java.util.List.of(spare, new ItemStack(Material.DIRT), gun));
       when(death.getDrops()).thenReturn(drops);
       manager.onDeath(death);
       assertEquals(Material.CROSSBOW, drops.get(0).getType());
@@ -960,15 +961,44 @@ class GunManagerTest {
   @Test
   void missingStampedPartsMarkGunBrokenAndBlockUse() {
     when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getAnonymousLogger());
-    new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
-            List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
-        .applyTo(gun);
-    player.getInventory().setItemInMainHand(gun);
-    verify(use()).setCancelled(true);
-    assertTrue(
-        net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
-            player.getInventory().getItemInMainHand()));
-    assertEquals(5, player.getInventory().getItem(1).getAmount());
+    PartLoader.clear();
+    PartLoader.getOrdered().add(mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class)); // parts loaded cleanly
+    try {
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertTrue(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      assertEquals(5, player.getInventory().getItem(1).getAmount());
+      // a forged part gone missing is a config mistake: the shot is refused but nothing is marked,
+      // so the gun works again once the config is fixed
+      gun = player.getInventory().getItemInMainHand();
+      net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.clearBroken(gun);
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("barrel@steel", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      // so is any part while the part files failed to load
+      PartLoader.clear();
+      new net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance(
+              List.of(new net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart("missing", 1)), 1)
+          .applyTo(gun);
+      player.getInventory().setItemInMainHand(gun);
+      verify(use()).setCancelled(true);
+      assertFalse(
+          net.tfminecraft.gunsandgadgets.utils.GunBrokenMarker.isBroken(
+              player.getInventory().getItemInMainHand()));
+      assertEquals(5, player.getInventory().getItem(1).getAmount());
+    } finally {
+      PartLoader.clear();
+    }
   }
 
   @Test

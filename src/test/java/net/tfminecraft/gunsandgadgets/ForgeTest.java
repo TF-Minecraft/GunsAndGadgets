@@ -450,6 +450,16 @@ handling:
     loader.loadRetired(file("broken-retired.yml", "x: [").toFile());
     assertEquals(count, PartLoader.getOrdered().size());
     assertFalse(PartLoader.isHealthy()); // old guns would look like they lost a part
+    // a stray line in parts.yml pauses refunds, the rest still loads
+    PartLoader.clear();
+    loader.load(file("stray.yml", "stray: 3" + NL + "kept: {stats: [damage 1]}").toFile());
+    assertNotNull(PartLoader.getByString("kept"));
+    assertFalse(PartLoader.isHealthy());
+    // retired parts wait for a parts.yml that loads (it decides which ids are still current)
+    PartLoader.clear();
+    loader.load(file("broken-parts.yml", "x: [").toFile());
+    loader.loadRetired(file("retired-again.yml", "old: {stats: [damage 1]}").toFile());
+    assertNull(PartLoader.getByString("old"));
   }
 
   java.io.File resource(String name) throws Exception {

@@ -18,6 +18,7 @@ import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
+import net.tfminecraft.gunsandgadgets.loader.PartLoader;
 import net.tfminecraft.gunsandgadgets.loader.SkinLoader;
 import net.tfminecraft.gunsandgadgets.shooter.ProjectileShooter;
 import net.tfminecraft.gunsandgadgets.util.Caliber;
@@ -660,7 +661,11 @@ public class GunManager implements Listener {
         }
         ItemMeta brokenMeta = item.getItemMeta();
         String gunId = brokenMeta.getPersistentDataContainer().get(gunKey, PersistentDataType.STRING);
-        GunBrokenMarker.markBroken(item, resolved.missingIds());
+        // A forged part or a part file that failed to load is a config mistake: refuse the shot but
+        // leave no mark, so the gun works again once the config is fixed.
+        if (PartLoader.isHealthy() && resolved.missingIds().stream().noneMatch(id -> id.contains("@"))) {
+            GunBrokenMarker.markBroken(item, resolved.missingIds());
+        }
         GunBrokenMarker.notifyBroken(player, item, gunId, resolved.missingIds());
         return true;
     }
@@ -713,8 +718,11 @@ public class GunManager implements Listener {
         crossbow.setItemMeta(cbMeta);
     }
 
-    /** A gun dropped on death while aimed falls in its normal look, not as a spyglass. */
-    @EventHandler(priority = EventPriority.HIGHEST)
+    /**
+     * A gun dropped on death while aimed falls in its normal look, not as a spyglass. Runs first so
+     * plugins that copy the inventory (graves) see the lowered gun too.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         List<ItemStack> drops = event.getDrops();
@@ -729,18 +737,22 @@ public class GunManager implements Listener {
         aiming.stop(player);
     }
 
-    @EventHandler
-    public void onDrop(PlayerDropItemEvent event) {
+    /** Dropped while aimed: once no plugin cancelled the drop, it lands in its normal look. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDropLower(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
-        UUID id = player.getUniqueId();
-        if (!event.isCancelled() && !reloading.containsKey(id) && event.getItemDrop() != null
-                && aiming.isAimedGun(player, event.getItemDrop().getItemStack())) {
-            // dropped while aimed: it lands in its normal look
+        if (event.getItemDrop() != null && aiming.isAimedGun(player, event.getItemDrop().getItemStack())) {
             ItemStack lowered = aiming.lowered(event.getItemDrop().getItemStack());
             if (lowered != null) {
                 event.getItemDrop().setItemStack(lowered);
             }
         }
+    }
+
+    @EventHandler
+    public void onDrop(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        UUID id = player.getUniqueId();
 
         if (reloading.containsKey(id)) {
             // prevent dropping the gun in hand while reloading

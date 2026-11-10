@@ -65,6 +65,13 @@ public class PartLoader implements LoaderInterface{
 		
 		for(String key : list) {
 			ConfigurationSection section = config.getConfigurationSection(key);
+			if (section == null) {
+				// a stray line (a dedented key): the parts after it can't be trusted to be complete
+				GunsAndGadgets.getInstance().getLogger().severe(
+						configFile.getName() + ": '" + key + "' is not a part; refunds of guns with missing parts paused");
+				loadFailed = true;
+				continue;
+			}
 			if (PartForge.isForged(section)) {
 				// One part per material; the material is part of the id the gun stamps.
 				for (Map.Entry<String, ConfigurationSection> variant : PartForge.expand(key, section).entrySet()) {
@@ -82,7 +89,8 @@ public class PartLoader implements LoaderInterface{
 	 * still fire. An id parts.yml already defines is skipped.
 	 */
 	public void loadRetired(File configFile) {
-		if (!configFile.isFile()) {
+		// without parts.yml an id it redefines would load as retired and its guns be refunded
+		if (!configFile.isFile() || loadFailed) {
 			return;
 		}
 		FileConfiguration config = new YamlConfiguration();
