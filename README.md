@@ -8,7 +8,7 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 
 - **Modular assembly** — select a weapon type and combine barrels, loaders, chambers, actions, and stocks where the design requires them.
 - **Meaningful parts** — components contribute to accuracy, damage, range, capacity, reload speed, fire rate, spread, and piercing.
-- **Forged parts** — each part says what it improves or worsens, and the metal it is forged from (`metals.yml`) decides by how much: iron, steel, abyssalite and mythril (and stock woods) each have their own strengths, so mixing metals matters. Barrels load shot up to their metal's tier; shotgun barrels set a pellet cone; parts can add pierce, change damage by a percentage, and steady the gun on the move, mounted or crouched.
+- **Forged parts** — each part says what it improves or worsens, and the metal it is forged from (`metals.yml`) decides by how much: iron, steel, abyssalite and mythril (and stock woods) each have their own strengths, so mixing metals matters. Barrels load shot up to their metal's tier; shotgun barrels set a pellet cone; parts can add pierce, change damage by a percentage, and steady the gun on the move, mounted or crouched. Every stock and grip also takes an animal fitting of one type (leather, wool or feather); its quality (common to perfect) scales what that part is for.
 - **Ammunition compatibility** — choose supported ammunition for the next reload, with the selection saved on the gun.
 - **Reloading and handling** — timed reloads, progress feedback, character attribute effects, and loaded or unloaded appearances communicate weapon state.
 - **Projectile combat** — shot trajectories, impacts, sounds, and visual effects support firearm and launcher attacks.

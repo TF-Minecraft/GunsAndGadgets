@@ -38,9 +38,13 @@ public final class ForgeLore {
         }
         // In the part's own material: a mythril upside can show more arrows than an iron one.
         Metal metal = !scaled || part.getMetalId() == null ? null : MetalLoader.getByString(part.getMetalId());
+        // and its fitting: better leather shows more arrows on the stats it improves
+        Metal fitting = !scaled || part.getFittingId() == null ? null : MetalLoader.getByString(part.getFittingId());
         for (Map.Entry<Stats, Double> tendency : part.getTendencies().entrySet()) {
+            String stat = tendency.getKey().getKey();
             double value = tendency.getValue();
-            if (metal != null) value = metal.scale(tendency.getKey().getKey(), value);
+            if (metal != null) value = metal.scale(stat, value);
+            if (fitting != null && part.getFittingStats().contains(stat)) value = fitting.scale(stat, value);
             lines.add(arrowLine(tendency.getKey(), value));
         }
         for (Map.Entry<Stats, Double> entry : fixed.entrySet()) {

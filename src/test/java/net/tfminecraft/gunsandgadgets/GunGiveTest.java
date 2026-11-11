@@ -31,7 +31,8 @@ class GunGiveTest extends GunsTestSupport {
     GunPart part(String category,boolean disabled,GunType type) {
         GunPart p=mock(GunPart.class); PartData data=mock(PartData.class);
         when(data.getId()).thenReturn(category); when(p.getPartType()).thenReturn(data);
-        when(p.getGunTypes()).thenReturn(Set.of(type)); when(p.isDisabled()).thenReturn(disabled); return p;
+        when(p.getGunTypes()).thenReturn(Set.of(type)); when(p.isDisabled()).thenReturn(disabled);
+        when(p.isEnabledForCrafting()).thenReturn(!disabled); return p;
     }
     void run(String... args) { assertTrue(command.onCommand(sender,null,"gg",args)); }
     void reject(int index,String value,String message) {
@@ -46,6 +47,9 @@ class GunGiveTest extends GunsTestSupport {
         reject(1,"Offline","online");reject(2,"unknown","type");reject(3,"unknown","part");
         PartLoader.get().put("disabled",part("barrel",true,GunType.RIFLE));reject(3,"disabled","part");
         PartLoader.get().put("pistol",part("barrel",false,GunType.PISTOL));reject(3,"pistol","part");
+        // the plain variant of a fitted part only serves old guns: not given as a new one
+        GunPart legacy=part("barrel",false,GunType.RIFLE); when(legacy.isEnabledForCrafting()).thenReturn(false);
+        PartLoader.get().put("legacy",legacy);reject(3,"legacy","part");
         run("give","Gunner","rifle","barrel","barrel");
         PartLoader.get().put("stock",part("stock",false,GunType.RIFLE));reject(3,"stock","categories");
         try(var builders=mockConstruction(InventoryManager.class,(b,c)->when(b.hasClassConflict(any(),any())).thenReturn(true))) {

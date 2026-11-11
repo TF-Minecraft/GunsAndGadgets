@@ -46,6 +46,11 @@ public class GunPart {
     // reference tendencies its lore shows as arrows, and an optional powered/plain shot limit.
     private final String forgeBase;
     private final String forgeMetal;
+    // An animal fitting (leather, wool or feather) and the stats it scales; a legacy variant is the
+    // plain material variant of a part that now takes a fitting: it resolves but can't be crafted.
+    private final String forgeFitting;
+    private final List<String> fittingStats;
+    private final boolean legacy;
     private final String forgeName;
     private final Map<Stats, Double> tendencies;
     private final Map<Stats, Double> fixedStats;
@@ -175,6 +180,9 @@ public class GunPart {
 
         this.forgeBase = config.getString("forge.base", null);
         this.forgeMetal = config.getString("forge.metal", null);
+        this.forgeFitting = config.getString("forge.fitting", null);
+        this.fittingStats = config.getStringList("forge.fitting-stats");
+        this.legacy = config.getBoolean("forge.legacy", false);
         this.forgeName = StringFormatter.formatHex(config.getString("forge.name", name));
         this.baseLore = config.contains("forge.lore")
                 ? config.getStringList("forge.lore").stream().map(StringFormatter::formatHex).toList()
@@ -239,7 +247,11 @@ public class GunPart {
 
     public boolean isRetired() { return retired; }
 
-    public boolean isEnabledForCrafting() { return !disabled; }
+    /** Not disabled, and not the plain variant of a part that now takes a fitting. */
+    public boolean isEnabledForCrafting() { return !disabled && !legacy; }
+
+    /** The plain material variant of a part that now takes a fitting (old guns only). */
+    public boolean isLegacy() { return legacy; }
 
     public int getTier() { return tier; }
 
@@ -249,6 +261,12 @@ public class GunPart {
     public String getBaseId() { return forgeBase != null ? forgeBase : id; }
 
     public String getMetalId() { return forgeMetal; }
+
+    /** The animal material fitted to this variant, or null. */
+    public String getFittingId() { return forgeFitting; }
+
+    /** The stat keys the fitting scales (lower case). */
+    public List<String> getFittingStats() { return fittingStats; }
 
     /** The part's name without its material. */
     public String getBaseName() { return forgeName; }

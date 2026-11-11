@@ -782,6 +782,153 @@ class InventoryManagerTest {
     }
   }
 
+  GunPart fitted(String base, String metal, String fitting, String category) {
+    GunPart p = part(base + "@" + metal + "+" + fitting, category, 1);
+    when(p.isForged()).thenReturn(true);
+    when(p.getBaseId()).thenReturn(base);
+    when(p.getMetalId()).thenReturn(metal);
+    when(p.getFittingId()).thenReturn(fitting);
+    when(p.getBaseName()).thenReturn("Base " + base);
+    return p;
+  }
+
+  @Test
+  void fittedPartsPickTheMaterialThenTheFitting() throws Exception {
+    var metals = java.nio.file.Files.createTempFile("metals", ".yml");
+    java.nio.file.Files.writeString(
+        metals,
+        """
+oak: {name: Oak, kind: wood, description: ["Light wood"]}
+ash: {name: Ash, kind: wood}
+leather: {kind: animal, type: leather, tier: 1}
+rare_leather: {kind: animal, type: leather, tier: 2}
+wool: {kind: animal, type: wool, tier: 1}
+rare_wool: {kind: animal, type: wool, tier: 2}
+fur: {kind: animal, tier: 1}
+""");
+    new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
+    try {
+      // The plain oak variant only serves old guns: never offered, never the default.
+      var plain = forged("saddle", "oak", "stock");
+      when(plain.isLegacy()).thenReturn(true);
+      when(plain.isEnabledForCrafting()).thenReturn(false);
+      when(plain.getName()).thenReturn("Oak Saddle");
+      when(plain.getTendencies()).thenReturn(new LinkedHashMap<>(Map.of(Stats.ACCURACY, 2.0)));
+      when(plain.getCost()).thenReturn(Map.of("v.stick", 2));
+      var oakLeather = fitted("saddle", "oak", "leather", "stock");
+      when(oakLeather.getCost()).thenReturn(Map.of("v.stick", 2, "m.materials.leather", 2));
+      fitted("saddle", "oak", "rare_leather", "stock");
+      fitted("saddle", "oak", "wool", "stock");
+      fitted("saddle", "oak", "rare_wool", "stock");
+      fitted("saddle", "oak", "silk", "stock"); // a fitting missing from metals.yml
+      fitted("saddle", "ash", "leather", "stock");
+      fitted("saddle", "ash", "fur", "stock"); // a fitting without a type is named by its id
+      fitted("saddle", "birch", "leather", "stock"); // a material missing from metals.yml
+
+      manager.openMetalSelection(player, "stock", "saddle");
+      var top = player.getOpenInventory().getTopInventory();
+      var oak = top.getItem(0);
+      assertEquals("oak", string(oak, "forge_metal"));
+      assertNull(string(oak, "part_id"));
+      assertEquals("Oak Saddle", oak.getItemMeta().getDisplayName());
+      assertEquals("Light wood", oak.getItemMeta().getLore().getFirst());
+      assertEquals("§eClick to choose the fitting", oak.getItemMeta().getLore().getLast());
+      // the plain variant's arrows (good quality) and what it takes besides the fitting
+      assertTrue(oak.getItemMeta().getLore().stream().anyMatch(l -> l.contains("Accuracy")));
+      assertTrue(oak.getItemMeta().getLore().contains("§7Fitted with leather, wool or silk:"));
+      assertTrue(oak.getItemMeta().getLore().contains("§7- §fLeather, wool or silk §e2"));
+      Cache.requireInput = false; // a server without crafting costs lists no inputs
+      manager.openMetalSelection(player, "stock", "saddle");
+      assertFalse(player.getOpenInventory().getTopInventory().getItem(0).getItemMeta().getLore()
+          .contains("§7- §fLeather, wool or silk §e2"));
+      Cache.requireInput = true;
+      manager.openMetalSelection(player, "stock", "saddle");
+      var ash = top.getItem(1);
+      // without a plain variant the amount is left out
+      assertTrue(ash.getItemMeta().getLore().contains("§7- §fLeather or fur"));
+      assertEquals("Base saddle", ash.getItemMeta().getDisplayName()); // no plain ash variant
+      assertEquals("§7Fitted with leather or fur:", ash.getItemMeta().getLore().getFirst());
+      // one type alone needs no "or"
+      assertEquals("leather", InventoryManager.fittingTypes(List.of(PartLoader.getByString("saddle@birch+leather"))));
+      assertEquals("birch", string(top.getItem(2), "forge_metal"));
+      assertNull(top.getItem(3));
+      assertEquals(Material.ARROW, top.getItem(8).getType());
+
+      // A material opens its fittings: a row per kind, a new row when the quality starts again.
+      var metalHolder = new MetalSelectionHolder("stock", "saddle");
+      manager.onInventoryClick(click(metalHolder, 0, oak));
+      top = player.getOpenInventory().getTopInventory();
+      var holder = assertInstanceOf(FittingSelectionHolder.class, top.getHolder());
+      assertEquals("stock", holder.getPartId());
+      assertEquals("saddle", holder.getBaseId());
+      assertEquals("oak", holder.getMetalId());
+      assertNull(holder.getInventory());
+      assertEquals(27, top.getSize()); // the back button fits in the last row
+      assertEquals("saddle@oak+leather", string(top.getItem(0), "part_id"));
+      assertEquals("saddle@oak+rare_leather", string(top.getItem(1), "part_id"));
+      assertNull(top.getItem(2));
+      assertEquals("saddle@oak+wool", string(top.getItem(9), "part_id"));
+      assertEquals("saddle@oak+rare_wool", string(top.getItem(10), "part_id"));
+      assertEquals("saddle@oak+silk", string(top.getItem(18), "part_id"));
+      assertEquals(Material.ARROW, top.getItem(26).getType());
+
+      // Picking a fitting selects that variant and returns to the assembly.
+      manager.onInventoryClick(click(holder, 10, top.getItem(10)));
+      assertEquals("saddle@oak+rare_wool", SelectedPartsManager.get(player, "stock"));
+      assertInstanceOf(AssemblyHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+
+      // Back returns to the materials; empty clicks are ignored.
+      manager.onInventoryClick(click(holder, 26, named("§eBack")));
+      assertInstanceOf(MetalSelectionHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+      manager.openFittingSelection(player, "stock", "saddle", "oak");
+      manager.onInventoryClick(click(holder, 0, null));
+      manager.onInventoryClick(click(holder, 0, mock(ItemStack.class)));
+      assertInstanceOf(FittingSelectionHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+
+      // A material with no fittings shows only the back button.
+      manager.openFittingSelection(player, "stock", "saddle", "pine");
+      top = player.getOpenInventory().getTopInventory();
+      assertEquals(9, top.getSize());
+      assertEquals(Material.ARROW, top.getItem(8).getType());
+
+      // Wide qualities wrap at nine; rows that would not fit are laid out one after another.
+      var wide = new ArrayList<GunPart>();
+      for (int t = 1; t <= 10; t++) {
+        java.nio.file.Files.writeString(metals, "f" + t + ": {kind: animal, tier: " + t + "}\n",
+            java.nio.file.StandardOpenOption.APPEND);
+      }
+      new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
+      for (int t = 1; t <= 10; t++) {
+        var f = mock(GunPart.class);
+        when(f.getFittingId()).thenReturn("f" + t);
+        wide.add(f);
+      }
+      assertEquals(9, InventoryManager.fittingSlots(wide).get(9));
+      for (int r = 0; r < 7; r++) {
+        fitted("tall", "oak", "row" + r, "stock");
+      }
+      manager.openFittingSelection(player, "stock", "tall", "oak");
+      top = player.getOpenInventory().getTopInventory();
+      assertEquals(9, top.getSize()); // seven one-fitting rows don't fit: every fitting stays reachable
+      for (int r = 0; r < 7; r++) {
+        assertEquals("tall@oak+row" + r, string(top.getItem(r), "part_id"));
+      }
+      assertEquals(Material.ARROW, top.getItem(8).getType());
+      // more fittings than a menu holds: the last slot stays the back button
+      for (int r = 0; r < 54; r++) {
+        fitted("huge", "oak", "x" + r, "stock");
+      }
+      manager.openFittingSelection(player, "stock", "huge", "oak");
+      top = player.getOpenInventory().getTopInventory();
+      assertEquals(54, top.getSize());
+      assertEquals("huge@oak+x52", string(top.getItem(52), "part_id"));
+      assertEquals(Material.ARROW, top.getItem(53).getType());
+    } finally {
+      net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
+      java.nio.file.Files.deleteIfExists(metals);
+    }
+  }
+
   @Test
   void partsThatLeaveNoShotToLoadAreRefused() {
     var barrel = part("long", "barrel", 2);
