@@ -45,7 +45,7 @@ public final class GunGiveCommand {
         Map<String, GunPart> parts = new LinkedHashMap<>();
         for (int i = 3; i < args.length; i++) {
             GunPart part = PartLoader.getByString(args[i]);
-            if (part == null || part.isDisabled() || !part.getGunTypes().contains(type)) {
+            if (part == null || !part.isEnabledForCrafting() || !part.getGunTypes().contains(type)) {
                 sender.sendMessage("§cUnknown, disabled or incompatible part: " + args[i]);
                 return true;
             }
@@ -98,14 +98,14 @@ public final class GunGiveCommand {
                     .forEach(category -> missing.add(category.toLowerCase(Locale.ROOT)));
             for (int i = 3; i < args.length - 1; i++) {
                 GunPart part = PartLoader.getByString(args[i]);
-                if (part == null || part.isDisabled() || !part.getGunTypes().contains(type)
+                if (part == null || !part.isEnabledForCrafting() || !part.getGunTypes().contains(type)
                         || part.getPartType() == null
                         || !missing.remove(part.getPartType().getId().toLowerCase(Locale.ROOT))) {
                     return List.of();
                 }
             }
             PartLoader.get().forEach((id, part) -> {
-                if (!part.isDisabled() && part.getGunTypes().contains(type) && part.getPartType() != null
+                if (part.isEnabledForCrafting() && part.getGunTypes().contains(type) && part.getPartType() != null
                         && missing.contains(part.getPartType().getId().toLowerCase(Locale.ROOT))) {
                     options.add(id);
                 }

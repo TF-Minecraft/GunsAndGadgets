@@ -10,7 +10,8 @@
 # A 'fitting' section adds an animal material (metals.yml kind: animal) picked after the wood:
 # ids <part>@<material>+<fitting>; 'types' lists the fitting types it takes (leather, wool,
 # feather), 'amount' of the item is paid, and its quality scales only the listed 'stats'.
-# Each <part>@<material> without a fitting stays loadable for older guns.
+# Each <part>@<material> without a fitting stays loadable for older guns. Never remove a
+# fitting section or one of its types: guns fitted with it would lose that part and break.
 
 # Barrels
 smoothbore_barrel_long:

@@ -65,6 +65,10 @@ public final class PartForge {
         }
         Map<String, ConfigurationSection> variants = new LinkedHashMap<>();
         String kind = definition.getString("material", "metal");
+        ConfigurationSection fittingSection = definition.getConfigurationSection("fitting");
+        if (fittingSection != null) {
+            warnUnmatched(key, definition, fittingSection.getStringList("stats"));
+        }
         List<String> only = definition.getStringList("metals");
         for (Metal metal : MetalLoader.ofKind(kind)) {
             if (!only.isEmpty() && only.stream().noneMatch(m -> m.equalsIgnoreCase(metal.getId()))) {
@@ -88,6 +92,17 @@ public final class PartForge {
             System.out.println("Forged part " + key + " has no material to be forged from; check metals.yml and its 'material'/'metals' keys");
         }
         return variants;
+    }
+
+    /** A fitting stat that is not one of the part's tendencies would scale nothing: say so. */
+    private static void warnUnmatched(String key, ConfigurationSection definition, List<String> stats) {
+        Set<String> tendencies = new java.util.HashSet<>();
+        parse(definition.getStringList("tendencies")).keySet().forEach(stat -> tendencies.add(stat.getKey()));
+        for (String stat : stats) {
+            if (!tendencies.contains(stat.toLowerCase())) {
+                System.out.println("Forged part " + key + ": fitting stat '" + stat + "' is not one of its tendencies, so quality changes nothing there");
+            }
+        }
     }
 
     /**

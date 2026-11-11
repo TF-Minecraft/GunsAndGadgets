@@ -271,6 +271,9 @@ stock:
     var both = yaml("b: {metals: [iron], fitting: {types: [leather], materials: [leather, feather]}, tendencies: [moving 1]}")
         .getConfigurationSection("b");
     assertEquals(List.of("b@iron", "b@iron+leather"), new ArrayList<>(PartForge.expand("b", both).keySet()));
+    // a fitting stat the part doesn't have still loads (with a warning) and scales nothing
+    var typo = yaml("y: {metals: [iron], fitting: {stats: [firerate, MOVING]}, tendencies: [moving 4]}").getConfigurationSection("y");
+    assertEquals(List.of("moving 2"), PartForge.expand("y", typo).get("y@iron+leather").getStringList("stats"));
     var none = yaml("n: {metals: [iron], fitting: {materials: [silk]}, tendencies: [moving 1]}").getConfigurationSection("n");
     assertEquals(List.of("n@iron"), new ArrayList<>(PartForge.expand("n", none).keySet()));
 
