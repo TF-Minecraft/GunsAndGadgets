@@ -147,3 +147,104 @@ demonwood:
     moving: 1.5
     mounted: 1.5
   worse: 0.75
+
+# Animal fittings (kind: animal): leather, wool or feather fitted to a part with a
+# "fitting" section in parts.yml. The tier is the quality; "better" scales only the
+# stats that part's fitting names (good quality keeps the part's written values).
+# They need no permission. Never remove or rename one: guns fitted with it would break.
+
+leather:
+  name: "§fLeather"
+  kind: animal
+  tier: 1
+  cost: m.materials.leather
+  better: 0.75
+  worse: 1
+
+rare_leather:
+  name: "§9Good Quality Leather"
+  kind: animal
+  tier: 2
+  cost: m.materials.rare_leather
+  better: 1
+  worse: 1
+
+epic_leather:
+  name: "§5Great Quality Leather"
+  kind: animal
+  tier: 3
+  cost: m.materials.epic_leather
+  better: 1.25
+  worse: 1
+
+legendary_leather:
+  name: "§6Perfect Quality Leather"
+  kind: animal
+  tier: 4
+  cost: m.materials.legendary_leather
+  better: 1.5
+  worse: 1
+
+wool:
+  name: "§fWool"
+  kind: animal
+  tier: 1
+  cost: v.white_wool
+  better: 0.75
+  worse: 1
+
+rare_wool:
+  name: "§9Good Quality Wool"
+  kind: animal
+  tier: 2
+  cost: m.materials.rare_wool
+  better: 1
+  worse: 1
+
+epic_wool:
+  name: "§5Great Quality Wool"
+  kind: animal
+  tier: 3
+  cost: m.materials.epic_wool
+  better: 1.25
+  worse: 1
+
+legendary_wool:
+  name: "§6Perfect Quality Wool"
+  kind: animal
+  tier: 4
+  cost: m.materials.legendary_wool
+  better: 1.5
+  worse: 1
+
+feather:
+  name: "§fFeather"
+  kind: animal
+  tier: 1
+  cost: v.feather
+  better: 0.75
+  worse: 1
+
+rare_feather:
+  name: "§9Good Quality Feather"
+  kind: animal
+  tier: 2
+  cost: m.materials.rare_feather
+  better: 1
+  worse: 1
+
+epic_feather:
+  name: "§5Great Quality Feather"
+  kind: animal
+  tier: 3
+  cost: m.materials.epic_feather
+  better: 1.25
+  worse: 1
+
+legendary_feather:
+  name: "§6Perfect Quality Feather"
+  kind: animal
+  tier: 4
+  cost: m.materials.legendary_feather
+  better: 1.5
+  worse: 1

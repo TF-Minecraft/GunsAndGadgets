@@ -7,6 +7,9 @@
 # forged parts now use go in retired-parts.yml: they load disabled so old guns still resolve,
 # and retire-disabled-part-guns in config.yml decides whether those guns still fire. With
 # refunds on, guns with a retired part are taken apart; a part only disabled here keeps its guns.
+# A 'fitting' section adds an animal material (metals.yml kind: animal) picked after the wood:
+# ids <part>@<material>+<fitting>, 'amount' of the fitting item, and its quality scales only the
+# listed 'stats'. Each <part>@<material> without a fitting stays loadable for older guns.
 
 # Barrels
 smoothbore_barrel_long:
@@ -959,8 +962,11 @@ saddle_stock:
   item: modeled.(type=gunpowder;model=16)
   material: wood
   cost-amount: 2
-  cost:
-    - v.leather(2)
+  fitting:
+    amount: 2
+    stats:
+      - moving
+      - mounted
   tendencies:
     - accuracy 2
     - moving 30
@@ -984,8 +990,10 @@ cheek_rest_stock:
   item: modeled.(type=gunpowder;model=17)
   material: wood
   cost-amount: 2
-  cost:
-    - v.leather(2)
+  fitting:
+    amount: 2
+    stats:
+      - sneaking
   tendencies:
     - accuracy 6
     - reload -2
@@ -1011,8 +1019,10 @@ padded_stock:
   item: modeled.(type=gunpowder;model=16)
   material: wood
   cost-amount: 2
-  cost:
-    - v.leather(2)
+  fitting:
+    amount: 2
+    stats:
+      - fire_rate
   tendencies:
     - accuracy 2
     - fire_rate 4
@@ -1101,8 +1111,11 @@ wrapped_grip:
   item: modeled.(type=gunpowder;model=15)
   material: wood
   cost-amount: 2
-  cost:
-    - v.string(2)
+  fitting:
+    amount: 2
+    stats:
+      - moving
+      - mounted
   tendencies:
     - accuracy 1
     - moving 30

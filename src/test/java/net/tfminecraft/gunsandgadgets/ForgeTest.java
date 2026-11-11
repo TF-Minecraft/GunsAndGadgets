@@ -204,6 +204,89 @@ stock:
     assertTrue(PartForge.expand("o", orphan).isEmpty());
   }
 
+  static final String ANIMALS =
+      """
+leather: {name: "§fLeather", kind: animal, tier: 1, cost: m.materials.leather, better: 0.75}
+rare_leather: {name: "§9Good Leather", kind: ANIMAL, tier: 2, cost: m.materials.rare_leather, better: 1}
+feather: {name: "§fFeather", kind: animal, tier: 1, better: 1.5}
+""";
+
+  void loadMetalsAndAnimals() throws Exception {
+    new MetalLoader().load(file("metals.yml", METALS + ANIMALS).toFile());
+  }
+
+  @Test
+  void fittedPartsForgeOneVariantPerMaterialAndFitting() throws Exception {
+    loadMetalsAndAnimals();
+    String stockYaml =
+        """
+stock:
+  name: "§7Stock"
+  metals: [iron]
+  cost: ["v.string(1)"]
+  fitting: {amount: 3, stats: [MOVING]}
+  tendencies: [accuracy 2, moving 20, reload -2]
+""";
+    ConfigurationSection def = yaml(stockYaml).getConfigurationSection("stock");
+    Map<String, ConfigurationSection> variants = PartForge.expand("stock", def);
+    assertEquals(
+        List.of("stock@iron", "stock@iron+leather", "stock@iron+rare_leather", "stock@iron+feather"),
+        new ArrayList<>(variants.keySet()));
+    assertEquals("a@b+c", PartForge.variantId("a", "b", "c"));
+    // The plain variant keeps the old stats (for guns forged before fittings) and is hidden.
+    ConfigurationSection plain = variants.get("stock@iron");
+    assertTrue(plain.getBoolean("forge.legacy"));
+    assertEquals(List.of("accuracy 2", "moving 16", "reload -3"), plain.getStringList("stats"));
+    assertEquals(List.of("v.iron_ingot(2)", "v.string(1)"), plain.getStringList("cost"));
+    assertFalse(plain.contains("forge.fitting"));
+    // A fitting scales only its stats, after the material, and costs its item.
+    ConfigurationSection leather = variants.get("stock@iron+leather");
+    assertEquals("§7Iron §7Stock §7(§fLeather§7)", leather.getString("name"));
+    assertFalse(leather.contains("forge.legacy"));
+    assertEquals(List.of("accuracy 2", "moving 12", "reload -3"), leather.getStringList("stats"));
+    assertEquals(
+        List.of("v.iron_ingot(2)", "v.string(1)", "m.materials.leather(3)"), leather.getStringList("cost"));
+    assertEquals("leather", leather.getString("forge.fitting"));
+    assertEquals(List.of("moving"), leather.getStringList("forge.fitting-stats"));
+    assertEquals("iron", leather.getString("forge.metal"));
+    assertEquals("stock", leather.getString("forge.base"));
+    assertEquals("professions.iron_smith", leather.getString("forge.permission"));
+    assertEquals(List.of("moving 16"), variants.get("stock@iron+rare_leather").getStringList("stats").subList(1, 2));
+    // A fitting without a cost adds none.
+    ConfigurationSection feather = variants.get("stock@iron+feather");
+    assertEquals(List.of("accuracy 2", "moving 24", "reload -3"), feather.getStringList("stats"));
+    assertEquals(List.of("v.iron_ingot(2)", "v.string(1)"), feather.getStringList("cost"));
+
+    // 'materials' limits the fittings; the amount is at least one; no match leaves the plain variant.
+    var some = yaml("s: {metals: [iron], fitting: {materials: [RARE_LEATHER], amount: 0}, tendencies: [moving 1]}")
+        .getConfigurationSection("s");
+    var limited = PartForge.expand("s", some);
+    assertEquals(List.of("s@iron", "s@iron+rare_leather"), new ArrayList<>(limited.keySet()));
+    assertEquals(List.of("v.iron_ingot(2)", "m.materials.rare_leather(1)"), limited.get("s@iron+rare_leather").getStringList("cost"));
+    var none = yaml("n: {metals: [iron], fitting: {materials: [silk]}, tendencies: [moving 1]}").getConfigurationSection("n");
+    assertEquals(List.of("n@iron"), new ArrayList<>(PartForge.expand("n", none).keySet()));
+
+    // Loaded, the variants know their fitting; the plain one resolves but can't be crafted.
+    new PartLoader().load(file("fitted.yml", stockYaml).toFile());
+    GunPart fitted = PartLoader.getByString("stock@iron+feather");
+    assertEquals("feather", fitted.getFittingId());
+    assertEquals(List.of("moving"), fitted.getFittingStats());
+    assertFalse(fitted.isLegacy());
+    assertTrue(fitted.isEnabledForCrafting());
+    GunPart legacy = PartLoader.getByString("stock@iron");
+    assertNull(legacy.getFittingId());
+    assertTrue(legacy.isLegacy());
+    assertFalse(legacy.isDisabled());
+    assertFalse(legacy.isEnabledForCrafting());
+    // Its lore arrows follow the fitting too: feather 24 shows two, leather 12 one.
+    assertTrue(strip(ForgeLore.lines(fitted)).contains("■ Steady on the Move: ▲▲"));
+    assertTrue(strip(ForgeLore.lines(PartLoader.getByString("stock@iron+leather"))).contains("■ Steady on the Move: ▲"));
+    assertTrue(strip(ForgeLore.lines(fitted, false)).contains("■ Steady on the Move: ▲"));
+    // A fitting missing from metals.yml (removed after the gun was made) scales nothing.
+    loadMetals();
+    assertTrue(strip(ForgeLore.lines(fitted)).contains("■ Steady on the Move: ▲"));
+  }
+
   @Test
   void forgedPartsKnowTheirMaterialTendenciesAndShotLimit() throws Exception {
     loadMetals();
@@ -399,6 +482,28 @@ handling:
     new PartLoader().load(resource("/parts.yml"));
     assertEquals(4, MetalLoader.ofKind("metal").size());
     assertEquals(4, MetalLoader.ofKind("wood").size());
+    assertEquals(12, MetalLoader.ofKind(PartForge.FITTING_KIND).size());
+    // Good quality keeps the written stats; common 0.75, great 1.25, perfect 1.5 on the part's own stats.
+    GunPart saddle = PartLoader.getByString("saddle_stock@maplewood");
+    assertTrue(saddle.isLegacy());
+    assertEquals(saddle.getStats(), PartLoader.getByString("saddle_stock@maplewood+rare_leather").getStats());
+    // maplewood mounted 40 x 1.3 = 52, then the fitting
+    assertEquals(52, saddle.getStats().get(Stats.MOUNTED));
+    assertEquals(78, PartLoader.getByString("saddle_stock@maplewood+legendary_feather").getStats().get(Stats.MOUNTED));
+    assertEquals(39, PartLoader.getByString("saddle_stock@maplewood+wool").getStats().get(Stats.MOUNTED));
+    assertEquals(saddle.getStats().get(Stats.ACCURACY),
+        PartLoader.getByString("saddle_stock@maplewood+wool").getStats().get(Stats.ACCURACY));
+    assertEquals(Map.of("m.materials.refined_maplewood", 2, "m.materials.epic_leather", 2),
+        PartLoader.getByString("saddle_stock@maplewood+epic_leather").getCost());
+    assertEquals(Map.of("m.materials.refined_barkwood", 2, "v.white_wool", 2),
+        PartLoader.getByString("wrapped_grip@barkwood+wool").getCost());
+    assertEquals(Map.of("m.materials.refined_elderwood", 2, "v.feather", 2),
+        PartLoader.getByString("padded_stock@elderwood+feather").getCost());
+    assertEquals(List.of("sneaking"), PartLoader.getByString("cheek_rest_stock@demonwood+leather").getFittingStats());
+    // No part costs vanilla leather any more (MIReplacer turns all of it into MMOItems leather).
+    for (GunPart part : PartLoader.getOrdered()) {
+      assertFalse(part.getCost().containsKey("v.leather"), part.getId());
+    }
     // A steel heavy barrel matches the calibrated numbers and loads iron and steel shot only.
     GunPart heavy = PartLoader.getByString("heavy_barrel@steel");
     assertEquals(11, heavy.getStats().get(Stats.SPEED));
@@ -422,7 +527,8 @@ handling:
       assertNotNull(part.getPartType(), part.getId());
       assertFalse(part.getCost().isEmpty(), part.getId());
     }
-    assertEquals(37 * 4 - 1, PartLoader.getOrdered().size()); // 37 parts (4 pistol grips), no iron multi-tube
+    // 37 parts (4 pistol grips), no iron multi-tube, and 4 stocks fitted 12 ways in each of 4 woods
+    assertEquals(37 * 4 - 1 + 4 * 4 * 12, PartLoader.getOrdered().size());
     // The part list shows the steel reference arrows, whichever material a player sees first.
     GunPart ironHeavy = PartLoader.getByString("heavy_barrel@iron");
     assertEquals(ForgeLore.lines(heavy), ForgeLore.lines(ironHeavy, false));
@@ -432,7 +538,7 @@ handling:
     for (String old : List.of("flintlock", "matchlock", "rifled_barrel_long", "revolver", "quad_shot")) {
       assertTrue(PartLoader.getByString(old).isRetired(), old);
     }
-    assertEquals(37 * 4 - 1 + 21, PartLoader.getOrdered().size());
+    assertEquals(37 * 4 - 1 + 4 * 4 * 12 + 21, PartLoader.getOrdered().size());
     assertTrue(PartLoader.isHealthy());
   }
 

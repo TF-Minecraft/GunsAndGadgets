@@ -21,16 +21,27 @@ import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
  * shotgun's pellet cone), {@code by-metal} adds per-material extras, and an {@code ammo-family}
  * barrel loads every shot of that family up to its material's tier. The variant id is
  * {@code <part>@<material>}, so a crafted gun records which material each part was forged from.
+ *
+ * <p>A {@code fitting} section adds a second material: an animal material (metals.yml kind
+ * {@code animal}: leather, wool or feather of some quality) fitted to the part. Its variants are
+ * {@code <part>@<material>+<fitting>}; the fitting's factors scale only the stats the section
+ * names, on top of the material, and it costs {@code amount} of the fitting item. The plain
+ * {@code <part>@<material>} variant still loads, hidden from crafting, so guns forged before the
+ * part took a fitting keep resolving with their old stats.
  */
 public final class PartForge {
 
     public static final String SEPARATOR = "@";
+    /** Between a variant's material and its fitting: {@code saddle_stock@maplewood+rare_leather}. */
+    public static final String FITTING_SEPARATOR = "+";
+    /** The metals.yml kind fittings are made from. */
+    public static final String FITTING_KIND = "animal";
 
     /** Keys the forge computes or consumes; everything else is copied to each variant as is. */
     private static final Set<String> FORGE_KEYS = Set.of(
             "name", "tier", "stats", "cost", "permissions", "caliber", "caliber-override",
             "tendencies", "fixed", "by-metal", "metals", "material", "cost-amount", "ammo-family",
-            "metal-lore");
+            "metal-lore", "fitting");
 
     private PartForge() {}
 
@@ -40,6 +51,10 @@ public final class PartForge {
 
     public static String variantId(String baseId, String metalId) {
         return baseId + SEPARATOR + metalId;
+    }
+
+    public static String variantId(String baseId, String metalId, String fittingId) {
+        return variantId(baseId, metalId) + FITTING_SEPARATOR + fittingId;
     }
 
     /** One part section per material the definition can be forged from, keyed by variant id. */
@@ -54,13 +69,62 @@ public final class PartForge {
             if (!only.isEmpty() && only.stream().noneMatch(m -> m.equalsIgnoreCase(metal.getId()))) {
                 continue;
             }
-            variants.put(variantId(key, metal.getId()), forge(key, definition, metal));
+            ConfigurationSection fitting = definition.getConfigurationSection("fitting");
+            if (fitting == null) {
+                variants.put(variantId(key, metal.getId()), forge(key, definition, metal));
+                continue;
+            }
+            // Guns forged before the part took a fitting keep resolving; nobody can craft it any more.
+            ConfigurationSection legacy = forge(key, definition, metal);
+            legacy.set("forge.legacy", true);
+            variants.put(variantId(key, metal.getId()), legacy);
+            for (Metal animal : fittings(key, fitting)) {
+                variants.put(variantId(key, metal.getId(), animal.getId()), fit(definition, legacy, metal, animal, fitting));
+            }
         }
         if (variants.isEmpty()) {
             // Guns already forged from this part would lose it and break: say so loudly.
             System.out.println("Forged part " + key + " has no material to be forged from; check metals.yml and its 'material'/'metals' keys");
         }
         return variants;
+    }
+
+    /** The animal materials a fitting section allows ({@code materials}, else every one), in config order. */
+    private static List<Metal> fittings(String key, ConfigurationSection fitting) {
+        List<String> only = fitting.getStringList("materials");
+        List<Metal> list = new ArrayList<>();
+        for (Metal animal : MetalLoader.ofKind(FITTING_KIND)) {
+            if (only.isEmpty() || only.stream().anyMatch(m -> m.equalsIgnoreCase(animal.getId()))) {
+                list.add(animal);
+            }
+        }
+        if (list.isEmpty()) {
+            System.out.println("Forged part " + key + " takes a fitting but metals.yml has no matching kind: animal material");
+        }
+        return list;
+    }
+
+    /** The material's variant with an animal fitting: its name, cost and the fitting's stats on top. */
+    static ConfigurationSection fit(ConfigurationSection definition, ConfigurationSection plain, Metal metal,
+            Metal animal, ConfigurationSection fitting) {
+        MemoryConfiguration variant = new MemoryConfiguration();
+        for (Map.Entry<String, Object> entry : plain.getValues(true).entrySet()) {
+            if (!(entry.getValue() instanceof ConfigurationSection)) {
+                variant.set(entry.getKey(), entry.getValue());
+            }
+        }
+        variant.set("forge.legacy", null);
+        variant.set("name", plain.getString("name") + " §7(" + animal.getName() + "§7)");
+        List<String> scaled = fitting.getStringList("stats").stream().map(String::toLowerCase).toList();
+        variant.set("stats", stats(definition, metal, animal, scaled));
+        List<String> cost = new ArrayList<>(plain.getStringList("cost"));
+        if (!animal.getCost().isEmpty()) {
+            cost.add(animal.getCost() + "(" + Math.max(1, fitting.getInt("amount", 2)) + ")");
+        }
+        variant.set("cost", cost);
+        variant.set("forge.fitting", animal.getId());
+        variant.set("forge.fitting-stats", scaled);
+        return variant;
     }
 
     static ConfigurationSection forge(String key, ConfigurationSection definition, Metal metal) {
@@ -118,10 +182,19 @@ public final class PartForge {
 
     /** Scaled tendencies, then fixed and per-material stats, summed per stat. */
     static List<String> stats(ConfigurationSection definition, Metal metal) {
+        return stats(definition, metal, null, List.of());
+    }
+
+    /** With a fitting, the stats it names are scaled by the fitting too, after the material. */
+    static List<String> stats(ConfigurationSection definition, Metal metal, Metal fitting, List<String> fitted) {
         Map<String, Integer> totals = new LinkedHashMap<>();
         for (Map.Entry<Stats, Double> tendency : parse(definition.getStringList("tendencies")).entrySet()) {
             String stat = tendency.getKey().getKey();
-            totals.merge(stat, round(metal.scale(stat, tendency.getValue())), Integer::sum);
+            double value = metal.scale(stat, tendency.getValue());
+            if (fitting != null && fitted.contains(stat)) {
+                value = fitting.scale(stat, value);
+            }
+            totals.merge(stat, round(value), Integer::sum);
         }
         addFixed(totals, definition.getStringList("fixed"));
         ConfigurationSection byMetal = definition.getConfigurationSection("by-metal");

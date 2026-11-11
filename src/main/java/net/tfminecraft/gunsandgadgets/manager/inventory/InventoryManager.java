@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +46,7 @@ import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.forge.ForgeLore;
 import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
+import net.tfminecraft.gunsandgadgets.guns.forge.PartForge;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.PartData;
 import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
@@ -171,13 +173,104 @@ public class InventoryManager implements Listener {
     public void openMetalSelection(Player player, String partCategoryId, String baseId) {
         GunType chosen = TypeSelectionManager.getSelectedType(player);
         List<GunPart> variants = selectable(player, partCategoryId, chosen, baseId);
-        int size = Math.max(9, Math.min(54, ((variants.size() + 1 + 8) / 9) * 9));
-        Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Select Material");
+        // A part that takes a fitting: one button per material, and the fitting is picked next.
+        Map<String, GunPart> byMetal = new LinkedHashMap<>();
         for (GunPart variant : variants) {
-            inv.addItem(createPartItem(variant));
+            if (variant.getFittingId() != null) byMetal.putIfAbsent(variant.getMetalId(), variant);
+        }
+        int count = byMetal.isEmpty() ? variants.size() : byMetal.size();
+        int size = Math.max(9, Math.min(54, ((count + 1 + 8) / 9) * 9));
+        Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Select Material");
+        if (byMetal.isEmpty()) {
+            for (GunPart variant : variants) {
+                inv.addItem(createPartItem(variant));
+            }
+        } else {
+            for (GunPart first : byMetal.values()) {
+                inv.addItem(createMaterialChoiceItem(first));
+            }
         }
         inv.setItem(size - 1, backButton());
         player.openInventory(inv);
+    }
+
+    /**
+     * The animal fittings (leather, wool, feather of each quality) for one material of a part:
+     * a row per kind, a new row whenever the quality starts again.
+     */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    public void openFittingSelection(Player player, String partCategoryId, String baseId, String metalId) {
+        GunType chosen = TypeSelectionManager.getSelectedType(player);
+        List<GunPart> fitted = new ArrayList<>();
+        for (GunPart variant : selectable(player, partCategoryId, chosen, baseId)) {
+            if (variant.getFittingId() != null && metalId.equals(variant.getMetalId())) fitted.add(variant);
+        }
+        List<Integer> slots = fittingSlots(fitted);
+        int rows = slots.isEmpty() ? 0 : slots.get(slots.size() - 1) / 9 + 1;
+        int size = Math.max(9, Math.min(54, (rows + 1) * 9));
+        Inventory inv = Bukkit.createInventory(new FittingSelectionHolder(partCategoryId, baseId, metalId), size, "§6Select Fitting");
+        for (int i = 0; i < fitted.size(); i++) {
+            if (slots.get(i) < size - 1) inv.setItem(slots.get(i), createPartItem(fitted.get(i)));
+        }
+        inv.setItem(size - 1, backButton());
+        player.openInventory(inv);
+    }
+
+    /** Slots for fittings: a new row whenever the quality starts again (leather, then wool, then feather). */
+    static List<Integer> fittingSlots(List<GunPart> fitted) {
+        List<Integer> slots = new ArrayList<>();
+        int row = 0;
+        int column = 0;
+        int lastTier = Integer.MAX_VALUE;
+        for (GunPart variant : fitted) {
+            Metal fitting = MetalLoader.getByString(variant.getFittingId());
+            int tier = fitting == null ? 1 : fitting.getTier();
+            if (!slots.isEmpty() && (tier <= lastTier || column >= 9)) {
+                row++;
+                column = 0;
+            }
+            slots.add(row * 9 + column++);
+            lastTier = tier;
+        }
+        return slots;
+    }
+
+    /** One material of a part that takes a fitting: the part in that material, before the fitting is chosen. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private ItemStack createMaterialChoiceItem(GunPart variant) {
+        ItemStack i = createPartItem(variant);
+        ItemMeta m = i.getItemMeta();
+        GunPart plain = PartLoader.getByString(PartForge.variantId(variant.getBaseId(), variant.getMetalId()));
+        m.setDisplayName(plain != null ? plain.getName() : variant.getBaseName());
+        m.getPersistentDataContainer().remove(new NamespacedKey(GunsAndGadgets.getInstance(), "part_id"));
+        m.getPersistentDataContainer().set(forgeMetalKey(), PersistentDataType.STRING, variant.getMetalId());
+        List<String> lore = new ArrayList<>();
+        Metal metal = MetalLoader.getByString(variant.getMetalId());
+        if (metal != null && !metal.getDescription().isEmpty()) {
+            lore.addAll(metal.getDescription());
+            lore.add("");
+        }
+        // The plain variant has the part's written values: what good quality gives in this material.
+        List<String> arrows = ForgeLore.lines(plain != null ? plain : variant);
+        if (!arrows.isEmpty()) {
+            lore.addAll(arrows);
+            lore.add("");
+        }
+        lore.add("§7Fitted with leather, wool or feather:");
+        lore.add("§7better quality improves what this part is for.");
+        if (Cache.requireInput) {
+            lore.add("");
+            lore.add(StringFormatter.formatHex("#76de91§lInput:"));
+            if (plain != null) lore.addAll(CostFormatter.getCostsFormatted(plain.getCost()));
+            lore.add("§7- §fLeather, wool or feather");
+        }
+        lore.add("");
+        lore.add("§eClick to choose the fitting");
+        m.setLore(lore);
+        i.setItemMeta(m);
+        return i;
     }
 
     /** Enabled parts of a category the player may craft for this gun type (one forged part's variants when baseId is set). */
@@ -186,7 +279,7 @@ public class InventoryManager implements Listener {
         for (GunPart part : PartLoader.getOrdered()) {
             if (!part.getPartType().getId().equalsIgnoreCase(partCategoryId)) continue;
             if (!part.getGunTypes().contains(chosen)) continue;
-            if (part.isDisabled()) continue;
+            if (!part.isEnabledForCrafting()) continue;
             if (baseId != null && !part.getBaseId().equals(baseId)) continue;
             if (!hasPermissionForPart(player, part)) continue; // 🚫 permission check
             options.add(part);
@@ -238,6 +331,10 @@ public class InventoryManager implements Listener {
         return new NamespacedKey(GunsAndGadgets.getInstance(), "forge_base");
     }
 
+    private static NamespacedKey forgeMetalKey() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "forge_metal");
+    }
+
 
     // ---------- HELPERS ----------
     private GunPart getSelectedOrFirstPart(String partCategoryId, GunType chosen, Player player) {
@@ -269,7 +366,7 @@ public class InventoryManager implements Listener {
         for (GunPart part : PartLoader.getOrdered()) {
             if (!part.getGunTypes().contains(chosen)) continue;
             if (!part.getPartType().getId().equalsIgnoreCase(id)) continue;
-            if (part.isDisabled()) continue;
+            if (!part.isEnabledForCrafting()) continue;
             if (!hasPermissionForPart(player, part)) continue;
             return part;
         }
@@ -948,6 +1045,27 @@ public class InventoryManager implements Listener {
             if (clicked == null || !clicked.hasItemMeta()) return;
             if ("§eBack".equals(clicked.getItemMeta().getDisplayName())) {
                 openPartSelection(player, holder.getPartId());
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+                return;
+            }
+            String metalId = clicked.getItemMeta().getPersistentDataContainer().get(forgeMetalKey(), PersistentDataType.STRING);
+            if (metalId != null) {
+                openFittingSelection(player, holder.getPartId(), holder.getBaseId(), metalId);
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+                return;
+            }
+            selectPart(player, holder.getPartId(), clicked);
+            return;
+        }
+
+        // FITTING SELECTION GUI (the animal fittings of one material)
+        if (menu instanceof FittingSelectionHolder holder) {
+            event.setCancelled(true);
+
+            ItemStack clicked = event.getCurrentItem();
+            if (clicked == null || !clicked.hasItemMeta()) return;
+            if ("§eBack".equals(clicked.getItemMeta().getDisplayName())) {
+                openMetalSelection(player, holder.getPartId(), holder.getBaseId());
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
                 return;
             }
