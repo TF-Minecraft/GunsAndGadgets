@@ -863,14 +863,14 @@ fur: {kind: animal, tier: 1}
       assertEquals("saddle", holder.getBaseId());
       assertEquals("oak", holder.getMetalId());
       assertNull(holder.getInventory());
-      assertEquals(36, top.getSize());
+      assertEquals(27, top.getSize()); // the back button fits in the last row
       assertEquals("saddle@oak+leather", string(top.getItem(0), "part_id"));
       assertEquals("saddle@oak+rare_leather", string(top.getItem(1), "part_id"));
       assertNull(top.getItem(2));
       assertEquals("saddle@oak+wool", string(top.getItem(9), "part_id"));
       assertEquals("saddle@oak+rare_wool", string(top.getItem(10), "part_id"));
       assertEquals("saddle@oak+silk", string(top.getItem(18), "part_id"));
-      assertEquals(Material.ARROW, top.getItem(35).getType());
+      assertEquals(Material.ARROW, top.getItem(26).getType());
 
       // Picking a fitting selects that variant and returns to the assembly.
       manager.onInventoryClick(click(holder, 10, top.getItem(10)));
@@ -878,7 +878,7 @@ fur: {kind: animal, tier: 1}
       assertInstanceOf(AssemblyHolder.class, player.getOpenInventory().getTopInventory().getHolder());
 
       // Back returns to the materials; empty clicks are ignored.
-      manager.onInventoryClick(click(holder, 35, named("§eBack")));
+      manager.onInventoryClick(click(holder, 26, named("§eBack")));
       assertInstanceOf(MetalSelectionHolder.class, player.getOpenInventory().getTopInventory().getHolder());
       manager.openFittingSelection(player, "stock", "saddle", "oak");
       manager.onInventoryClick(click(holder, 0, null));

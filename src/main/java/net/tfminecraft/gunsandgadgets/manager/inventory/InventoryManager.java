@@ -207,8 +207,9 @@ public class InventoryManager implements Listener {
             if (variant.getFittingId() != null && metalId.equals(variant.getMetalId())) fitted.add(variant);
         }
         List<Integer> slots = fittingSlots(fitted);
-        int rows = slots.isEmpty() ? 0 : slots.get(slots.size() - 1) / 9 + 1;
-        int size = Math.max(9, Math.min(54, (rows + 1) * 9));
+        // rows up to the last fitting, plus one more only when the back button has no room left in it
+        int last = slots.isEmpty() ? -1 : slots.get(slots.size() - 1);
+        int size = Math.max(9, Math.min(54, ((last + 1) / 9 + 1) * 9));
         Inventory inv = Bukkit.createInventory(new FittingSelectionHolder(partCategoryId, baseId, metalId), size, "§6Select Fitting");
         for (int i = 0; i < fitted.size(); i++) {
             if (slots.get(i) < size - 1) inv.setItem(slots.get(i), createPartItem(fitted.get(i)));
