@@ -246,6 +246,12 @@ public class InventoryManager implements Listener {
             slots.add(row * 9 + column++);
             lastTier = tier;
         }
+        // Rows that would not fit beside the back button (e.g. fittings listed by quality, not by
+        // kind): lay them out one after another so every fitting stays reachable.
+        if (!slots.isEmpty() && slots.get(slots.size() - 1) > 52) {
+            slots.clear();
+            for (int i = 0; i < fitted.size(); i++) slots.add(i);
+        }
         return slots;
     }
 

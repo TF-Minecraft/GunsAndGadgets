@@ -891,7 +891,7 @@ fur: {kind: animal, tier: 1}
       assertEquals(9, top.getSize());
       assertEquals(Material.ARROW, top.getItem(8).getType());
 
-      // Wide qualities wrap at nine; seven rows fill the menu and the extra rows are dropped.
+      // Wide qualities wrap at nine; rows that would not fit are laid out one after another.
       var wide = new ArrayList<GunPart>();
       for (int t = 1; t <= 10; t++) {
         java.nio.file.Files.writeString(metals, "f" + t + ": {kind: animal, tier: " + t + "}\n",
@@ -909,8 +909,19 @@ fur: {kind: animal, tier: 1}
       }
       manager.openFittingSelection(player, "stock", "tall", "oak");
       top = player.getOpenInventory().getTopInventory();
+      assertEquals(9, top.getSize()); // seven one-fitting rows don't fit: every fitting stays reachable
+      for (int r = 0; r < 7; r++) {
+        assertEquals("tall@oak+row" + r, string(top.getItem(r), "part_id"));
+      }
+      assertEquals(Material.ARROW, top.getItem(8).getType());
+      // more fittings than a menu holds: the last slot stays the back button
+      for (int r = 0; r < 54; r++) {
+        fitted("huge", "oak", "x" + r, "stock");
+      }
+      manager.openFittingSelection(player, "stock", "huge", "oak");
+      top = player.getOpenInventory().getTopInventory();
       assertEquals(54, top.getSize());
-      assertEquals("tall@oak+row5", string(top.getItem(45), "part_id"));
+      assertEquals("huge@oak+x52", string(top.getItem(52), "part_id"));
       assertEquals(Material.ARROW, top.getItem(53).getType());
     } finally {
       net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
