@@ -1007,7 +1007,7 @@ cheek_rest_stock:
     stats:
       - sneaking
   tendencies:
-    - accuracy 6
+    - accuracy 7
     - reload -2
     - sneaking 50
     - moving -30
@@ -1066,7 +1066,7 @@ standard_grip:
     stats:
       - accuracy
   tendencies:
-    - accuracy 3
+    - accuracy 2
   lore:
     - "§7A plain pistol grip."
   metal-lore:

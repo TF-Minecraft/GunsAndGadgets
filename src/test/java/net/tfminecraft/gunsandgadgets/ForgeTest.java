@@ -521,6 +521,18 @@ handling:
     GunPart standard = PartLoader.getByString("standard_stock@maplewood");
     assertEquals(standard.getStats(), PartLoader.getByString("standard_stock@maplewood+rare_wool").getStats());
     assertEquals(6, PartLoader.getByString("standard_stock@maplewood+legendary_wool").getStats().get(Stats.ACCURACY));
+    // Give and take (fran 11-11): at every wood and quality the plain Standard stock and grip stay below
+    // the Cheek-rest and Pommel, which pay for their accuracy (Cheek-rest 7, Standard grip 2).
+    for (String wood : List.of("barkwood", "maplewood", "elderwood", "demonwood")) {
+      int cheek = PartLoader.getByString("cheek_rest_stock@" + wood + "+leather").getStats().get(Stats.ACCURACY);
+      int pommel = PartLoader.getByString("pommel_grip@" + wood + "+wool").getStats().get(Stats.ACCURACY);
+      for (String quality : List.of("", "rare_", "epic_", "legendary_")) {
+        assertTrue(PartLoader.getByString("standard_stock@" + wood + "+" + quality + "wool").getStats().get(Stats.ACCURACY) < cheek, wood + quality);
+        assertTrue(PartLoader.getByString("standard_grip@" + wood + "+" + quality + "leather").getStats().get(Stats.ACCURACY) < pommel, wood + quality);
+      }
+    }
+    assertEquals(7, PartLoader.getByString("cheek_rest_stock@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
+    assertEquals(3, PartLoader.getByString("standard_grip@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
     assertEquals(Map.of("m.materials.refined_barkwood", 2, "v.copper_ingot", 1, "v.white_wool", 2),
         PartLoader.getByString("pommel_grip@barkwood+wool").getCost());
     assertEquals(Map.of("m.materials.refined_maplewood", 2, "m.materials.epic_leather", 2),
