@@ -24,8 +24,9 @@ import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
  *
  * <p>A {@code fitting} section adds a second material: an animal material (metals.yml kind
  * {@code animal}: leather, wool or feather of some quality) fitted to the part. Its variants are
- * {@code <part>@<material>+<fitting>}; the fitting's factors scale only the stats the section
- * names, on top of the material, and it costs {@code amount} of the fitting item. The plain
+ * {@code <part>@<material>+<fitting>}; {@code types} limits it to fittings of those types (each
+ * animal material's {@code type}: leather, wool, feather). The fitting's factors scale only the
+ * stats the section names, on top of the material, and it costs {@code amount} of the item. The plain
  * {@code <part>@<material>} variant still loads, hidden from crafting, so guns forged before the
  * part took a fitting keep resolving with their old stats.
  */
@@ -89,12 +90,18 @@ public final class PartForge {
         return variants;
     }
 
-    /** The animal materials a fitting section allows ({@code materials}, else every one), in config order. */
+    /**
+     * The animal materials a fitting section allows, in config order: those of its {@code types}
+     * (leather, wool, feather) and, when set, only the listed {@code materials}.
+     */
     private static List<Metal> fittings(String key, ConfigurationSection fitting) {
         List<String> only = fitting.getStringList("materials");
+        List<String> types = fitting.getStringList("types");
         List<Metal> list = new ArrayList<>();
         for (Metal animal : MetalLoader.ofKind(FITTING_KIND)) {
-            if (only.isEmpty() || only.stream().anyMatch(m -> m.equalsIgnoreCase(animal.getId()))) {
+            boolean listed = only.isEmpty() || only.stream().anyMatch(m -> m.equalsIgnoreCase(animal.getId()));
+            boolean typed = types.isEmpty() || types.stream().anyMatch(t -> t.equalsIgnoreCase(animal.getType()));
+            if (listed && typed) {
                 list.add(animal);
             }
         }

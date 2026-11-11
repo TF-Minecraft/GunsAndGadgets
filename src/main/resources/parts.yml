@@ -8,8 +8,9 @@
 # and retire-disabled-part-guns in config.yml decides whether those guns still fire. With
 # refunds on, guns with a retired part are taken apart; a part only disabled here keeps its guns.
 # A 'fitting' section adds an animal material (metals.yml kind: animal) picked after the wood:
-# ids <part>@<material>+<fitting>, 'amount' of the fitting item, and its quality scales only the
-# listed 'stats'. Each <part>@<material> without a fitting stays loadable for older guns.
+# ids <part>@<material>+<fitting>; 'types' lists the fitting types it takes (leather, wool,
+# feather), 'amount' of the item is paid, and its quality scales only the listed 'stats'.
+# Each <part>@<material> without a fitting stays loadable for older guns.
 
 # Barrels
 smoothbore_barrel_long:
@@ -941,6 +942,12 @@ standard_stock:
   item: modeled.(type=gunpowder;model=15)
   material: wood
   cost-amount: 2
+  fitting:
+    types:
+      - wool
+    amount: 2
+    stats:
+      - accuracy
   tendencies:
     - accuracy 4
   lore:
@@ -963,6 +970,8 @@ saddle_stock:
   material: wood
   cost-amount: 2
   fitting:
+    types:
+      - leather
     amount: 2
     stats:
       - moving
@@ -991,6 +1000,8 @@ cheek_rest_stock:
   material: wood
   cost-amount: 2
   fitting:
+    types:
+      - leather
     amount: 2
     stats:
       - sneaking
@@ -1020,6 +1031,8 @@ padded_stock:
   material: wood
   cost-amount: 2
   fitting:
+    types:
+      - feather
     amount: 2
     stats:
       - fire_rate
@@ -1045,6 +1058,12 @@ standard_grip:
   item: modeled.(type=gunpowder;model=15)
   material: wood
   cost-amount: 2
+  fitting:
+    types:
+      - leather
+    amount: 2
+    stats:
+      - accuracy
   tendencies:
     - accuracy 3
   lore:
@@ -1065,6 +1084,13 @@ birdshead_grip:
   item: modeled.(type=gunpowder;model=15)
   material: wood
   cost-amount: 2
+  fitting:
+    types:
+      - feather
+    amount: 2
+    stats:
+      - draw
+      - moving
   tendencies:
     - accuracy 1
     - moving 10
@@ -1087,6 +1113,12 @@ pommel_grip:
   item: modeled.(type=gunpowder;model=15)
   material: wood
   cost-amount: 2
+  fitting:
+    types:
+      - wool
+    amount: 2
+    stats:
+      - sneaking
   cost:
     - v.copper_ingot(1)
   tendencies:
@@ -1112,6 +1144,8 @@ wrapped_grip:
   material: wood
   cost-amount: 2
   fitting:
+    types:
+      - wool
     amount: 2
     stats:
       - moving

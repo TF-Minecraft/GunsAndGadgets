@@ -174,9 +174,9 @@ public class InventoryManager implements Listener {
         GunType chosen = TypeSelectionManager.getSelectedType(player);
         List<GunPart> variants = selectable(player, partCategoryId, chosen, baseId);
         // A part that takes a fitting: one button per material, and the fitting is picked next.
-        Map<String, GunPart> byMetal = new LinkedHashMap<>();
+        Map<String, List<GunPart>> byMetal = new LinkedHashMap<>();
         for (GunPart variant : variants) {
-            if (variant.getFittingId() != null) byMetal.putIfAbsent(variant.getMetalId(), variant);
+            if (variant.getFittingId() != null) byMetal.computeIfAbsent(variant.getMetalId(), k -> new ArrayList<>()).add(variant);
         }
         int count = byMetal.isEmpty() ? variants.size() : byMetal.size();
         int size = Math.max(9, Math.min(54, ((count + 1 + 8) / 9) * 9));
@@ -186,8 +186,8 @@ public class InventoryManager implements Listener {
                 inv.addItem(createPartItem(variant));
             }
         } else {
-            for (GunPart first : byMetal.values()) {
-                inv.addItem(createMaterialChoiceItem(first));
+            for (List<GunPart> fitted : byMetal.values()) {
+                inv.addItem(createMaterialChoiceItem(fitted));
             }
         }
         inv.setItem(size - 1, backButton());
@@ -217,6 +217,18 @@ public class InventoryManager implements Listener {
         player.openInventory(inv);
     }
 
+    /** "leather", "leather or wool", "leather, wool or feather": the fitting types these variants take. */
+    static String fittingTypes(List<GunPart> fitted) {
+        List<String> types = new ArrayList<>();
+        for (GunPart part : fitted) {
+            Metal fitting = MetalLoader.getByString(part.getFittingId());
+            String type = fitting == null || fitting.getType().isEmpty() ? part.getFittingId() : fitting.getType();
+            if (!types.contains(type)) types.add(type);
+        }
+        if (types.size() == 1) return types.getFirst();
+        return String.join(", ", types.subList(0, types.size() - 1)) + " or " + types.getLast();
+    }
+
     /** Slots for fittings: a new row whenever the quality starts again (leather, then wool, then feather). */
     static List<Integer> fittingSlots(List<GunPart> fitted) {
         List<Integer> slots = new ArrayList<>();
@@ -239,7 +251,8 @@ public class InventoryManager implements Listener {
     /** One material of a part that takes a fitting: the part in that material, before the fitting is chosen. */
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
-    private ItemStack createMaterialChoiceItem(GunPart variant) {
+    private ItemStack createMaterialChoiceItem(List<GunPart> fitted) {
+        GunPart variant = fitted.getFirst();
         ItemStack i = createPartItem(variant);
         ItemMeta m = i.getItemMeta();
         GunPart plain = PartLoader.getByString(PartForge.variantId(variant.getBaseId(), variant.getMetalId()));
@@ -258,13 +271,21 @@ public class InventoryManager implements Listener {
             lore.addAll(arrows);
             lore.add("");
         }
-        lore.add("§7Fitted with leather, wool or feather:");
+        String types = fittingTypes(fitted);
+        lore.add("§7Fitted with " + types + ":");
         lore.add("§7better quality improves what this part is for.");
         if (Cache.requireInput) {
             lore.add("");
             lore.add(StringFormatter.formatHex("#76de91§lInput:"));
-            if (plain != null) lore.addAll(CostFormatter.getCostsFormatted(plain.getCost()));
-            lore.add("§7- §fLeather, wool or feather");
+            // the fitting's amount: what the fitted variant costs beyond the plain one
+            int amount = 0;
+            if (plain != null) {
+                lore.addAll(CostFormatter.getCostsFormatted(plain.getCost()));
+                for (Map.Entry<String, Integer> cost : variant.getCost().entrySet()) {
+                    if (!plain.getCost().containsKey(cost.getKey())) amount = Math.max(amount, cost.getValue());
+                }
+            }
+            lore.add("§7- §f" + Character.toUpperCase(types.charAt(0)) + types.substring(1) + (amount > 0 ? " §e" + amount : ""));
         }
         lore.add("");
         lore.add("§eClick to choose the fitting");

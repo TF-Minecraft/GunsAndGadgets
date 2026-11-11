@@ -800,10 +800,11 @@ class InventoryManagerTest {
         """
 oak: {name: Oak, kind: wood, description: ["Light wood"]}
 ash: {name: Ash, kind: wood}
-leather: {kind: animal, tier: 1}
-rare_leather: {kind: animal, tier: 2}
-wool: {kind: animal, tier: 1}
-rare_wool: {kind: animal, tier: 2}
+leather: {kind: animal, type: leather, tier: 1}
+rare_leather: {kind: animal, type: leather, tier: 2}
+wool: {kind: animal, type: wool, tier: 1}
+rare_wool: {kind: animal, type: wool, tier: 2}
+fur: {kind: animal, tier: 1}
 """);
     new net.tfminecraft.gunsandgadgets.loader.MetalLoader().load(metals.toFile());
     try {
@@ -813,12 +814,15 @@ rare_wool: {kind: animal, tier: 2}
       when(plain.isEnabledForCrafting()).thenReturn(false);
       when(plain.getName()).thenReturn("Oak Saddle");
       when(plain.getTendencies()).thenReturn(new LinkedHashMap<>(Map.of(Stats.ACCURACY, 2.0)));
-      fitted("saddle", "oak", "leather", "stock");
+      when(plain.getCost()).thenReturn(Map.of("v.stick", 2));
+      var oakLeather = fitted("saddle", "oak", "leather", "stock");
+      when(oakLeather.getCost()).thenReturn(Map.of("v.stick", 2, "m.materials.leather", 2));
       fitted("saddle", "oak", "rare_leather", "stock");
       fitted("saddle", "oak", "wool", "stock");
       fitted("saddle", "oak", "rare_wool", "stock");
       fitted("saddle", "oak", "silk", "stock"); // a fitting missing from metals.yml
       fitted("saddle", "ash", "leather", "stock");
+      fitted("saddle", "ash", "fur", "stock"); // a fitting without a type is named by its id
       fitted("saddle", "birch", "leather", "stock"); // a material missing from metals.yml
 
       manager.openMetalSelection(player, "stock", "saddle");
@@ -831,16 +835,21 @@ rare_wool: {kind: animal, tier: 2}
       assertEquals("§eClick to choose the fitting", oak.getItemMeta().getLore().getLast());
       // the plain variant's arrows (good quality) and what it takes besides the fitting
       assertTrue(oak.getItemMeta().getLore().stream().anyMatch(l -> l.contains("Accuracy")));
-      assertTrue(oak.getItemMeta().getLore().contains("§7- §fLeather, wool or feather"));
+      assertTrue(oak.getItemMeta().getLore().contains("§7Fitted with leather, wool or silk:"));
+      assertTrue(oak.getItemMeta().getLore().contains("§7- §fLeather, wool or silk §e2"));
       Cache.requireInput = false; // a server without crafting costs lists no inputs
       manager.openMetalSelection(player, "stock", "saddle");
       assertFalse(player.getOpenInventory().getTopInventory().getItem(0).getItemMeta().getLore()
-          .contains("§7- §fLeather, wool or feather"));
+          .contains("§7- §fLeather, wool or silk §e2"));
       Cache.requireInput = true;
       manager.openMetalSelection(player, "stock", "saddle");
       var ash = top.getItem(1);
+      // without a plain variant the amount is left out
+      assertTrue(ash.getItemMeta().getLore().contains("§7- §fLeather or fur"));
       assertEquals("Base saddle", ash.getItemMeta().getDisplayName()); // no plain ash variant
-      assertEquals("§7Fitted with leather, wool or feather:", ash.getItemMeta().getLore().getFirst());
+      assertEquals("§7Fitted with leather or fur:", ash.getItemMeta().getLore().getFirst());
+      // one type alone needs no "or"
+      assertEquals("leather", InventoryManager.fittingTypes(List.of(PartLoader.getByString("saddle@birch+leather"))));
       assertEquals("birch", string(top.getItem(2), "forge_metal"));
       assertNull(top.getItem(3));
       assertEquals(Material.ARROW, top.getItem(8).getType());

@@ -206,9 +206,9 @@ stock:
 
   static final String ANIMALS =
       """
-leather: {name: "§fLeather", kind: animal, tier: 1, cost: m.materials.leather, better: 0.75}
-rare_leather: {name: "§9Good Leather", kind: ANIMAL, tier: 2, cost: m.materials.rare_leather, better: 1}
-feather: {name: "§fFeather", kind: animal, tier: 1, better: 1.5}
+leather: {name: "§fLeather", kind: animal, type: leather, tier: 1, cost: m.materials.leather, better: 0.75}
+rare_leather: {name: "§9Good Leather", kind: ANIMAL, type: LEATHER, tier: 2, cost: m.materials.rare_leather, better: 1}
+feather: {name: "§fFeather", kind: animal, type: feather, tier: 1, better: 1.5}
 """;
 
   void loadMetalsAndAnimals() throws Exception {
@@ -263,6 +263,14 @@ stock:
     var limited = PartForge.expand("s", some);
     assertEquals(List.of("s@iron", "s@iron+rare_leather"), new ArrayList<>(limited.keySet()));
     assertEquals(List.of("v.iron_ingot(2)", "m.materials.rare_leather(1)"), limited.get("s@iron+rare_leather").getStringList("cost"));
+    // 'types' takes the fittings of those types only (each animal material's type).
+    assertEquals("leather", MetalLoader.getByString("rare_leather").getType());
+    assertEquals("", MetalLoader.getByString("iron").getType());
+    var typed = yaml("t: {metals: [iron], fitting: {types: [Feather]}, tendencies: [moving 1]}").getConfigurationSection("t");
+    assertEquals(List.of("t@iron", "t@iron+feather"), new ArrayList<>(PartForge.expand("t", typed).keySet()));
+    var both = yaml("b: {metals: [iron], fitting: {types: [leather], materials: [leather, feather]}, tendencies: [moving 1]}")
+        .getConfigurationSection("b");
+    assertEquals(List.of("b@iron", "b@iron+leather"), new ArrayList<>(PartForge.expand("b", both).keySet()));
     var none = yaml("n: {metals: [iron], fitting: {materials: [silk]}, tendencies: [moving 1]}").getConfigurationSection("n");
     assertEquals(List.of("n@iron"), new ArrayList<>(PartForge.expand("n", none).keySet()));
 
@@ -489,10 +497,29 @@ handling:
     assertEquals(saddle.getStats(), PartLoader.getByString("saddle_stock@maplewood+rare_leather").getStats());
     // maplewood mounted 40 x 1.3 = 52, then the fitting
     assertEquals(52, saddle.getStats().get(Stats.MOUNTED));
-    assertEquals(78, PartLoader.getByString("saddle_stock@maplewood+legendary_feather").getStats().get(Stats.MOUNTED));
-    assertEquals(39, PartLoader.getByString("saddle_stock@maplewood+wool").getStats().get(Stats.MOUNTED));
+    assertEquals(78, PartLoader.getByString("saddle_stock@maplewood+legendary_leather").getStats().get(Stats.MOUNTED));
+    assertEquals(39, PartLoader.getByString("saddle_stock@maplewood+leather").getStats().get(Stats.MOUNTED));
     assertEquals(saddle.getStats().get(Stats.ACCURACY),
-        PartLoader.getByString("saddle_stock@maplewood+wool").getStats().get(Stats.ACCURACY));
+        PartLoader.getByString("saddle_stock@maplewood+leather").getStats().get(Stats.ACCURACY));
+    // Every stock and grip takes one type: leather 3, wool 3, feather 2.
+    Map<String, String> types = Map.of("saddle_stock", "leather", "cheek_rest_stock", "leather", "standard_grip", "leather",
+        "standard_stock", "wool", "wrapped_grip", "wool", "pommel_grip", "wool", "padded_stock", "feather", "birdshead_grip", "feather");
+    for (Map.Entry<String, String> entry : types.entrySet()) {
+      String base = entry.getKey();
+      assertTrue(PartLoader.getByString(base + "@barkwood").isLegacy(), base);
+      for (String type : List.of("leather", "wool", "feather")) {
+        for (String quality : List.of("", "rare_", "epic_", "legendary_")) {
+          GunPart fitted = PartLoader.getByString(base + "@barkwood+" + quality + type);
+          assertEquals(type.equals(entry.getValue()), fitted != null, base + "+" + quality + type);
+        }
+      }
+    }
+    // the standard stock's quality scales its accuracy; good quality keeps it
+    GunPart standard = PartLoader.getByString("standard_stock@maplewood");
+    assertEquals(standard.getStats(), PartLoader.getByString("standard_stock@maplewood+rare_wool").getStats());
+    assertEquals(6, PartLoader.getByString("standard_stock@maplewood+legendary_wool").getStats().get(Stats.ACCURACY));
+    assertEquals(Map.of("m.materials.refined_barkwood", 2, "v.copper_ingot", 1, "v.white_wool", 2),
+        PartLoader.getByString("pommel_grip@barkwood+wool").getCost());
     assertEquals(Map.of("m.materials.refined_maplewood", 2, "m.materials.epic_leather", 2),
         PartLoader.getByString("saddle_stock@maplewood+epic_leather").getCost());
     assertEquals(Map.of("m.materials.refined_barkwood", 2, "v.white_wool", 2),
@@ -527,8 +554,8 @@ handling:
       assertNotNull(part.getPartType(), part.getId());
       assertFalse(part.getCost().isEmpty(), part.getId());
     }
-    // 37 parts (4 pistol grips), no iron multi-tube, and 4 stocks fitted 12 ways in each of 4 woods
-    assertEquals(37 * 4 - 1 + 4 * 4 * 12, PartLoader.getOrdered().size());
+    // 37 parts (4 pistol grips), no iron multi-tube, and 8 stocks and grips fitted 4 ways in each of 4 woods
+    assertEquals(37 * 4 - 1 + 8 * 4 * 4, PartLoader.getOrdered().size());
     // The part list shows the steel reference arrows, whichever material a player sees first.
     GunPart ironHeavy = PartLoader.getByString("heavy_barrel@iron");
     assertEquals(ForgeLore.lines(heavy), ForgeLore.lines(ironHeavy, false));
@@ -538,7 +565,7 @@ handling:
     for (String old : List.of("flintlock", "matchlock", "rifled_barrel_long", "revolver", "quad_shot")) {
       assertTrue(PartLoader.getByString(old).isRetired(), old);
     }
-    assertEquals(37 * 4 - 1 + 4 * 4 * 12 + 21, PartLoader.getOrdered().size());
+    assertEquals(37 * 4 - 1 + 8 * 4 * 4 + 21, PartLoader.getOrdered().size());
     assertTrue(PartLoader.isHealthy());
   }
 

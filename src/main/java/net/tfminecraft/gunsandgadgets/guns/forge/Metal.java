@@ -24,6 +24,8 @@ public final class Metal {
     private final String id;
     private final String name;
     private final String kind;
+    /** For animal fittings: leather, wool or feather (a part's fitting lists the types it takes). */
+    private final String type;
     private final int tier;
     private final String cost;
     private final String permission;
@@ -46,6 +48,7 @@ public final class Metal {
         this.id = id.toLowerCase();
         this.name = StringFormatter.formatHex(config.getString("name", id));
         this.kind = config.getString("kind", "metal").toLowerCase();
+        this.type = config.getString("type", "").toLowerCase();
         this.tier = Math.max(1, config.getInt("tier", 1));
         this.cost = config.getString("cost", "");
         this.permission = config.getString("permission", "");
@@ -101,6 +104,8 @@ public final class Metal {
     public String getId() { return id; }
     public String getName() { return name; }
     public String getKind() { return kind; }
+    /** The fitting type (leather, wool, feather), or empty. */
+    public String getType() { return type; }
     public int getTier() { return tier; }
     public String getCost() { return cost; }
     public String getPermission() { return permission; }
