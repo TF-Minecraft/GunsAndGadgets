@@ -301,7 +301,7 @@ public class GunManager implements Listener {
         }
         event.setCancelled(true);
         // Right-click still held after a raised scope came down (the aim ended): no shot from the hip.
-        if (!release && aiming.holdsAfterScope(player)) {
+        if (!release && aiming.holdsAfterScope(player, item)) {
             return;
         }
         var session = Characters.currentSession(player).orElse(null);
@@ -625,6 +625,7 @@ public class GunManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         aiming.stop(event.getPlayer());
+        aiming.forget(event.getPlayer());
         draw.forget(event.getPlayer());
         cancelActiveReload(event.getPlayer());
     }

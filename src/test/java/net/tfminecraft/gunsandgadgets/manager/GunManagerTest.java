@@ -504,6 +504,7 @@ class GunManagerTest {
         player.getInventory().setItemInOffHand(gun.clone());
         verify(use(), atLeastOnce()).setCancelled(true);
         assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // still only the release shot
         player.getInventory().setItemInOffHand(null);
         // the aim ending with the scope raised (an un-crouch while looking through): right-click still held
         // is swallowed, not fired from the hip; each swallowed repeat extends that until the key is let go
@@ -511,13 +512,28 @@ class GunManagerTest {
         assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
         aim.stop(player);
         assertFalse(aim.isAiming(player));
-        server.getScheduler().performTicks(6);
+        ItemStack lowered = player.getInventory().getItemInMainHand();
+        server.getScheduler().performTicks(Aiming.SCOPE_HELD_TICKS - 2);
         use(); // a repeat: swallowed, and the window extended
-        server.getScheduler().performTicks(6);
-        assertTrue(aim.holdsAfterScope(player)); // past the first window: only the swallowed repeat kept it
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1));
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS - 2);
+        assertTrue(aim.holdsAfterScope(player, lowered)); // past the first window: the swallowed repeat kept it
         server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1);
-        assertFalse(aim.holdsAfterScope(player)); // let go: over
-        assertFalse(aim.holdsAfterScope(player));
+        assertFalse(aim.holdsAfterScope(player, lowered)); // let go: over
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        // another gun isn't swallowed, and aiming again clears it
+        aim.start(player);
+        use();
+        aim.stop(player);
+        assertTrue(aim.holdsAfterScope(player, lowered));
+        assertFalse(aim.holdsAfterScope(player, new ItemStack(Material.STICK)));
+        assertFalse(aim.holdsAfterScope(player, lowered)); // the other gun's click ended it
+        use();
+        aim.stop(player);
+        aim.start(player);
+        assertFalse(aim.holdsAfterScope(player, player.getInventory().getItemInMainHand()));
+        aim.stop(player);
+        aim.forget(player);
         // a stopped aim leaves nothing raised: aiming again, the grace doesn't touch the crossbow
         loaded();
         aim.start(player);

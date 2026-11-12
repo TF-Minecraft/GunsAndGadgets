@@ -50,12 +50,15 @@ public final class Aiming {
     private final Map<UUID, Integer> raised = new HashMap<>();
     /** A raised scope nobody looks through (a tap) is lowered after this many ticks. */
     static final int SCOPE_GRACE_TICKS = 10;
+    /** How long after an aim ended with the scope raised a click with that gun counts as the key still held. */
+    static final int SCOPE_HELD_TICKS = 20;
     /**
-     * Until when (server tick) a click counts as right-click still held after the aim ended with the
-     * scope raised. The held key repeats every 4 ticks, and each swallowed repeat extends it, so it ends
-     * once the key has been let go for {@link #SCOPE_GRACE_TICKS}.
+     * Right-click still held after the aim ended with the scope raised: the gun and until when (server
+     * tick). The held key repeats every 4 ticks and each swallowed repeat extends it by
+     * {@link #SCOPE_GRACE_TICKS}, so it ends once the key has been let go; a new aim clears it.
      */
-    private final Map<UUID, Integer> heldAfterScope = new HashMap<>();
+    private record HeldAfterScope(String gunId, int until) {}
+    private final Map<UUID, HeldAfterScope> heldAfterScope = new HashMap<>();
 
     Aiming(GunManager guns) {
         this.guns = guns;
@@ -71,21 +74,27 @@ public final class Aiming {
     }
 
     /**
-     * Whether this click is right-click still held after the aim ended while the scope was raised (an
-     * un-crouch while looking through): it is swallowed rather than fired from the hip.
+     * Whether this click with this gun is right-click still held after the aim ended while the scope was
+     * raised (an un-crouch while looking through): it is swallowed rather than fired from the hip. Only
+     * the same gun, and only until the key is let go or the player aims again.
      */
-    boolean holdsAfterScope(Player player) {
-        Integer until = heldAfterScope.get(player.getUniqueId());
-        if (until == null) {
+    boolean holdsAfterScope(Player player, ItemStack item) {
+        HeldAfterScope held = heldAfterScope.get(player.getUniqueId());
+        if (held == null) {
             return false;
         }
         int now = Bukkit.getCurrentTick();
-        if (now > until) {
+        if (now > held.until() || !held.gunId().equals(DrawTimer.gunId(item))) {
             heldAfterScope.remove(player.getUniqueId());
             return false;
         }
-        heldAfterScope.put(player.getUniqueId(), now + SCOPE_GRACE_TICKS);
+        heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(held.gunId(), now + SCOPE_GRACE_TICKS));
         return true;
+    }
+
+    /** Drops what is kept about a player who left. */
+    void forget(Player player) {
+        heldAfterScope.remove(player.getUniqueId());
     }
 
     /** An aimed scoped gun whose scope isn't raised: a right-click raises it instead of firing. */
@@ -183,6 +192,7 @@ public final class Aiming {
             return;
         }
         aimed.put(player.getUniqueId(), gunId);
+        heldAfterScope.remove(player.getUniqueId());
         zoom(player, true);
         ItemStack item = guns.applyModel(held, skin, SkinState.ADS);
         if (scoped(item)) {
@@ -196,11 +206,12 @@ public final class Aiming {
     void stop(Player player) {
         String gunId = aimed.remove(player.getUniqueId());
         steadied.remove(player.getUniqueId());
-        if (raised.remove(player.getUniqueId()) != null) {
-            heldAfterScope.put(player.getUniqueId(), Bukkit.getCurrentTick() + SCOPE_GRACE_TICKS);
-        }
         if (gunId == null) {
+            raised.remove(player.getUniqueId());
             return;
+        }
+        if (raised.remove(player.getUniqueId()) != null) {
+            heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(gunId, Bukkit.getCurrentTick() + SCOPE_HELD_TICKS));
         }
         zoom(player, false);
         ItemStack held = player.getInventory().getItemInMainHand();
