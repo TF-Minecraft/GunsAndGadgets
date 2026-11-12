@@ -52,12 +52,15 @@ public final class Aiming {
     static final int SCOPE_GRACE_TICKS = 10;
     /** How long after an aim ended with the scope raised a click with that gun counts as the key still held. */
     static final int SCOPE_HELD_TICKS = 20;
+    /** How much each swallowed repeat (the held key repeats every 4 ticks) extends that. */
+    static final int SCOPE_HELD_REPEAT_TICKS = 10;
+    /** The most it lasts after the aim ended, however fast the clicks come (clicks to fire from the hip). */
+    static final int SCOPE_HELD_MAX_TICKS = 40;
     /**
-     * Right-click still held after the aim ended with the scope raised: the gun and until when (server
-     * tick). The held key repeats every 4 ticks and each swallowed repeat extends it by
-     * {@link #SCOPE_GRACE_TICKS}, so it ends once the key has been let go; a new aim clears it.
+     * Right-click still held after the aim ended with the scope raised: the gun, until when (server tick),
+     * and the latest it can be extended to. It ends once the key has been let go; a new aim clears it.
      */
-    private record HeldAfterScope(String gunId, int until) {}
+    private record HeldAfterScope(String gunId, int until, int latest) {}
     private final Map<UUID, HeldAfterScope> heldAfterScope = new HashMap<>();
 
     Aiming(GunManager guns) {
@@ -88,7 +91,8 @@ public final class Aiming {
             heldAfterScope.remove(player.getUniqueId());
             return false;
         }
-        heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(held.gunId(), now + SCOPE_GRACE_TICKS));
+        heldAfterScope.put(player.getUniqueId(),
+                new HeldAfterScope(held.gunId(), Math.min(now + SCOPE_HELD_REPEAT_TICKS, held.latest()), held.latest()));
         return true;
     }
 
@@ -211,7 +215,8 @@ public final class Aiming {
             return;
         }
         if (raised.remove(player.getUniqueId()) != null) {
-            heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(gunId, Bukkit.getCurrentTick() + SCOPE_HELD_TICKS));
+            int now = Bukkit.getCurrentTick();
+            heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(gunId, now + SCOPE_HELD_TICKS, now + SCOPE_HELD_MAX_TICKS));
         }
         zoom(player, false);
         ItemStack held = player.getInventory().getItemInMainHand();
