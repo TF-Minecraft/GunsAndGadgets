@@ -50,6 +50,8 @@ public final class Aiming {
     private final Map<UUID, Integer> raised = new HashMap<>();
     /** A raised scope nobody looks through (a tap) is lowered after this many ticks. */
     static final int SCOPE_GRACE_TICKS = 10;
+    /** The held key repeats every 4 ticks; this allows for some lag before the first repeat arrives. */
+    static final int SCOPE_REPEAT_WAIT_TICKS = 8;
     /** How long after an aim ended with the scope raised a click with that gun counts as the key still held. */
     static final int SCOPE_HELD_TICKS = 20;
     /** How much each swallowed repeat (the held key repeats every 4 ticks) extends that. */
@@ -214,8 +216,11 @@ public final class Aiming {
             raised.remove(player.getUniqueId());
             return;
         }
-        if (raised.remove(player.getUniqueId()) != null) {
-            int now = Bukkit.getCurrentTick();
+        Integer up = raised.remove(player.getUniqueId());
+        int now = Bukkit.getCurrentTick();
+        // Only while the key is still held: looking through, or raised so recently that the held key's first
+        // repeat (the one that starts looking through) may not have arrived yet. Not after a tap.
+        if (up != null && (now - up <= SCOPE_REPEAT_WAIT_TICKS || player.isHandRaised())) {
             heldAfterScope.put(player.getUniqueId(), new HeldAfterScope(gunId, now + SCOPE_HELD_TICKS, now + SCOPE_HELD_MAX_TICKS));
         }
         zoom(player, false);

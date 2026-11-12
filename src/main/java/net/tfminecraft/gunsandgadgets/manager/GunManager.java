@@ -41,10 +41,12 @@ import org.bukkit.Sound;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -56,6 +58,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CrossbowMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -100,6 +103,8 @@ public class GunManager implements Listener {
     // One click can arrive as several interact events (each hand, or an entity then the air)
     // spread over neighbouring ticks; clients allow a new click only every 4 ticks.
     private static final int AMMO_SWITCH_BURST_TICKS = 2;
+    /** The off hand's index in a player's inventory. */
+    static final int OFF_HAND_SLOT = 40;
     private final Map<UUID, Integer> lastAmmoSwitchTick = new HashMap<>();
 
     @EventHandler
@@ -115,10 +120,48 @@ public class GunManager implements Listener {
 
         // skip interactable blocks like chests, doors, etc.
         if (event.getClickedBlock() != null && event.getClickedBlock().getType().isInteractable()) {
-            return;
+            boolean gun = DrawTimer.gunId(event.getItem()) != null;
+            if (!gun || !event.getPlayer().isSneaking()) {
+                // The block keeps its own use, but a gun is never used as the vanilla crossbow it is while
+                // loaded (it would be shot as one and lose its charge).
+                if (gun) {
+                    event.setUseItemInHand(Event.Result.DENY);
+                }
+                return;
+            }
+            // Sneaking with a gun: the game skips the block for an item in hand, so it is a gun click like
+            // anywhere else (aimed fire through a doorway, a raised scope looked through at a fence).
         }
 
         handleGunUse(event.getPlayer(), event); // your gun logic
+    }
+
+    /**
+     * A gun is never shot as the vanilla crossbow it is while loaded. The click paths already stop that; this
+     * catches any other. The game has cleared the charge by now, so it comes back next tick (even when another
+     * plugin cancelled the shot first) and the gun still looks loaded.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onVanillaShot(EntityShootBowEvent event) {
+        String gunId = DrawTimer.gunId(event.getBow());
+        if (gunId == null) return;
+        event.setCancelled(true);
+        if (event.getEntity() instanceof Player player) {
+            // the gun's own slot, so a hotbar change before next tick doesn't lose it
+            int slot = event.getHand() == EquipmentSlot.OFF_HAND ? OFF_HAND_SLOT : player.getInventory().getHeldItemSlot();
+            Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> recharge(player, slot, gunId));
+        }
+    }
+
+    /** Charges that gun's crossbow again if it lost its charge and is still in that slot, loaded. */
+    void recharge(Player player, int slot, String gunId) {
+        if (!player.isOnline()) return;
+        ItemStack item = player.getInventory().getItem(slot);
+        if (item == null || item.getType() != Material.CROSSBOW || !gunId.equals(DrawTimer.gunId(item)) || loadedBullets(item) <= 0) return;
+        if (((CrossbowMeta) item.getItemMeta()).hasChargedProjectiles()) return;
+        String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+        chargeCrossbow(item, ammoId, loadedBullets(item));
+        player.getInventory().setItem(slot, item);
     }
 
     @EventHandler

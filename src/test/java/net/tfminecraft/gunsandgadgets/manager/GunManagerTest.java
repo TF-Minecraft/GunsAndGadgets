@@ -561,6 +561,30 @@ class GunManagerTest {
         assertFalse(aim.holdsAfterScope(player, lowered));
         aim.stop(player);
         aim.forget(player);
+        // a tap (not looking through once the first repeat could have come) opens no window: a click to fire
+        // from the hip right after isn't swallowed
+        loaded();
+        aim.start(player);
+        use();
+        server.getScheduler().performTicks(Aiming.SCOPE_REPEAT_WAIT_TICKS + 1);
+        aim.stop(idle);
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        // up to SCOPE_REPEAT_WAIT_TICKS after the raise the first repeat may still be on its way: it opens
+        loaded();
+        aim.start(player);
+        use();
+        server.getScheduler().performTicks(Aiming.SCOPE_REPEAT_WAIT_TICKS);
+        aim.stop(idle);
+        assertTrue(aim.holdsAfterScope(player, lowered));
+        aim.forget(player);
+        // still looking through at the un-crouch: the window opens
+        loaded();
+        aim.start(player);
+        use();
+        server.getScheduler().performTicks(Aiming.SCOPE_REPEAT_WAIT_TICKS + 1);
+        aim.stop(looking);
+        assertTrue(aim.holdsAfterScope(player, lowered));
+        aim.forget(player);
         shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // the raising clicks didn't fire
         // a stopped aim leaves nothing raised: aiming again, the grace doesn't touch the crossbow
         loaded();
@@ -1084,9 +1108,146 @@ class GunManagerTest {
     when(e.getAction()).thenReturn(org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK);
     manager.onRightClick(e);
     verify(e, never()).setCancelled(true);
+    verify(e, never()).setUseItemInHand(any());
+    // with a gun in that hand the block still works, but the gun is never used as a vanilla crossbow
+    when(e.getItem()).thenReturn(gun);
+    manager.onRightClick(e);
+    verify(e, never()).setCancelled(true);
+    verify(e).setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+    verify(e, never()).setUseInteractedBlock(any());
+    // sneaking, the game skips the block for an item in hand: a gun click like anywhere else
+    player.setSneaking(true);
+    manager.onRightClick(e);
+    verify(e).setCancelled(true);
+    verify(e, times(1)).setUseItemInHand(any());
+    player.setSneaking(false);
+    clearInvocations(e);
     when(block.getType()).thenReturn(Material.STONE);
     manager.onRightClick(e);
     verify(e).setCancelled(true);
+  }
+
+  @Test
+  void anAimedScopedGunIsNotRaisedWithoutASessionOrForTheWrongClass() {
+    try (var preserver = mockStatic(net.tfminecraft.tlibs.objects.api.subapi.ItemSkinPreserver.class);
+        var modelData = mockStatic(net.tfminecraft.gunsandgadgets.util.LegacyModelData.class);
+        var looks = mockStatic(net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.class);
+        var shooter = mockStatic(ProjectileShooter.class)) {
+      boolean wasOn = Cache.aimingEnabled;
+      try {
+        Cache.aimingEnabled = true;
+        var scope = mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class);
+        when(scope.hasOption(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption.SCOPED)).thenReturn(true);
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.CROSSBOW));
+        var aim = manager.getAiming();
+        player.setSneaking(true);
+        // the wrong class: the click is cancelled, the scope stays down and nothing fires
+        player.setOp(false);
+        loaded();
+        aim.start(player);
+        assertTrue(aim.canRaiseScope(player, player.getInventory().getItemInMainHand()));
+        var nbt = mock(io.lumine.mythic.lib.api.item.NBTItem.class);
+        when(nbt.hasType()).thenReturn(true);
+        var profile = mock(net.Indyuce.mmocore.api.player.PlayerData.class, RETURNS_DEEP_STUBS);
+        when(profile.getProfess().getId()).thenReturn("musketeer");
+        try (var nbts = mockStatic(io.lumine.mythic.lib.api.item.NBTItem.class);
+            var profiles = mockStatic(net.Indyuce.mmocore.api.player.PlayerData.class);
+            var lives = mockConstruction(net.Indyuce.mmoitems.api.item.mmoitem.LiveMMOItem.class,
+                (live, context) -> when(live.getData(any())).thenReturn(new net.Indyuce.mmoitems.stat.data.StringListData(java.util.List.of("mage"))))) {
+          nbts.when(() -> io.lumine.mythic.lib.api.item.NBTItem.get(any(ItemStack.class))).thenReturn(nbt);
+          profiles.when(() -> net.Indyuce.mmocore.api.player.PlayerData.get(player.getUniqueId())).thenReturn(profile);
+          verify(use()).setCancelled(true);
+        }
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        player.setOp(true);
+        // no character session while characters are in use: the same
+        var identity = mock(CharacterIdentity.class);
+        server.getServicesManager().register(CharacterIdentity.class, identity, MockBukkit.createMockPlugin("IdentityProvider"), org.bukkit.plugin.ServicePriority.Normal);
+        when(identity.currentSession(player)).thenReturn(Optional.empty());
+        verify(use()).setCancelled(true);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        shooter.verifyNoInteractions();
+        aim.stop(player);
+      } finally {
+        Cache.aimingEnabled = wasOn;
+      }
+    }
+  }
+
+  @Test
+  void aGunIsNeverShotAsAVanillaCrossbowAndKeepsItsCharge() {
+    var shot = mock(org.bukkit.event.entity.EntityShootBowEvent.class);
+    when(shot.getBow()).thenReturn(new ItemStack(Material.CROSSBOW));
+    manager.onVanillaShot(shot);
+    verify(shot, never()).setCancelled(true);
+    // a gun held by something other than a player: cancelled, nothing to recharge
+    when(shot.getBow()).thenReturn(gun);
+    when(shot.getEntity()).thenReturn(mock(org.bukkit.entity.Skeleton.class));
+    manager.onVanillaShot(shot);
+    verify(shot).setCancelled(true);
+    // a player's loaded gun: cancelled, and next tick that gun's crossbow is charged again
+    java.util.function.Predicate<ItemStack> charged =
+        i -> ((org.bukkit.inventory.meta.CrossbowMeta) i.getItemMeta()).hasChargedProjectiles();
+    var inv = player.getInventory();
+    loaded();
+    gun = inv.getItemInMainHand();
+    gun.setType(Material.CROSSBOW);
+    inv.setItemInMainHand(gun);
+    when(shot.getEntity()).thenReturn(player);
+    when(shot.getHand()).thenReturn(org.bukkit.inventory.EquipmentSlot.HAND);
+    int shotSlot = inv.getHeldItemSlot();
+    manager.onVanillaShot(shot);
+    verify(shot, times(2)).setCancelled(true);
+    assertFalse(charged.test(inv.getItemInMainHand()));
+    // a hotbar change before next tick: still the shot gun, in its own slot, is charged again
+    inv.setHeldItemSlot((shotSlot + 1) % 9);
+    server.getScheduler().performTicks(1);
+    assertTrue(charged.test(inv.getItem(shotSlot)));
+    inv.setHeldItemSlot(shotSlot);
+    // the off hand the same
+    ItemStack offhand = inv.getItemInMainHand().clone();
+    var offMeta = (org.bukkit.inventory.meta.CrossbowMeta) offhand.getItemMeta();
+    offMeta.setChargedProjectiles(null);
+    offhand.setItemMeta(offMeta);
+    inv.setItemInOffHand(offhand);
+    when(shot.getHand()).thenReturn(org.bukkit.inventory.EquipmentSlot.OFF_HAND);
+    manager.onVanillaShot(shot);
+    server.getScheduler().performTicks(1);
+    assertTrue(charged.test(inv.getItemInOffHand()));
+    assertEquals(inv.getItemInOffHand(), inv.getItem(GunManager.OFF_HAND_SLOT));
+    inv.setItemInOffHand(null);
+    // already charged: left as it is
+    ItemStack chargedGun = inv.getItem(shotSlot);
+    manager.recharge(player, shotSlot, "same-id");
+    assertEquals(1, ((org.bukkit.inventory.meta.CrossbowMeta) inv.getItem(shotSlot).getItemMeta()).getChargedProjectiles().size());
+    assertEquals(chargedGun, inv.getItem(shotSlot));
+    // another gun now in that slot, nothing loaded, not a crossbow, not a gun, an empty slot or the player
+    // left: nothing to charge
+    ItemStack uncharged = chargedGun.clone();
+    var unMeta = (org.bukkit.inventory.meta.CrossbowMeta) uncharged.getItemMeta();
+    unMeta.setChargedProjectiles(null);
+    uncharged.setItemMeta(unMeta);
+    inv.setItem(shotSlot, uncharged);
+    manager.recharge(player, shotSlot, "another-gun");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    gun = inv.getItem(shotSlot);
+    setInt("bullets_loaded", 0);
+    inv.setItem(shotSlot, gun);
+    manager.recharge(player, shotSlot, "same-id");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    inv.setItem(shotSlot, new ItemStack(Material.CROSSBOW));
+    manager.recharge(player, shotSlot, "same-id");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    inv.setItem(shotSlot, new ItemStack(Material.STICK));
+    manager.recharge(player, shotSlot, "same-id");
+    assertEquals(Material.STICK, inv.getItem(shotSlot).getType());
+    inv.setItem(shotSlot, null);
+    manager.recharge(player, shotSlot, "same-id");
+    var gone = spy(player);
+    doReturn(false).when(gone).isOnline();
+    manager.recharge(gone, shotSlot, "same-id");
+    verify(gone, never()).getInventory();
   }
 
   @Test
