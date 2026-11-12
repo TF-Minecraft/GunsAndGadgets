@@ -252,6 +252,15 @@ old: {part-type: barrel, type: [rifle], smoke: .nan}
     assertFalse(old.isForged());
     assertEquals(NamespacedKey.fromString("tfmc_guns:rifle_aim"), forged.getForgedModel(SkinState.AIM));
     assertNull(old.getForgedModel(SkinState.CARRY));
+    // the scope pose (skins.yml scope): only skins that set it have one
+    assertFalse(forged.hasScopePose());
+    assertEquals(org.bukkit.Material.BARRIER, forged.parseModel(SkinState.SCOPE).getType());
+    new SkinLoader()
+        .load(file("skins.yml", "scoped_rifle: {forged-model: tfmc_guns:rifle, aim: crossbow, scope: ' spyglass ', types: [rifle]}\n").toFile());
+    SkinData scoped = SkinLoader.getByString("scoped_rifle");
+    assertTrue(scoped.hasScopePose());
+    assertEquals(org.bukkit.Material.SPYGLASS, scoped.parseModel(SkinState.SCOPE).getType());
+    assertEquals(NamespacedKey.fromString("tfmc_guns:rifle_scope"), scoped.getForgedModel(SkinState.SCOPE));
 
     // MockBukkit has no item models: check the calls on a mocked meta
     var meta = mock(org.bukkit.inventory.meta.ItemMeta.class);

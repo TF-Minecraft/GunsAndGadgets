@@ -31,7 +31,8 @@ import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
  * gun shows its aiming pose and the player walks slower, which also narrows the field of view (the
  * zoom). A scoped gun (a part with the {@code scoped} option, the arclock) becomes a spyglass while
  * aimed: hold right-click to look through the scope, and release once it is steady
- * ({@code aiming.scope-settle-seconds}) to fire; an earlier release lowers it without a shot.
+ * ({@code aiming.scope-settle-seconds}) to fire; an earlier release lowers it without a shot. It shows
+ * its skin's scope pose when there is one (skins.yml {@code scope}), else the ads pose.
  */
 public final class Aiming {
 
@@ -113,8 +114,10 @@ public final class Aiming {
         }
         aimed.put(player.getUniqueId(), gunId);
         zoom(player, true);
-        ItemStack item = guns.applyModel(held, skin, SkinState.ADS);
-        if (scoped(item)) {
+        boolean scoped = scoped(held);
+        ItemStack item = guns.applyModel(held, skin, scoped && skin.hasScopePose() ? SkinState.SCOPE : SkinState.ADS);
+        if (scoped) {
+            // looking through needs a spyglass whatever the pose's material
             item.setType(Material.SPYGLASS);
             guns.sendActionBar(player, Component.text("Hold ", NamedTextColor.GRAY)
                     .append(Component.keybind("key.use", NamedTextColor.YELLOW))

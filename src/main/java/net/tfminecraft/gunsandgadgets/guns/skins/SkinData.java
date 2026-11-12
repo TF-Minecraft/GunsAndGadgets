@@ -21,6 +21,8 @@ public class SkinData {
     private final String reload;
     private final String aim;
     private final String ads;
+    // The aimed pose of a scoped gun (a spyglass); empty: scoped guns use the ads pose.
+    private final String scope;
     private final List<String> types;
     private final List<String> options;
     // Forged guns: the item model prefix; the pose is appended (_carry, _reload, _aim).
@@ -33,6 +35,7 @@ public class SkinData {
         this.reload = config.getString("reload", "");
         this.aim = config.getString("aim", "");
         this.ads = config.getString("ads", aim);
+        this.scope = config.getString("scope", "").trim();
 
         this.types = new ArrayList<>(config.getStringList("types"));
         this.options = config.contains("options")
@@ -71,6 +74,11 @@ public class SkinData {
         return aim;
     }
 
+    /** Whether scoped guns of this skin show their own scope pose instead of the ads pose. */
+    public boolean hasScopePose() {
+        return !scope.isEmpty();
+    }
+
     public List<String> getTypes() {
         return types;
     }
@@ -87,6 +95,7 @@ public class SkinData {
         String path = switch (state) {
             case AIM -> aim;
             case ADS -> ads;
+            case SCOPE -> scope;
             case CARRY -> carry;
             case RELOAD -> reload;
         };

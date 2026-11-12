@@ -417,6 +417,23 @@ class GunManagerTest {
         // leaving the game ends the aim
         manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (net.kyori.adventure.text.Component) null, org.bukkit.event.player.PlayerQuitEvent.QuitReason.DISCONNECTED));
         assertFalse(aim.isAiming(player));
+        verify(skin, never()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        // a skin with a scope pose shows it while scoped (still a spyglass, whatever its material)
+        when(skin.hasScopePose()).thenReturn(true);
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE)).thenReturn(new ItemStack(Material.STICK));
+        loaded();
+        aim.start(player);
+        verify(skin).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        assertTrue(aim.isScoped(player, player.getInventory().getItemInMainHand()));
+        aim.stop(player);
+        // an unscoped gun keeps the ads pose even when the skin has a scope pose
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(null);
+        loaded();
+        aim.start(player);
+        verify(skin, times(1)).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        verify(skin, atLeastOnce()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS);
+        aim.stop(player);
       }
     } finally {
       Cache.aimingEnabled = wasOn;
