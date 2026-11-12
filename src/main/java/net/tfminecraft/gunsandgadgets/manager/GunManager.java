@@ -208,13 +208,23 @@ public class GunManager implements Listener {
         return item;
     }
 
+    /** The aimed pose: the ads model, with the crossbow charged again. */
+    public ItemStack showAimed(ItemStack item, SkinData skin) {
+        item = applyModel(item, skin, SkinState.ADS);
+        if (item.getType() == Material.CROSSBOW) {
+            String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+            chargeCrossbow(item, ammoId, loadedBullets(item));
+        }
+        return item;
+    }
+
     /** Crouch aims; letting go lowers the gun. */
     @EventHandler
     public void onSneak(PlayerToggleSneakEvent event) {
         aiming.onSneak(event.getPlayer(), event.isSneaking());
     }
 
-    /** Releasing right-click while looking through a scope fires. */
+    /** Releasing right-click while looking through a scope fires; either way the scope comes down. */
     @EventHandler
     public void onStopUsing(PlayerStopUsingItemEvent event) {
         if (!aiming.isScoped(event.getPlayer(), event.getItem())) {
@@ -223,9 +233,10 @@ public class GunManager implements Listener {
         // A quick tap lowers the scope without firing: the shot needs a steady scope.
         if (event.getTicksHeldFor() < Cache.scopeSettleTicks) {
             sendActionBar(event.getPlayer(), "§7Hold the scope until it steadies to fire.");
-            return;
+        } else {
+            handleGunUse(event.getPlayer(), RELEASE, true);
         }
-        handleGunUse(event.getPlayer(), RELEASE, true);
+        aiming.lowerScope(event.getPlayer());
     }
 
     /** The swap-hands key with a gun in hand picks the next shot instead of swapping hands. */
@@ -282,8 +293,14 @@ public class GunManager implements Listener {
             event.setCancelled(true);
             return;
         }
-        // Looking through a scope: right-click scopes in (the spyglass), releasing it fires.
+        // A raised scope (the spyglass): right-click looks through it, releasing fires.
         if (!release && aiming.isScoped(player, item)) {
+            return;
+        }
+        // An aimed scoped gun: right-click raises the scope instead of firing.
+        if (!release && aiming.canRaiseScope(player, item)) {
+            event.setCancelled(true);
+            aiming.raiseScope(player);
             return;
         }
         event.setCancelled(true);

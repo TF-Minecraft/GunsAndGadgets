@@ -84,10 +84,10 @@ handling:
 # Crouch with a loaded, drawn gun to aim it: the gun shows its sights-up pose and
 # the player walks slower, which narrows the field of view (the zoom; players who
 # turned FOV effects off only get the slowdown). slow is the share of walking speed
-# taken away (0 to 0.9). A scoped gun (the arclock) becomes a spyglass while aimed:
-# hold right-click to look through the scope and release once it is steady to fire.
-# scope-settle-seconds is how long the scope must be up first; an earlier release
-# lowers it without a shot. The swap-hands key with a gun in hand picks the next shot.
+# taken away (0 to 0.9). A scoped gun (the arclock) aims like any gun; while aimed,
+# hold right-click to look through the scope (the gun becomes a spyglass while it is
+# held) and release once it is steady to fire. scope-settle-seconds is how long the
+# scope must be up first; an earlier release lowers it without a shot. The swap-hands key with a gun in hand picks the next shot.
 # Shots fired without aiming spread wider: handling.spread-multipliers.hip.
 aiming:
     enabled: true
