@@ -103,6 +103,8 @@ public class GunManager implements Listener {
     // One click can arrive as several interact events (each hand, or an entity then the air)
     // spread over neighbouring ticks; clients allow a new click only every 4 ticks.
     private static final int AMMO_SWITCH_BURST_TICKS = 2;
+    /** The off hand's index in a player's inventory. */
+    static final int OFF_HAND_SLOT = 40;
     private final Map<UUID, Integer> lastAmmoSwitchTick = new HashMap<>();
 
     @EventHandler
@@ -141,18 +143,15 @@ public class GunManager implements Listener {
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onVanillaShot(EntityShootBowEvent event) {
-        if (DrawTimer.gunId(event.getBow()) == null) return;
+        String gunId = DrawTimer.gunId(event.getBow());
+        if (gunId == null) return;
         event.setCancelled(true);
         if (event.getEntity() instanceof Player player) {
             // the gun's own slot, so a hotbar change before next tick doesn't lose it
             int slot = event.getHand() == EquipmentSlot.OFF_HAND ? OFF_HAND_SLOT : player.getInventory().getHeldItemSlot();
-            String gunId = DrawTimer.gunId(event.getBow());
             Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> recharge(player, slot, gunId));
         }
     }
-
-    /** The off hand's index in a player's inventory. */
-    static final int OFF_HAND_SLOT = 40;
 
     /** Charges that gun's crossbow again if it lost its charge and is still in that slot, loaded. */
     void recharge(Player player, int slot, String gunId) {

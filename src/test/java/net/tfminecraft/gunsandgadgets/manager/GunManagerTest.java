@@ -1215,7 +1215,7 @@ class GunManagerTest {
     manager.onVanillaShot(shot);
     server.getScheduler().performTicks(1);
     assertTrue(charged.test(inv.getItemInOffHand()));
-    assertSame(inv.getItemInOffHand().getType(), inv.getItem(GunManager.OFF_HAND_SLOT).getType());
+    assertEquals(inv.getItemInOffHand(), inv.getItem(GunManager.OFF_HAND_SLOT));
     inv.setItemInOffHand(null);
     // already charged: left as it is
     ItemStack chargedGun = inv.getItem(shotSlot);
