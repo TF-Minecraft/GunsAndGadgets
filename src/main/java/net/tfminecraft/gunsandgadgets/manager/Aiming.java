@@ -50,8 +50,8 @@ public final class Aiming {
     private final Map<UUID, Integer> raised = new HashMap<>();
     /** A raised scope nobody looks through (a tap) is lowered after this many ticks. */
     static final int SCOPE_GRACE_TICKS = 10;
-    /** The held key repeats every 4 ticks; this allows for a little lag before the first repeat arrives. */
-    static final int SCOPE_REPEAT_WAIT_TICKS = 6;
+    /** The held key repeats every 4 ticks; this allows for some lag before the first repeat arrives. */
+    static final int SCOPE_REPEAT_WAIT_TICKS = 8;
     /** How long after an aim ended with the scope raised a click with that gun counts as the key still held. */
     static final int SCOPE_HELD_TICKS = 20;
     /** How much each swallowed repeat (the held key repeats every 4 ticks) extends that. */

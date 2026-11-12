@@ -118,12 +118,17 @@ public class GunManager implements Listener {
 
         // skip interactable blocks like chests, doors, etc.
         if (event.getClickedBlock() != null && event.getClickedBlock().getType().isInteractable()) {
-            // The block keeps its own use, but a gun never does the vanilla item use: a sneaking click skips
-            // the block, and a loaded gun (a charged crossbow) would be shot as one and lose its charge.
-            if (DrawTimer.gunId(event.getItem()) != null) {
-                event.setUseItemInHand(Event.Result.DENY);
+            boolean gun = DrawTimer.gunId(event.getItem()) != null;
+            if (!gun || !event.getPlayer().isSneaking()) {
+                // The block keeps its own use, but a gun is never used as the vanilla crossbow it is while
+                // loaded (it would be shot as one and lose its charge).
+                if (gun) {
+                    event.setUseItemInHand(Event.Result.DENY);
+                }
+                return;
             }
-            return;
+            // Sneaking with a gun: the game skips the block for an item in hand, so it is a gun click like
+            // anywhere else (aimed fire through a doorway, a raised scope looked through at a fence).
         }
 
         handleGunUse(event.getPlayer(), event); // your gun logic
@@ -131,9 +136,10 @@ public class GunManager implements Listener {
 
     /**
      * A gun is never shot as the vanilla crossbow it is while loaded. The click paths already stop that; this
-     * catches any other. The charge comes back next tick so the gun still looks loaded.
+     * catches any other. The game has cleared the charge by now, so it comes back next tick (even when another
+     * plugin cancelled the shot first) and the gun still looks loaded.
      */
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onVanillaShot(EntityShootBowEvent event) {
         if (DrawTimer.gunId(event.getBow()) == null) return;
         event.setCancelled(true);

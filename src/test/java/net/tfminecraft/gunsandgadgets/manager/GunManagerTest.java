@@ -569,6 +569,14 @@ class GunManagerTest {
         server.getScheduler().performTicks(Aiming.SCOPE_REPEAT_WAIT_TICKS + 1);
         aim.stop(idle);
         assertFalse(aim.holdsAfterScope(player, lowered));
+        // up to SCOPE_REPEAT_WAIT_TICKS after the raise the first repeat may still be on its way: it opens
+        loaded();
+        aim.start(player);
+        use();
+        server.getScheduler().performTicks(Aiming.SCOPE_REPEAT_WAIT_TICKS);
+        aim.stop(idle);
+        assertTrue(aim.holdsAfterScope(player, lowered));
+        aim.forget(player);
         // still looking through at the un-crouch: the window opens
         loaded();
         aim.start(player);
@@ -1106,6 +1114,14 @@ class GunManagerTest {
     manager.onRightClick(e);
     verify(e, never()).setCancelled(true);
     verify(e).setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+    verify(e, never()).setUseInteractedBlock(any());
+    // sneaking, the game skips the block for an item in hand: a gun click like anywhere else
+    player.setSneaking(true);
+    manager.onRightClick(e);
+    verify(e).setCancelled(true);
+    verify(e, times(1)).setUseItemInHand(any());
+    player.setSneaking(false);
+    clearInvocations(e);
     when(block.getType()).thenReturn(Material.STONE);
     manager.onRightClick(e);
     verify(e).setCancelled(true);
@@ -1183,6 +1199,15 @@ class GunManagerTest {
     server.getScheduler().performTicks(1);
     var meta = (org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta();
     assertTrue(meta.hasChargedProjectiles());
+    // the off hand the same
+    ItemStack offhand = player.getInventory().getItemInMainHand().clone();
+    var offMeta = (org.bukkit.inventory.meta.CrossbowMeta) offhand.getItemMeta();
+    offMeta.setChargedProjectiles(null);
+    offhand.setItemMeta(offMeta);
+    player.getInventory().setItemInOffHand(offhand);
+    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.OFF_HAND);
+    assertTrue(((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInOffHand().getItemMeta()).hasChargedProjectiles());
+    player.getInventory().setItemInOffHand(null);
     // already charged: left as it is
     ItemStack charged = player.getInventory().getItemInMainHand();
     manager.recharge(player, org.bukkit.inventory.EquipmentSlot.HAND);
