@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -208,13 +209,23 @@ public class GunManager implements Listener {
         return item;
     }
 
+    /** The aimed pose: the ads model, with the crossbow charged again. */
+    public ItemStack showAimed(ItemStack item, SkinData skin) {
+        item = applyModel(item, skin, SkinState.ADS);
+        if (item.getType() == Material.CROSSBOW) {
+            String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+            chargeCrossbow(item, ammoId, loadedBullets(item));
+        }
+        return item;
+    }
+
     /** Crouch aims; letting go lowers the gun. */
     @EventHandler
     public void onSneak(PlayerToggleSneakEvent event) {
         aiming.onSneak(event.getPlayer(), event.isSneaking());
     }
 
-    /** Releasing right-click while looking through a scope fires. */
+    /** Releasing right-click while looking through a scope fires; either way the scope comes down. */
     @EventHandler
     public void onStopUsing(PlayerStopUsingItemEvent event) {
         if (!aiming.isScoped(event.getPlayer(), event.getItem())) {
@@ -223,9 +234,12 @@ public class GunManager implements Listener {
         // A quick tap lowers the scope without firing: the shot needs a steady scope.
         if (event.getTicksHeldFor() < Cache.scopeSettleTicks) {
             sendActionBar(event.getPlayer(), "§7Hold the scope until it steadies to fire.");
-            return;
+        } else if (Objects.equals(DrawTimer.gunId(event.getItem()),
+                DrawTimer.gunId(event.getPlayer().getInventory().getItemInMainHand()))) {
+            // Only the gun whose scope was released fires (the raised spyglass keeps its gun id).
+            handleGunUse(event.getPlayer(), RELEASE, true);
         }
-        handleGunUse(event.getPlayer(), RELEASE, true);
+        aiming.lowerScope(event.getPlayer());
     }
 
     /** The swap-hands key with a gun in hand picks the next shot instead of swapping hands. */
@@ -251,13 +265,15 @@ public class GunManager implements Listener {
 
     void handleGunUse(Player player, Cancellable event, boolean release) {
         //quick offhand check just cancel
+        boolean offhandGun = false;
         ItemStack item = player.getInventory().getItemInOffHand();
         if(item != null) {
             if (item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
                 String skinId = meta.getPersistentDataContainer().get(skinKey, PersistentDataType.STRING);
                 if (skinId != null) {
-                    event.setCancelled(true);;
+                    event.setCancelled(true);
+                    offhandGun = true;
                 }
             }
         }
@@ -282,14 +298,26 @@ public class GunManager implements Listener {
             event.setCancelled(true);
             return;
         }
-        // Looking through a scope: right-click scopes in (the spyglass), releasing it fires.
+        // A raised scope (the spyglass): right-click looks through it, releasing fires.
         if (!release && aiming.isScoped(player, item)) {
             return;
         }
         event.setCancelled(true);
+        // Right-click still held after a raised scope came down (the aim ended): no shot from the hip.
+        if (!release && aiming.holdsAfterScope(player, item)) {
+            return;
+        }
         var session = Characters.currentSession(player).orElse(null);
         if (session == null && Characters.available()) return;
         if(!checkClass(player, item)) return;
+        // An aimed scoped gun: right-click raises the scope instead of firing. Not with a gun in the off
+        // hand: its clicks are cancelled, so the scope could never be looked through.
+        if (!release && aiming.canRaiseScope(player, item)) {
+            if (!offhandGun) {
+                aiming.raiseScope(player);
+            }
+            return;
+        }
         // ✅ Block duplicate reloads
         if (reloading.getOrDefault(id, false)) {
             return;
@@ -600,6 +628,7 @@ public class GunManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         aiming.stop(event.getPlayer());
+        aiming.forget(event.getPlayer());
         draw.forget(event.getPlayer());
         cancelActiveReload(event.getPlayer());
     }

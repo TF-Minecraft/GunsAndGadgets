@@ -374,23 +374,40 @@ class GunManagerTest {
         looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(mock(net.tfminecraft.gunsandgadgets.guns.parts.GunPart.class)));
         assertFalse(Aiming.scoped(gun));
         looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.CROSSBOW));
         var aim = manager.getAiming();
         player.setSneaking(true);
+        // aimed: still the two-handed (crossbow) gun, its scope not raised
         aim.start(player);
         ItemStack held = player.getInventory().getItemInMainHand();
+        assertEquals(Material.CROSSBOW, held.getType());
+        assertFalse(aim.isScoped(player, held));
+        assertTrue(aim.canRaiseScope(player, held));
+        assertFalse(aim.canRaiseScope(player, new ItemStack(Material.STICK)));
+        // right-click raises the scope: cancelled, no shot, the gun becomes a spyglass
+        Cancellable raise = use();
+        verify(raise).setCancelled(true);
+        shooter.verifyNoInteractions();
+        held = player.getInventory().getItemInMainHand();
         assertEquals(Material.SPYGLASS, held.getType());
         assertTrue(aim.isScoped(player, held));
         assertFalse(aim.isScoped(player, null));
-        // right-click looks through the scope: not fired, not cancelled
+        assertFalse(aim.canRaiseScope(player, held));
+        // the held key's repeat looks through it: not fired, not cancelled
         Cancellable click = use();
         verify(click, never()).setCancelled(true);
         shooter.verifyNoInteractions();
         int oldSettle = Cache.scopeSettleTicks;
         try {
           Cache.scopeSettleTicks = 12;
-          // a quick tap lowers the scope without a shot
+          // a quick tap lowers the scope back to the aimed gun without a shot
           manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 5));
           shooter.verifyNoInteractions();
+          assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+          assertTrue(aim.isAiming(player));
+          use();
+          held = player.getInventory().getItemInMainHand();
+          assertEquals(Material.SPYGLASS, held.getType());
           // the steady cue comes once per hold, when the scope has been up long enough
           var looker = mock(org.bukkit.entity.Player.class);
           when(looker.getUniqueId()).thenReturn(player.getUniqueId());
@@ -409,14 +426,152 @@ class GunManagerTest {
         } finally {
           Cache.scopeSettleTicks = oldSettle;
         }
-        // releasing it once steady fires
+        // a steady release of a spyglass that isn't the gun in hand fires nothing, but still lowers the scope
+        ItemStack stranger = held.clone();
+        var strangerMeta = stranger.getItemMeta();
+        strangerMeta.getPersistentDataContainer().set(DrawTimer.GUN_ID, PersistentDataType.STRING, "someone-else");
+        stranger.setItemMeta(strangerMeta);
+        manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, stranger, 20));
+        shooter.verifyNoInteractions();
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        use();
+        held = player.getInventory().getItemInMainHand();
+        assertEquals(Material.SPYGLASS, held.getType());
+        // releasing it once steady fires, and the scope comes down to the aimed gun (a shot is left)
         manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 20));
         shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()));
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        assertTrue(aim.isAiming(player));
+
+        // a tap nobody looks through comes down by itself after the grace ticks, not while looked through
+        use();
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        var idle = spy(player);
+        doReturn(false).when(idle).isHandRaised();
+        aim.tick(idle); // within the grace
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1);
+        var looking = spy(player);
+        doReturn(true).when(looking).isHandRaised();
+        doReturn(0).when(looking).getActiveItemUsedTime();
+        aim.tick(looking); // looked through: stays raised
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        aim.tick(idle);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        aim.tick(idle); // nothing raised
+        // lowering with nothing raised, an emptied gun, or a vanished design changes nothing
+        aim.lowerScope(player);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        use();
+        gun = player.getInventory().getItemInMainHand();
+        setInt("bullets_loaded", 0);
+        player.getInventory().setItemInMainHand(gun);
+        aim.lowerScope(player);
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        gun = player.getInventory().getItemInMainHand();
+        setInt("bullets_loaded", 1);
+        set("skin_id", "missing");
+        player.getInventory().setItemInMainHand(gun);
+        aim.lowerScope(player);
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        // a vanished design can't be raised either
+        player.getInventory().setItemInMainHand(new ItemStack(Material.CROSSBOW));
+        set("skin_id", "missing");
+        aim.raiseScope(player);
+        set("skin_id", "test");
+        loaded();
         // releasing anything else does nothing
         manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, new ItemStack(Material.BOW), 5));
         // leaving the game ends the aim
         manager.onQuit(new org.bukkit.event.player.PlayerQuitEvent(player, (net.kyori.adventure.text.Component) null, org.bukkit.event.player.PlayerQuitEvent.QuitReason.DISCONNECTED));
         assertFalse(aim.isAiming(player));
+        verify(skin, never()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        // a skin with a scope pose shows it while scoped (still a spyglass, whatever its material)
+        when(skin.hasScopePose()).thenReturn(true);
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE)).thenReturn(new ItemStack(Material.STICK));
+        loaded();
+        aim.start(player);
+        verify(skin, never()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        use();
+        verify(skin).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        assertTrue(aim.isScoped(player, player.getInventory().getItemInMainHand()));
+        aim.stop(player);
+        server.getScheduler().performTicks(Aiming.SCOPE_HELD_TICKS + 1); // past the held-key window
+        // an unscoped gun has no scope to raise, even when the skin has a scope pose
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(null);
+        loaded();
+        aim.start(player);
+        assertFalse(aim.canRaiseScope(player, player.getInventory().getItemInMainHand()));
+        verify(skin, times(1)).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
+        verify(skin, atLeastOnce()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS);
+        aim.stop(player);
+        // with a gun in the off hand the scope isn't raised (its clicks are cancelled, so it could never be
+        // looked through), and nothing fires
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.CROSSBOW));
+        loaded();
+        aim.start(player);
+        player.getInventory().setItemInOffHand(gun.clone());
+        verify(use(), atLeastOnce()).setCancelled(true);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // still only the release shot
+        player.getInventory().setItemInOffHand(null);
+        // the aim ending with the scope raised (an un-crouch while looking through): right-click still held
+        // is swallowed, not fired from the hip; each swallowed repeat extends that until the key is let go
+        use();
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        aim.stop(player);
+        assertFalse(aim.isAiming(player));
+        ItemStack lowered = player.getInventory().getItemInMainHand();
+        server.getScheduler().performTicks(Aiming.SCOPE_HELD_TICKS - 2);
+        use(); // a repeat: swallowed, and the window extended
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1));
+        server.getScheduler().performTicks(Aiming.SCOPE_HELD_REPEAT_TICKS - 2);
+        assertTrue(aim.holdsAfterScope(player, lowered)); // past the first window: the swallowed repeat kept it
+        server.getScheduler().performTicks(Aiming.SCOPE_HELD_REPEAT_TICKS + 1);
+        assertFalse(aim.holdsAfterScope(player, lowered)); // let go: over
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        // clicks however fast stop being swallowed SCOPE_HELD_MAX_TICKS after the aim ended (an 8-tick step:
+        // within SCOPE_HELD_REPEAT_TICKS, and landing on SCOPE_HELD_MAX_TICKS)
+        loaded();
+        aim.start(player);
+        use();
+        aim.stop(player);
+        for (int t = 8; t <= Aiming.SCOPE_HELD_MAX_TICKS; t += 8) {
+          server.getScheduler().performTicks(8);
+          assertTrue(aim.holdsAfterScope(player, lowered));
+        }
+        server.getScheduler().performTicks(8);
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        // another gun isn't swallowed (and its click ends the window)
+        loaded();
+        aim.start(player);
+        use();
+        aim.stop(player);
+        assertTrue(aim.holdsAfterScope(player, lowered));
+        assertFalse(aim.holdsAfterScope(player, new ItemStack(Material.STICK)));
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        // aiming again clears it
+        loaded();
+        aim.start(player);
+        use();
+        aim.stop(player);
+        aim.start(player);
+        assertFalse(aim.holdsAfterScope(player, lowered));
+        aim.stop(player);
+        aim.forget(player);
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // the raising clicks didn't fire
+        // a stopped aim leaves nothing raised: aiming again, the grace doesn't touch the crossbow
+        loaded();
+        aim.start(player);
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1);
+        aim.tick(idle);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        aim.stop(player);
+        // an ads model that isn't a crossbow is shown as it is: nothing to charge
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.BOW));
+        assertEquals(Material.BOW, manager.showAimed(new ItemStack(Material.CROSSBOW), skin).getType());
       }
     } finally {
       Cache.aimingEnabled = wasOn;
@@ -444,6 +599,7 @@ class GunManagerTest {
       // moved to another slot while scoped: it is lowered there, not left a spyglass
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       ItemStack held = player.getInventory().getItemInMainHand();
       assertEquals(Material.SPYGLASS, held.getType());
       assertTrue(aim.isAimedGun(player, held));
@@ -458,6 +614,7 @@ class GunManagerTest {
       // on the cursor, emptied: back to the carry look
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       gun = player.getInventory().getItemInMainHand();
       player.getInventory().setItemInMainHand(null);
       setInt("bullets_loaded", 0);
@@ -469,6 +626,7 @@ class GunManagerTest {
       set("skin_id", "test");
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       gun = player.getInventory().getItemInMainHand();
       player.getInventory().setItemInMainHand(null);
       set("skin_id", "missing");
@@ -479,6 +637,7 @@ class GunManagerTest {
       set("skin_id", "test");
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       gun = player.getInventory().getItemInMainHand();
       player.getInventory().setItemInMainHand(null);
       set("skin_id", "missing");
@@ -490,6 +649,7 @@ class GunManagerTest {
       set("skin_id", "test");
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       player.getInventory().setItemInMainHand(null);
       aim.tick(player);
       assertFalse(aim.isAiming(player));
@@ -497,6 +657,7 @@ class GunManagerTest {
       // dropped while scoped: it lands lowered
       loaded();
       aim.start(player);
+      aim.raiseScope(player);
       held = player.getInventory().getItemInMainHand();
       var drop = mock(org.bukkit.event.player.PlayerDropItemEvent.class);
       when(drop.getPlayer()).thenReturn(player);

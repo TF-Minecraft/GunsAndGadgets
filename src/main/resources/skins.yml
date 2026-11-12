@@ -64,13 +64,17 @@ launcher:
 
 # Forged guns (every part forged) are drawn part by part by the pack's tfmc_guns item models:
 # forged-model + _carry/_reload/_aim/_ads, on the material for that pose (crossbow keeps the aiming hold;
-# ads defaults to the aim material).
+# ads defaults to the aim material). scope: a scoped gun's (the arclock's) raised scope, while right-click
+# is held aimed, uses forged-model + _scope on this material (spyglass): the pack's pose for a gun held as
+# a spyglass. Without it a raised scope shows the ads pose. A raised scope is always a spyglass, so on a
+# forged skin the value only turns the pose on (not air: an air model leaves the gun in its previous pose).
 # Remove these to show forged guns with the designs above instead.
 forged_rifle:
   forged-model: tfmc_guns:rifle
   carry: stone_hoe
   reload: stone_hoe
   aim: crossbow
+  scope: spyglass
   types:
     - rifle
 
