@@ -521,7 +521,8 @@ class GunManagerTest {
         server.getScheduler().performTicks(Aiming.SCOPE_HELD_REPEAT_TICKS + 1);
         assertFalse(aim.holdsAfterScope(player, lowered)); // let go: over
         assertFalse(aim.holdsAfterScope(player, lowered));
-        // clicks however fast stop being swallowed SCOPE_HELD_MAX_TICKS after the aim ended
+        // clicks however fast stop being swallowed SCOPE_HELD_MAX_TICKS after the aim ended (an 8-tick step:
+        // within SCOPE_HELD_REPEAT_TICKS, and landing on SCOPE_HELD_MAX_TICKS)
         loaded();
         aim.start(player);
         use();
@@ -549,7 +550,7 @@ class GunManagerTest {
         assertFalse(aim.holdsAfterScope(player, lowered));
         aim.stop(player);
         aim.forget(player);
-        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // no stray shots
+        shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()), times(1)); // the raising clicks didn't fire
         // a stopped aim leaves nothing raised: aiming again, the grace doesn't touch the crossbow
         loaded();
         aim.start(player);

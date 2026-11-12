@@ -92,7 +92,7 @@ public final class Aiming {
             return false;
         }
         heldAfterScope.put(player.getUniqueId(),
-                new HeldAfterScope(held.gunId(), Math.min(now + SCOPE_HELD_REPEAT_TICKS, held.latest()), held.latest()));
+                new HeldAfterScope(held.gunId(), Math.min(Math.max(held.until(), now + SCOPE_HELD_REPEAT_TICKS), held.latest()), held.latest()));
         return true;
     }
 
