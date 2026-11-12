@@ -41,10 +41,12 @@ import org.bukkit.Sound;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -56,6 +58,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CrossbowMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -115,10 +118,40 @@ public class GunManager implements Listener {
 
         // skip interactable blocks like chests, doors, etc.
         if (event.getClickedBlock() != null && event.getClickedBlock().getType().isInteractable()) {
+            // The block keeps its own use, but a gun never does the vanilla item use: a sneaking click skips
+            // the block, and a loaded gun (a charged crossbow) would be shot as one and lose its charge.
+            if (DrawTimer.gunId(event.getItem()) != null) {
+                event.setUseItemInHand(Event.Result.DENY);
+            }
             return;
         }
 
         handleGunUse(event.getPlayer(), event); // your gun logic
+    }
+
+    /**
+     * A gun is never shot as the vanilla crossbow it is while loaded. The click paths already stop that; this
+     * catches any other. The charge comes back next tick so the gun still looks loaded.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onVanillaShot(EntityShootBowEvent event) {
+        if (DrawTimer.gunId(event.getBow()) == null) return;
+        event.setCancelled(true);
+        if (event.getEntity() instanceof Player player) {
+            EquipmentSlot hand = event.getHand();
+            Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> recharge(player, hand));
+        }
+    }
+
+    /** Charges a loaded gun's crossbow again if it lost its charge. */
+    void recharge(Player player, EquipmentSlot hand) {
+        if (!player.isOnline()) return;
+        ItemStack item = player.getInventory().getItem(hand);
+        if (item.getType() != Material.CROSSBOW || DrawTimer.gunId(item) == null || loadedBullets(item) <= 0) return;
+        if (((CrossbowMeta) item.getItemMeta()).hasChargedProjectiles()) return;
+        String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
+        chargeCrossbow(item, ammoId, loadedBullets(item));
+        player.getInventory().setItem(hand, item);
     }
 
     @EventHandler
