@@ -426,6 +426,17 @@ class GunManagerTest {
         } finally {
           Cache.scopeSettleTicks = oldSettle;
         }
+        // a steady release of a spyglass that isn't the gun in hand fires nothing, but still lowers the scope
+        ItemStack stranger = held.clone();
+        var strangerMeta = stranger.getItemMeta();
+        strangerMeta.getPersistentDataContainer().set(DrawTimer.GUN_ID, PersistentDataType.STRING, "someone-else");
+        stranger.setItemMeta(strangerMeta);
+        manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, stranger, 20));
+        shooter.verifyNoInteractions();
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        use();
+        held = player.getInventory().getItemInMainHand();
+        assertEquals(Material.SPYGLASS, held.getType());
         // releasing it once steady fires, and the scope comes down to the aimed gun (a shot is left)
         manager.onStopUsing(new io.papermc.paper.event.player.PlayerStopUsingItemEvent(player, held, 20));
         shooter.verify(() -> ProjectileShooter.shoot(eq(player), any(), any()));

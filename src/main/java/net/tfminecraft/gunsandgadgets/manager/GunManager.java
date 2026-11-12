@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -233,7 +234,9 @@ public class GunManager implements Listener {
         // A quick tap lowers the scope without firing: the shot needs a steady scope.
         if (event.getTicksHeldFor() < Cache.scopeSettleTicks) {
             sendActionBar(event.getPlayer(), "§7Hold the scope until it steadies to fire.");
-        } else {
+        } else if (Objects.equals(DrawTimer.gunId(event.getItem()),
+                DrawTimer.gunId(event.getPlayer().getInventory().getItemInMainHand()))) {
+            // Only the gun whose scope was released fires (the raised spyglass keeps its gun id).
             handleGunUse(event.getPlayer(), RELEASE, true);
         }
         aiming.lowerScope(event.getPlayer());
