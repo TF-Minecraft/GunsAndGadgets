@@ -144,20 +144,25 @@ public class GunManager implements Listener {
         if (DrawTimer.gunId(event.getBow()) == null) return;
         event.setCancelled(true);
         if (event.getEntity() instanceof Player player) {
-            EquipmentSlot hand = event.getHand();
-            Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> recharge(player, hand));
+            // the gun's own slot, so a hotbar change before next tick doesn't lose it
+            int slot = event.getHand() == EquipmentSlot.OFF_HAND ? OFF_HAND_SLOT : player.getInventory().getHeldItemSlot();
+            String gunId = DrawTimer.gunId(event.getBow());
+            Bukkit.getScheduler().runTask(GunsAndGadgets.getInstance(), () -> recharge(player, slot, gunId));
         }
     }
 
-    /** Charges a loaded gun's crossbow again if it lost its charge. */
-    void recharge(Player player, EquipmentSlot hand) {
+    /** The off hand's index in a player's inventory. */
+    static final int OFF_HAND_SLOT = 40;
+
+    /** Charges that gun's crossbow again if it lost its charge and is still in that slot, loaded. */
+    void recharge(Player player, int slot, String gunId) {
         if (!player.isOnline()) return;
-        ItemStack item = player.getInventory().getItem(hand);
-        if (item.getType() != Material.CROSSBOW || DrawTimer.gunId(item) == null || loadedBullets(item) <= 0) return;
+        ItemStack item = player.getInventory().getItem(slot);
+        if (item == null || item.getType() != Material.CROSSBOW || !gunId.equals(DrawTimer.gunId(item)) || loadedBullets(item) <= 0) return;
         if (((CrossbowMeta) item.getItemMeta()).hasChargedProjectiles()) return;
         String ammoId = item.getItemMeta().getPersistentDataContainer().get(loadedAmmoKey, PersistentDataType.STRING);
         chargeCrossbow(item, ammoId, loadedBullets(item));
-        player.getInventory().setItem(hand, item);
+        player.getInventory().setItem(slot, item);
     }
 
     @EventHandler

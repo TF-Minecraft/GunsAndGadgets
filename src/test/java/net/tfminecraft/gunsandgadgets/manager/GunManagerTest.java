@@ -1186,52 +1186,67 @@ class GunManagerTest {
     when(shot.getEntity()).thenReturn(mock(org.bukkit.entity.Skeleton.class));
     manager.onVanillaShot(shot);
     verify(shot).setCancelled(true);
-    // a player's loaded gun: cancelled, and next tick its crossbow is charged again
+    // a player's loaded gun: cancelled, and next tick that gun's crossbow is charged again
+    java.util.function.Predicate<ItemStack> charged =
+        i -> ((org.bukkit.inventory.meta.CrossbowMeta) i.getItemMeta()).hasChargedProjectiles();
+    var inv = player.getInventory();
     loaded();
-    gun = player.getInventory().getItemInMainHand();
+    gun = inv.getItemInMainHand();
     gun.setType(Material.CROSSBOW);
-    player.getInventory().setItemInMainHand(gun);
+    inv.setItemInMainHand(gun);
     when(shot.getEntity()).thenReturn(player);
     when(shot.getHand()).thenReturn(org.bukkit.inventory.EquipmentSlot.HAND);
+    int shotSlot = inv.getHeldItemSlot();
     manager.onVanillaShot(shot);
     verify(shot, times(2)).setCancelled(true);
-    assertFalse(((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta()).hasChargedProjectiles());
+    assertFalse(charged.test(inv.getItemInMainHand()));
+    // a hotbar change before next tick: still the shot gun, in its own slot, is charged again
+    inv.setHeldItemSlot((shotSlot + 1) % 9);
     server.getScheduler().performTicks(1);
-    var meta = (org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta();
-    assertTrue(meta.hasChargedProjectiles());
+    assertTrue(charged.test(inv.getItem(shotSlot)));
+    inv.setHeldItemSlot(shotSlot);
     // the off hand the same
-    ItemStack offhand = player.getInventory().getItemInMainHand().clone();
+    ItemStack offhand = inv.getItemInMainHand().clone();
     var offMeta = (org.bukkit.inventory.meta.CrossbowMeta) offhand.getItemMeta();
     offMeta.setChargedProjectiles(null);
     offhand.setItemMeta(offMeta);
-    player.getInventory().setItemInOffHand(offhand);
-    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.OFF_HAND);
-    assertTrue(((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInOffHand().getItemMeta()).hasChargedProjectiles());
-    player.getInventory().setItemInOffHand(null);
+    inv.setItemInOffHand(offhand);
+    when(shot.getHand()).thenReturn(org.bukkit.inventory.EquipmentSlot.OFF_HAND);
+    manager.onVanillaShot(shot);
+    server.getScheduler().performTicks(1);
+    assertTrue(charged.test(inv.getItemInOffHand()));
+    assertSame(inv.getItemInOffHand().getType(), inv.getItem(GunManager.OFF_HAND_SLOT).getType());
+    inv.setItemInOffHand(null);
     // already charged: left as it is
-    ItemStack charged = player.getInventory().getItemInMainHand();
-    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.HAND);
-    assertEquals(1, ((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta()).getChargedProjectiles().size());
-    assertEquals(charged, player.getInventory().getItemInMainHand());
-    // nothing loaded, not a crossbow, not a gun, or the player left: nothing to charge
+    ItemStack chargedGun = inv.getItem(shotSlot);
+    manager.recharge(player, shotSlot, "same-id");
+    assertEquals(1, ((org.bukkit.inventory.meta.CrossbowMeta) inv.getItem(shotSlot).getItemMeta()).getChargedProjectiles().size());
+    assertEquals(chargedGun, inv.getItem(shotSlot));
+    // another gun now in that slot, nothing loaded, not a crossbow, not a gun, an empty slot or the player
+    // left: nothing to charge
+    ItemStack uncharged = chargedGun.clone();
+    var unMeta = (org.bukkit.inventory.meta.CrossbowMeta) uncharged.getItemMeta();
+    unMeta.setChargedProjectiles(null);
+    uncharged.setItemMeta(unMeta);
+    inv.setItem(shotSlot, uncharged);
+    manager.recharge(player, shotSlot, "another-gun");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    gun = inv.getItem(shotSlot);
     setInt("bullets_loaded", 0);
-    gun.setItemMeta(gun.getItemMeta());
-    ItemStack empty = gun.clone();
-    var emptyMeta = (org.bukkit.inventory.meta.CrossbowMeta) empty.getItemMeta();
-    emptyMeta.setChargedProjectiles(null);
-    empty.setItemMeta(emptyMeta);
-    player.getInventory().setItemInMainHand(empty);
-    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.HAND);
-    assertFalse(((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta()).hasChargedProjectiles());
-    player.getInventory().setItemInMainHand(new ItemStack(Material.CROSSBOW));
-    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.HAND);
-    assertFalse(((org.bukkit.inventory.meta.CrossbowMeta) player.getInventory().getItemInMainHand().getItemMeta()).hasChargedProjectiles());
-    player.getInventory().setItemInMainHand(new ItemStack(Material.STICK));
-    manager.recharge(player, org.bukkit.inventory.EquipmentSlot.HAND);
-    assertEquals(Material.STICK, player.getInventory().getItemInMainHand().getType());
+    inv.setItem(shotSlot, gun);
+    manager.recharge(player, shotSlot, "same-id");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    inv.setItem(shotSlot, new ItemStack(Material.CROSSBOW));
+    manager.recharge(player, shotSlot, "same-id");
+    assertFalse(charged.test(inv.getItem(shotSlot)));
+    inv.setItem(shotSlot, new ItemStack(Material.STICK));
+    manager.recharge(player, shotSlot, "same-id");
+    assertEquals(Material.STICK, inv.getItem(shotSlot).getType());
+    inv.setItem(shotSlot, null);
+    manager.recharge(player, shotSlot, "same-id");
     var gone = spy(player);
     doReturn(false).when(gone).isOnline();
-    manager.recharge(gone, org.bukkit.inventory.EquipmentSlot.HAND);
+    manager.recharge(gone, shotSlot, "same-id");
     verify(gone, never()).getInventory();
   }
 
