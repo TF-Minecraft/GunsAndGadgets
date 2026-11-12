@@ -50,6 +50,12 @@ public final class Aiming {
     private final Map<UUID, Integer> raised = new HashMap<>();
     /** A raised scope nobody looks through (a tap) is lowered after this many ticks. */
     static final int SCOPE_GRACE_TICKS = 10;
+    /**
+     * Until when (server tick) a click counts as right-click still held after the aim ended with the
+     * scope raised. The held key repeats every 4 ticks, and each swallowed repeat extends it, so it ends
+     * once the key has been let go for {@link #SCOPE_GRACE_TICKS}.
+     */
+    private final Map<UUID, Integer> heldAfterScope = new HashMap<>();
 
     Aiming(GunManager guns) {
         this.guns = guns;
@@ -62,6 +68,24 @@ public final class Aiming {
     /** A raised scope: the aimed gun is a spyglass, so right-click looks through it instead of firing. */
     public boolean isScoped(Player player, ItemStack item) {
         return isAiming(player) && item != null && item.getType() == Material.SPYGLASS;
+    }
+
+    /**
+     * Whether this click is right-click still held after the aim ended while the scope was raised (an
+     * un-crouch while looking through): it is swallowed rather than fired from the hip.
+     */
+    boolean holdsAfterScope(Player player) {
+        Integer until = heldAfterScope.get(player.getUniqueId());
+        if (until == null) {
+            return false;
+        }
+        int now = Bukkit.getCurrentTick();
+        if (now > until) {
+            heldAfterScope.remove(player.getUniqueId());
+            return false;
+        }
+        heldAfterScope.put(player.getUniqueId(), now + SCOPE_GRACE_TICKS);
+        return true;
     }
 
     /** An aimed scoped gun whose scope isn't raised: a right-click raises it instead of firing. */
@@ -172,7 +196,9 @@ public final class Aiming {
     void stop(Player player) {
         String gunId = aimed.remove(player.getUniqueId());
         steadied.remove(player.getUniqueId());
-        raised.remove(player.getUniqueId());
+        if (raised.remove(player.getUniqueId()) != null) {
+            heldAfterScope.put(player.getUniqueId(), Bukkit.getCurrentTick() + SCOPE_GRACE_TICKS);
+        }
         if (gunId == null) {
             return;
         }

@@ -486,6 +486,7 @@ class GunManagerTest {
         assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
         assertTrue(aim.isScoped(player, player.getInventory().getItemInMainHand()));
         aim.stop(player);
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1); // past the held-key window
         // an unscoped gun has no scope to raise, even when the skin has a scope pose
         looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(null);
         loaded();
@@ -493,6 +494,36 @@ class GunManagerTest {
         assertFalse(aim.canRaiseScope(player, player.getInventory().getItemInMainHand()));
         verify(skin, times(1)).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.SCOPE);
         verify(skin, atLeastOnce()).parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS);
+        aim.stop(player);
+        // with a gun in the off hand the scope isn't raised (its clicks are cancelled, so it could never be
+        // looked through), and nothing fires
+        looks.when(() -> net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook.stampedParts(any())).thenReturn(java.util.List.of(scope));
+        when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.CROSSBOW));
+        loaded();
+        aim.start(player);
+        player.getInventory().setItemInOffHand(gun.clone());
+        verify(use(), atLeastOnce()).setCancelled(true);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
+        player.getInventory().setItemInOffHand(null);
+        // the aim ending with the scope raised (an un-crouch while looking through): right-click still held
+        // is swallowed, not fired from the hip; each swallowed repeat extends that until the key is let go
+        use();
+        assertEquals(Material.SPYGLASS, player.getInventory().getItemInMainHand().getType());
+        aim.stop(player);
+        assertFalse(aim.isAiming(player));
+        server.getScheduler().performTicks(6);
+        use(); // a repeat: swallowed, and the window extended
+        server.getScheduler().performTicks(6);
+        assertTrue(aim.holdsAfterScope(player)); // past the first window: only the swallowed repeat kept it
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1);
+        assertFalse(aim.holdsAfterScope(player)); // let go: over
+        assertFalse(aim.holdsAfterScope(player));
+        // a stopped aim leaves nothing raised: aiming again, the grace doesn't touch the crossbow
+        loaded();
+        aim.start(player);
+        server.getScheduler().performTicks(Aiming.SCOPE_GRACE_TICKS + 1);
+        aim.tick(idle);
+        assertEquals(Material.CROSSBOW, player.getInventory().getItemInMainHand().getType());
         aim.stop(player);
         // an ads model that isn't a crossbow is shown as it is: nothing to charge
         when(skin.parseModel(net.tfminecraft.gunsandgadgets.guns.skins.SkinState.ADS)).thenReturn(new ItemStack(Material.BOW));

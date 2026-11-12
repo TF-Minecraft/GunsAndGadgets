@@ -262,13 +262,15 @@ public class GunManager implements Listener {
 
     void handleGunUse(Player player, Cancellable event, boolean release) {
         //quick offhand check just cancel
+        boolean offhandGun = false;
         ItemStack item = player.getInventory().getItemInOffHand();
         if(item != null) {
             if (item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
                 String skinId = meta.getPersistentDataContainer().get(skinKey, PersistentDataType.STRING);
                 if (skinId != null) {
-                    event.setCancelled(true);;
+                    event.setCancelled(true);
+                    offhandGun = true;
                 }
             }
         }
@@ -297,16 +299,22 @@ public class GunManager implements Listener {
         if (!release && aiming.isScoped(player, item)) {
             return;
         }
-        // An aimed scoped gun: right-click raises the scope instead of firing.
-        if (!release && aiming.canRaiseScope(player, item)) {
-            event.setCancelled(true);
-            aiming.raiseScope(player);
+        event.setCancelled(true);
+        // Right-click still held after a raised scope came down (the aim ended): no shot from the hip.
+        if (!release && aiming.holdsAfterScope(player)) {
             return;
         }
-        event.setCancelled(true);
         var session = Characters.currentSession(player).orElse(null);
         if (session == null && Characters.available()) return;
         if(!checkClass(player, item)) return;
+        // An aimed scoped gun: right-click raises the scope instead of firing. Not with a gun in the off
+        // hand: its clicks are cancelled, so the scope could never be looked through.
+        if (!release && aiming.canRaiseScope(player, item)) {
+            if (!offhandGun) {
+                aiming.raiseScope(player);
+            }
+            return;
+        }
         // ✅ Block duplicate reloads
         if (reloading.getOrDefault(id, false)) {
             return;
