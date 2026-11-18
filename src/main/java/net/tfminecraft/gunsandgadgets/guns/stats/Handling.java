@@ -88,7 +88,7 @@ public final class Handling {
         static final double MAX = 2.0;
 
         /** From the gun's stats: positive means steadier (moving 40 lets 60% of the penalty through). */
-        public static Steadiness of(int movingStat, int mountedStat, int sneakingStat) {
+        public static Steadiness of(double movingStat, double mountedStat, double sneakingStat) {
             return new Steadiness(clamp(1.0 - movingStat / 100.0), clamp(1.0 - mountedStat / 100.0),
                     clamp(1.0 + sneakingStat / 100.0));
         }
@@ -249,7 +249,7 @@ public final class Handling {
     }
 
     /** The gun's full-damage distance: the configured start plus its parts' falloff stat. */
-    public static double falloffStart(int falloffStat) {
+    public static double falloffStart(double falloffStat) {
         return Math.max(0.0, Cache.falloffStartDistance + falloffStat);
     }
 }

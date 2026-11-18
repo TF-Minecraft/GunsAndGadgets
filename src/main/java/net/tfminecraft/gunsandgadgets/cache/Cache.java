@@ -67,6 +67,17 @@ public class Cache {
     public static double rocketSafeDistance = 4.0;
     public static double rocketMinMultiplier = 0.1;
     public static double rocketFullDistance = 0.0;
+    /**
+     * Fire rate on a single-shot gun (handling.single-shot-fire-rate): one reload point per
+     * per-reload fire rate, at most max either way. 0 keeps fire rate out of the reload.
+     */
+    public static double singleShotFireRatePerReload = 0.0;
+    public static double singleShotFireRateMax = 1.0;
+    /**
+     * Pierce past 20 (handling.pierce-overflow.full-at): that many points over ignore all of the
+     * target's damage reduction, fewer a share of it. 0 = pierce stops at 20.
+     */
+    public static double pierceOverflowFullAt = 0.0;
     /** Item model prefix for the gun type buttons (type-icons): <prefix><type>_carry, a steel build. */
     public static String typeIconPrefix = "";
 

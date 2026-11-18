@@ -604,7 +604,7 @@ revolver:
     - draw -10
   fixed:
     - capacity 6
-    - damage_percent -55
+    - damage_percent -50
   sounds:
     - shoot minecraft:block.tripwire.click_on pitch=1.4 volume=0.4
   name-impact:

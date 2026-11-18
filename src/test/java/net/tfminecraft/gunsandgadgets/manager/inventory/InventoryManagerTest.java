@@ -396,15 +396,15 @@ class InventoryManagerTest {
         .thenReturn(
             Map.of(
                 Stats.values()[0],
-                -1,
+                -1.0,
                 Stats.values()[1],
-                0,
+                0.0,
                 Stats.values()[2],
-                2,
+                2.5,
                 Stats.values()[3],
-                5,
+                5.0,
                 Stats.values()[4],
-                8));
+                8.0));
     when(action.hasCost()).thenReturn(true);
     when(action.getCost()).thenReturn(Map.of("v.iron_ingot", 2));
     manager.openPartSelection(player, "action");
@@ -612,8 +612,11 @@ class InventoryManagerTest {
     when(action.hasTier()).thenReturn(true);
     when(action.getTier()).thenReturn(2);
     manager.openPartSelection(player, "action");
-    assertEquals(
-        1, player.getOpenInventory().getTopInventory().getItem(0).getItemMeta().getLore().size());
+    // the tier line, then (no description spacer) the gunsmith's note that it is on the gun
+    var lore = player.getOpenInventory().getTopInventory().getItem(0).getItemMeta().getLore();
+    assertEquals(3, lore.size());
+    assertEquals("", lore.get(1));
+    assertEquals("§aOn your gun now", lore.get(2));
   }
 
   @Test
@@ -744,7 +747,7 @@ class InventoryManagerTest {
       assertEquals("§eClick to choose the material", heavy.getItemMeta().getLore().getLast());
       var light = top.getItem(2);
       assertEquals("light", string(light, "forge_base"));
-      assertEquals("", light.getItemMeta().getLore().getFirst());
+      assertEquals("§7On your gun:", light.getItemMeta().getLore().getFirst());
       assertNull(top.getItem(3));
 
       // Choosing the part opens its materials: only those the player may forge.
@@ -780,6 +783,83 @@ class InventoryManagerTest {
       net.tfminecraft.gunsandgadgets.loader.MetalLoader.clear();
       java.nio.file.Files.deleteIfExists(metals);
     }
+  }
+
+  List<String> plainLore(ItemStack item) {
+    return item.getItemMeta().getLore().stream().map(l -> l.replaceAll("(?i)§[0-9a-fk-orx]", "")).toList();
+  }
+
+  @Test
+  void theGunsmithShowsHowEachChoiceWouldChangeTheGun() throws Exception {
+    var ammo = java.nio.file.Files.createTempFile("ammo", ".yml");
+    java.nio.file.Files.writeString(ammo, "plain: {stats: [damage 5]}\nweak: {amount: 2, stats: [damage 1]}\n");
+    new AmmunitionLoader().load(ammo.toFile());
+    var barrel = forged("long", "steel", "barrel");
+    when(barrel.getCalibers()).thenReturn(List.of("plain"));
+    part("single", "chamber", 2);
+    var proof = forged("proof", "steel", "chamber");
+    when(proof.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.POWERED);
+    var quick = forged("quick", "iron", "chamber");
+    when(quick.getStats()).thenReturn(Map.of(Stats.RELOAD, 4.0));
+    manager.openPartSelection(player, "chamber");
+    var top = player.getOpenInventory().getTopInventory();
+    assertTrue(plainLore(top.getItem(0)).contains("On your gun now"));
+    // a proofed chamber can't take the barrel's plain shot
+    var proofLore = plainLore(top.getItem(1));
+    assertTrue(proofLore.contains("On your gun:"), proofLore.toString());
+    assertTrue(proofLore.contains("No shot fits it with your other parts"));
+    assertTrue(proofLore.contains("■ Loads powered shot only"));
+    // a quicker chamber shows the reload before and after
+    assertTrue(plainLore(top.getItem(2)).contains("■ Reload: 3 s → 2.4 s"), plainLore(top.getItem(2)).toString());
+    // the material screen lists each variant's facts and change too
+    manager.openMetalSelection(player, "chamber", "proof");
+    var steel = plainLore(player.getOpenInventory().getTopInventory().getItem(0));
+    assertTrue(steel.contains("■ Loads powered shot only"));
+    assertTrue(steel.contains("No shot fits it with your other parts"));
+    // the strongest shot hits hardest with its pellets together; unknown keys are skipped
+    assertNull(InventoryManager.strongestShot(List.of("missing"), 0));
+    assertEquals("plain", InventoryManager.strongestShot(List.of("weak", "missing", "plain", "weak"), 0).getKey());
+    // the gun's flat damage lands on every pellet: 2 × (5 + 1) beats 5 + 5
+    assertEquals("weak", InventoryManager.strongestShot(List.of("plain", "weak"), 5).getKey());
+    // a barrel whose shot is unknown loads nothing
+    var odd = forged("odd", "steel", "barrel");
+    when(odd.getCalibers()).thenReturn(List.of("missing"));
+    manager.openPartSelection(player, "barrel");
+    var barrels = player.getOpenInventory().getTopInventory();
+    assertTrue(plainLore(barrels.getItem(1)).contains("No shot fits it with your other parts"), plainLore(barrels.getItem(1)).toString());
+  }
+
+  @Test
+  void thePartListShowsAForgedPartInTheMaterialOfThePartNowInItsSlot() {
+    fitted("grip", "oak", "leather", "stock"); // on the gun now
+    // another oak stock: its leather one, else its first oak one
+    fitted("saddle", "oak", "wool", "stock");
+    var saddle = fitted("saddle", "oak", "leather", "stock");
+    when(saddle.getStats()).thenReturn(Map.of(Stats.ACCURACY, 3.0));
+    var pad = fitted("pad", "oak", "wool", "stock");
+    when(pad.getStats()).thenReturn(Map.of(Stats.ACCURACY, 5.0));
+    fitted("pad", "oak", "fur", "stock");
+    // no oak: maplewood, the reference wood, else the first wood
+    forged("cheek", "barkwood", "stock");
+    var maple = forged("cheek", "maplewood", "stock");
+    when(maple.getStats()).thenReturn(Map.of(Stats.ACCURACY, 2.0));
+    forged("cheek", "demonwood", "stock");
+    var elder = forged("plain", "elderwood", "stock");
+    when(elder.getStats()).thenReturn(Map.of(Stats.ACCURACY, 4.0));
+    forged("plain", "demonwood", "stock");
+    manager.openPartSelection(player, "stock");
+    var top = player.getOpenInventory().getTopInventory();
+    assertTrue(plainLore(top.getItem(0)).contains("On your gun now"));
+    assertTrue(plainLore(top.getItem(1)).contains("■ Spread: 25° → 11.5°"), plainLore(top.getItem(1)).toString());
+    assertTrue(plainLore(top.getItem(2)).contains("■ Spread: 25° → 2.5°"), plainLore(top.getItem(2)).toString());
+    assertTrue(plainLore(top.getItem(3)).contains("■ Spread: 25° → 16°"), plainLore(top.getItem(3)).toString());
+    assertTrue(plainLore(top.getItem(4)).contains("■ Spread: 25° → 7°"), plainLore(top.getItem(4)).toString());
+    // a fitted part's material button lists its facts and how good quality would change the gun
+    when(pad.getAmmoFilter()).thenReturn(GunPart.AmmoFilter.PLAIN);
+    manager.openMetalSelection(player, "stock", "pad");
+    var oak = plainLore(player.getOpenInventory().getTopInventory().getItem(0));
+    assertTrue(oak.contains("■ Loads plain shot only"), oak.toString());
+    assertTrue(oak.contains("On your gun, wool:"), oak.toString()); // no metals.yml: the fitting is named by its id
   }
 
   GunPart fitted(String base, String metal, String fitting, String category) {
@@ -833,8 +913,8 @@ fur: {kind: animal, tier: 1}
       assertEquals("Oak Saddle", oak.getItemMeta().getDisplayName());
       assertEquals("Light wood", oak.getItemMeta().getLore().getFirst());
       assertEquals("§eClick to choose the fitting", oak.getItemMeta().getLore().getLast());
-      // the plain variant's arrows (good quality) and what it takes besides the fitting
-      assertTrue(oak.getItemMeta().getLore().stream().anyMatch(l -> l.contains("Accuracy")));
+      // how good quality would change the gun, and what it takes besides the fitting
+      assertTrue(oak.getItemMeta().getLore().contains("§7On your gun, good quality:"));
       assertTrue(oak.getItemMeta().getLore().contains("§7Fitted with leather, wool or silk:"));
       assertTrue(oak.getItemMeta().getLore().contains("§7- §fLeather, wool or silk §e2"));
       Cache.requireInput = false; // a server without crafting costs lists no inputs
@@ -847,7 +927,10 @@ fur: {kind: animal, tier: 1}
       // without a plain variant the amount is left out
       assertTrue(ash.getItemMeta().getLore().contains("§7- §fLeather or fur"));
       assertEquals("Base saddle", ash.getItemMeta().getDisplayName()); // no plain ash variant
-      assertEquals("§7Fitted with leather or fur:", ash.getItemMeta().getLore().getFirst());
+      // no good quality in ash: the heading names the fitting it shows
+      assertTrue(ash.getItemMeta().getLore().getFirst().startsWith("§7On your gun, "));
+      assertFalse(ash.getItemMeta().getLore().getFirst().contains("good quality"));
+      assertTrue(ash.getItemMeta().getLore().contains("§7Fitted with leather or fur:"));
       // one type alone needs no "or"
       assertEquals("leather", InventoryManager.fittingTypes(List.of(PartLoader.getByString("saddle@birch+leather"))));
       assertEquals("birch", string(top.getItem(2), "forge_metal"));

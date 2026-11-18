@@ -13,6 +13,7 @@ import org.bukkit.persistence.PersistentDataType;
 
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
+import net.tfminecraft.gunsandgadgets.guns.stats.GunStats;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.stats.Handling;
 
@@ -130,7 +131,7 @@ public final class DrawTimer {
             return 0;
         }
         int base = Cache.drawBaseTicks.getOrDefault(type, 0);
-        int stat = pdc.getOrDefault(key("stat_value_draw"), PersistentDataType.INTEGER, 0);
+        double stat = GunStats.get(pdc, "draw", 0);
         double factor = Math.min(2.0, Math.max(0.5, 1.0 - stat / 100.0));
         return base * factor;
     }

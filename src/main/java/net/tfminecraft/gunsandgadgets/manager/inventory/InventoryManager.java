@@ -53,6 +53,7 @@ import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinResolver;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
+import net.tfminecraft.gunsandgadgets.guns.stats.GunSheet;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatApplier;
 import net.tfminecraft.gunsandgadgets.guns.stats.Stats;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
@@ -156,7 +157,8 @@ public class InventoryManager implements Listener {
             inv.setItem(size / 2, barrier);
         } else {
             for (GunPart part : options) {
-                ItemStack option = part.isForged() ? createForgedChoiceItem(part) : createPartItem(part);
+                ItemStack option = part.isForged() ? createForgedChoiceItem(player, chosen, part)
+                        : createPartItem(part, changeOnGun(player, chosen, part, "§7On your gun:"));
                 inv.addItem(option);
             }
         }
@@ -183,11 +185,11 @@ public class InventoryManager implements Listener {
         Inventory inv = Bukkit.createInventory(new MetalSelectionHolder(partCategoryId, baseId), size, "§6Select Material");
         if (byMetal.isEmpty()) {
             for (GunPart variant : variants) {
-                inv.addItem(createPartItem(variant));
+                inv.addItem(createPartItem(variant, changeOnGun(player, chosen, variant, "§7On your gun:")));
             }
         } else {
             for (List<GunPart> fitted : byMetal.values()) {
-                inv.addItem(createMaterialChoiceItem(fitted));
+                inv.addItem(createMaterialChoiceItem(player, chosen, fitted));
             }
         }
         inv.setItem(size - 1, backButton());
@@ -212,7 +214,10 @@ public class InventoryManager implements Listener {
         int size = Math.max(9, Math.min(54, ((last + 1) / 9 + 1) * 9));
         Inventory inv = Bukkit.createInventory(new FittingSelectionHolder(partCategoryId, baseId, metalId), size, "§6Select Fitting");
         for (int i = 0; i < fitted.size(); i++) {
-            if (slots.get(i) < size - 1) inv.setItem(slots.get(i), createPartItem(fitted.get(i)));
+            if (slots.get(i) < size - 1) {
+                inv.setItem(slots.get(i), createPartItem(fitted.get(i),
+                        changeOnGun(player, chosen, fitted.get(i), "§7On your gun:")));
+            }
         }
         inv.setItem(size - 1, backButton());
         player.openInventory(inv);
@@ -258,7 +263,7 @@ public class InventoryManager implements Listener {
     /** One material of a part that takes a fitting: the part in that material, before the fitting is chosen. */
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
-    private ItemStack createMaterialChoiceItem(List<GunPart> fitted) {
+    private ItemStack createMaterialChoiceItem(Player player, GunType chosen, List<GunPart> fitted) {
         GunPart variant = fitted.getFirst();
         ItemStack i = createPartItem(variant);
         ItemMeta m = i.getItemMeta();
@@ -272,12 +277,18 @@ public class InventoryManager implements Listener {
             lore.addAll(metal.getDescription());
             lore.add("");
         }
-        // The plain variant has the part's written values: what good quality gives in this material.
-        List<String> arrows = ForgeLore.lines(plain != null ? plain : variant);
-        if (!arrows.isEmpty()) {
-            lore.addAll(arrows);
+        List<String> facts = ForgeLore.facts(variant);
+        if (!facts.isEmpty()) {
+            lore.addAll(facts);
             lore.add("");
         }
+        // Good quality keeps the part's written values: the gun with it in this material.
+        GunPart shown = goodQuality(fitted);
+        Metal quality = MetalLoader.getByString(shown.getFittingId());
+        String label = quality == null ? shown.getFittingId()
+                : quality.getTier() == 2 ? "good quality" : StringFormatter.formatHex(quality.getName()) + "§7";
+        lore.addAll(changeOnGun(player, chosen, shown, "§7On your gun, " + label + ":"));
+        lore.add("");
         String types = fittingTypes(fitted);
         lore.add("§7Fitted with " + types + ":");
         lore.add("§7better quality improves what this part is for.");
@@ -327,7 +338,7 @@ public class InventoryManager implements Listener {
     /** A forged part in the part list: its tendencies, and a click to choose the material. */
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
-    private ItemStack createForgedChoiceItem(GunPart part) {
+    private ItemStack createForgedChoiceItem(Player player, GunType chosen, GunPart part) {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
         ItemMeta m = i.getItemMeta();
         ForgedLook.applyIcon(m, part, false);
@@ -338,7 +349,15 @@ public class InventoryManager implements Listener {
             lore.add(StringFormatter.formatHex(line));
         }
         if (!lore.isEmpty()) lore.add("");
-        lore.addAll(ForgeLore.lines(part, false)); // the reference (steel) arrows, whichever material comes first
+        List<String> facts = ForgeLore.facts(part);
+        if (!facts.isEmpty()) {
+            lore.addAll(facts);
+            lore.add("");
+        }
+        GunPart shown = representative(player, chosen, part);
+        Metal metal = MetalLoader.getByString(shown.getMetalId());
+        String in = metal == null ? "" : ", in " + StringFormatter.formatHex(metal.getName()) + "§7";
+        lore.addAll(changeOnGun(player, chosen, shown, "§7On your gun" + in + ":"));
         lore.add("");
         lore.add("§eClick to choose the material");
         m.setLore(lore);
@@ -688,7 +707,8 @@ public class InventoryManager implements Listener {
             base.setItemMeta(meta);
 
             // Apply stats afterwards (so lore & stat PDCs get written)
-            base = StatApplier.apply(base, parts, gui);
+            Ammunition shot = strongestShot(calibers, StatApplier.combineStats(parts).getOrDefault(Stats.DAMAGE, 0.0));
+            base = StatApplier.apply(base, parts, gui, type, shot, shotName(shot));
             int majority = MajorityTierResolver.resolve(parts);
             if (majority > 0) {
                 TierLore.applyTo(base, majority);
@@ -889,6 +909,94 @@ public class InventoryManager implements Listener {
 
 
 
+    /**
+     * How {@code candidate} would change the player's gun: the gun as now chosen against the same
+     * gun with the candidate in its slot, in the units of {@link GunSheet}.
+     */
+    List<String> changeOnGun(Player player, GunType chosen, GunPart candidate, String heading) {
+        Collection<GunPart> current = collectPartsForPlayer(player, chosen);
+        List<String> lines = new ArrayList<>();
+        if (current.stream().anyMatch(part -> part.getId().equals(candidate.getId()))) {
+            lines.add("§aOn your gun now");
+            return lines;
+        }
+        // The candidate takes its slot's place (the gun has one part per slot, and the candidate's
+        // slot has one since the candidate is offered), so the last caliber override stays the same part's.
+        List<GunPart> swapped = new ArrayList<>();
+        for (GunPart part : current) {
+            swapped.add(part.getPartType().getId().equalsIgnoreCase(candidate.getPartType().getId()) ? candidate : part);
+        }
+        lines.add(heading);
+        if (strongestShot(resolveCalibers(swapped), 0) == null && declaresShot(swapped)) {
+            lines.add("§cNo shot fits it with your other parts");
+            return lines;
+        }
+        lines.addAll(GunSheet.compare(sheet(chosen, current), sheet(chosen, swapped)));
+        return lines;
+    }
+
+    private GunSheet sheet(GunType type, Collection<GunPart> parts) {
+        Map<Stats, Double> totals = StatApplier.combineStats(parts);
+        Ammunition shot = strongestShot(resolveCalibers(parts), totals.getOrDefault(Stats.DAMAGE, 0.0));
+        return GunSheet.of(type, totals, shot, shotName(shot));
+    }
+
+    /**
+     * The shot that hits hardest of those a gun loads, all pellets together, each with the gun's
+     * flat {@code damage}; null when none of them is known.
+     */
+    static Ammunition strongestShot(List<String> calibers, double damage) {
+        Ammunition best = null;
+        double bestDamage = Double.NEGATIVE_INFINITY;
+        for (String key : calibers) {
+            Ammunition ammo = AmmunitionLoader.getByString(key);
+            if (ammo == null) continue;
+            double total = (damage + ammo.getStats().getOrDefault("damage", 0)) * Math.max(1, ammo.getAmount());
+            if (total > bestDamage) {
+                best = ammo;
+                bestDamage = total;
+            }
+        }
+        return best;
+    }
+
+    private static String shotName(Ammunition shot) {
+        return shot == null ? null
+                : StringFormatter.getName(TLibs.getItemAPI().getCreator().getItemFromPath(shot.getInput()));
+    }
+
+    /**
+     * The variant a forged part shows in the part list: the material (and fitting) of the part now
+     * in that slot when this part comes in it, else steel or maplewood, else its first material.
+     * The part itself came from this list, so the slot has a part and the list is never empty.
+     */
+    private GunPart representative(Player player, GunType chosen, GunPart part) {
+        List<GunPart> variants = selectable(player, part.getPartType().getId(), chosen, part.getBaseId());
+        GunPart current = getSelectedOrFirstPart(part.getPartType().getId(), chosen, player);
+        GunPart sameMetal = null;
+        GunPart reference = null;
+        for (GunPart variant : variants) {
+            if (java.util.Objects.equals(variant.getMetalId(), current.getMetalId())) {
+                if (java.util.Objects.equals(variant.getFittingId(), current.getFittingId())) return variant;
+                if (sameMetal == null) sameMetal = variant;
+            }
+            if (reference == null && ("steel".equals(variant.getMetalId()) || "maplewood".equals(variant.getMetalId()))) {
+                reference = variant;
+            }
+        }
+        if (sameMetal != null) return sameMetal;
+        return reference != null ? reference : variants.getFirst();
+    }
+
+    /** Of one material's fitted variants, the good quality (tier 2) one: the part's written values. */
+    private static GunPart goodQuality(List<GunPart> fitted) {
+        for (GunPart variant : fitted) {
+            Metal fitting = MetalLoader.getByString(variant.getFittingId());
+            if (fitting != null && fitting.getTier() == 2) return variant;
+        }
+        return fitted.getFirst();
+    }
+
     public Collection<GunPart> collectPartsForPlayer(Player player, GunType chosen) {
         Collection<GunPart> parts = new ArrayList<>();
         for (PartData partData : PartDataLoader.get().values()) {
@@ -905,6 +1013,13 @@ public class InventoryManager implements Listener {
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     private ItemStack createPartItem(GunPart part) {
+        return createPartItem(part, List.of());
+    }
+
+    /** A part's item; {@code change} (how it would change the player's gun) goes before the input. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private ItemStack createPartItem(GunPart part, List<String> change) {
         ItemStack i = TLibs.getItemAPI().getCreator().getItemFromPath(part.getItemKey());
 
         ItemMeta m = i.getItemMeta();
@@ -932,18 +1047,18 @@ public class InventoryManager implements Listener {
             }
         }
 
-        if (part.isForged()) {
-            // What the part does, not by how much: the material sets the numbers on the gun.
+        List<String> facts = part.isForged() ? ForgeLore.facts(part) : List.of();
+        if (!facts.isEmpty()) {
             lore.add("");
-            lore.addAll(ForgeLore.lines(part));
-        } else if (!part.getStats().isEmpty()) {
+            lore.addAll(facts);
+        } else if (!part.isForged() && !part.getStats().isEmpty()) {
             // Add stats
             lore.add(""); // spacer line
             lore.add(StringFormatter.formatHex("#b38e88§lStats:"));
 
-            for (Map.Entry<Stats, Integer> entry : part.getStats().entrySet()) {
+            for (Map.Entry<Stats, Double> entry : part.getStats().entrySet()) {
                 Stats stat = entry.getKey();
-                int value = entry.getValue();
+                double value = entry.getValue();
 
                 // Fixed color for stat names
                 String statColor = "#c2b48a"; // cyan-ish for readability
@@ -964,9 +1079,14 @@ public class InventoryManager implements Listener {
 
                 // Format line
                 String line = "§7■ "+statColor + stat.getDisplayName()
-                            + "§e: " + valueColor + value;
+                            + "§e: " + valueColor + PartForge.format(value);
                 lore.add(StringFormatter.formatHex(line));
             }
+        }
+
+        if (!change.isEmpty()) {
+            lore.add("");
+            lore.addAll(change);
         }
 
         if(part.hasCost() && Cache.requireInput) {

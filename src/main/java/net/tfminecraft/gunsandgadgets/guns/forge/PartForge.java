@@ -87,11 +87,29 @@ public final class PartForge {
                 variants.put(variantId(key, metal.getId(), animal.getId()), fit(definition, legacy, metal, animal, fitting));
             }
         }
+        warnIdentical(key, variants);
         if (variants.isEmpty()) {
             // Guns already forged from this part would lose it and break: say so loudly.
             System.out.println("Forged part " + key + " has no material to be forged from; check metals.yml and its 'material'/'metals' keys");
         }
         return variants;
+    }
+
+    /**
+     * Two materials of one part with the same fitting and the same stats: picking between them
+     * changes nothing. (A rough wood with a fine fitting may match a better wood with a plain one.)
+     */
+    static void warnIdentical(String key, Map<String, ConfigurationSection> variants) {
+        Map<String, String> seen = new java.util.HashMap<>();
+        for (Map.Entry<String, ConfigurationSection> variant : variants.entrySet()) {
+            if (variant.getValue().getBoolean("forge.legacy")) continue;
+            String other = seen.putIfAbsent(variant.getValue().getString("forge.fitting", "") + "|"
+                    + variant.getValue().getStringList("stats"), variant.getKey());
+            if (other != null) {
+                System.out.println("Forged part " + key + ": " + other + " and " + variant.getKey()
+                        + " have the same stats");
+            }
+        }
     }
 
     /** A fitting stat that is not one of the part's tendencies would scale nothing: say so. */
@@ -209,14 +227,14 @@ public final class PartForge {
 
     /** With a fitting, the stats it names are scaled by the fitting too, after the material. */
     static List<String> stats(ConfigurationSection definition, Metal metal, Metal fitting, List<String> fitted) {
-        Map<String, Integer> totals = new LinkedHashMap<>();
+        Map<String, Double> totals = new LinkedHashMap<>();
         for (Map.Entry<Stats, Double> tendency : parse(definition.getStringList("tendencies")).entrySet()) {
             String stat = tendency.getKey().getKey();
             double value = metal.scale(stat, tendency.getValue());
             if (fitting != null && fitted.contains(stat)) {
                 value = fitting.scale(stat, value);
             }
-            totals.merge(stat, round(value), Integer::sum);
+            totals.merge(stat, value, Double::sum);
         }
         addFixed(totals, definition.getStringList("fixed"));
         ConfigurationSection byMetal = definition.getConfigurationSection("by-metal");
@@ -224,13 +242,13 @@ public final class PartForge {
             addFixed(totals, byMetal.getStringList(metal.getId()));
         }
         List<String> lines = new ArrayList<>();
-        totals.forEach((stat, value) -> lines.add(stat + " " + value));
+        totals.forEach((stat, value) -> lines.add(stat + " " + format(round(value))));
         return lines;
     }
 
-    private static void addFixed(Map<String, Integer> totals, List<String> lines) {
+    private static void addFixed(Map<String, Double> totals, List<String> lines) {
         for (Map.Entry<Stats, Double> fixed : parse(lines).entrySet()) {
-            totals.merge(fixed.getKey().getKey(), round(fixed.getValue()), Integer::sum);
+            totals.merge(fixed.getKey().getKey(), fixed.getValue(), Double::sum);
         }
     }
 
@@ -256,10 +274,22 @@ public final class PartForge {
         return parsed;
     }
 
-    /** Half away from zero, so a downside rounds as far as the matching upside. */
-    static int round(double value) {
-        long magnitude = Math.round(Math.abs(value));
-        return (int) (value < 0 ? -magnitude : magnitude);
+    /**
+     * To one decimal, half away from zero, so a downside rounds as far as the matching upside.
+     * One decimal keeps every material apart: whole numbers made a small stat (1 × 0.8, 1 × 1.15)
+     * read the same in several materials, so an upgrade could change nothing.
+     */
+    static double round(double value) {
+        long magnitude = Math.round(Math.abs(value) * 10.0 + 1e-9);
+        return (value < 0 ? -magnitude : magnitude) / 10.0;
+    }
+
+    /** "4", "-1.3": a stat value as parts.yml writes it. */
+    public static String format(double value) {
+        if (value == Math.rint(value)) {
+            return Long.toString((long) value);
+        }
+        return Double.toString(value);
     }
 
     private static List<String> cost(ConfigurationSection definition, Metal metal) {

@@ -194,7 +194,7 @@ class ProjectileShooterTest {
               Location.class,
               Location.class,
               double.class,
-              int.class,
+              double.class,
               int.class
             },
             player,
@@ -673,6 +673,44 @@ class ProjectileShooterTest {
   }
 
   @Test
+  void piercePastTwentyIgnoresAShareOfDamageReduction() {
+    var target = mock(LivingEntity.class);
+    var previous = ProjectileShooter.damageReduction;
+    try {
+      ProjectileShooter.damageReduction = t -> 20.0;
+      Cache.pierceOverflowFullAt = 0; // off: pierce stops at 20
+      assertEquals(1.0, ProjectileShooter.overflowFactor(target, 30));
+      Cache.pierceOverflowFullAt = 20;
+      assertEquals(1.0, ProjectileShooter.overflowFactor(target, 20));
+      // 10 over: half of the 20% is ignored, so the hit grows by 0.9 / 0.8
+      assertEquals(1.125, ProjectileShooter.overflowFactor(target, 30), 1e-9);
+      assertEquals(1.25, ProjectileShooter.overflowFactor(target, 60), 1e-9);
+      ProjectileShooter.applyDamage(player, target, 10, 30);
+      verify(target).damage(eq(11.25), any(org.bukkit.damage.DamageSource.class));
+      ProjectileShooter.damageReduction = t -> 300.0; // read as at most 95%
+      assertEquals(10.5, ProjectileShooter.overflowFactor(target, 30), 1e-9);
+      ProjectileShooter.damageReduction = t -> -10.0;
+      assertEquals(1.0, ProjectileShooter.overflowFactor(target, 30), 1e-9);
+    } finally {
+      ProjectileShooter.damageReduction = previous;
+      Cache.pierceOverflowFullAt = 0;
+    }
+  }
+
+  @Test
+  void damageReductionIsReadFromMythicLibPlayersOnly() {
+    var target = mock(LivingEntity.class);
+    try (var data = mockStatic(io.lumine.mythic.lib.api.player.MMOPlayerData.class)) {
+      data.when(() -> io.lumine.mythic.lib.api.player.MMOPlayerData.getOrNull(target)).thenReturn(null);
+      assertEquals(0.0, ProjectileShooter.damageReduction.applyAsDouble(target));
+      var mmo = mock(io.lumine.mythic.lib.api.player.MMOPlayerData.class, RETURNS_DEEP_STUBS);
+      when(mmo.getStatMap().getStat("DAMAGE_REDUCTION")).thenReturn(15.0);
+      data.when(() -> io.lumine.mythic.lib.api.player.MMOPlayerData.getOrNull(target)).thenReturn(mmo);
+      assertEquals(15.0, ProjectileShooter.damageReduction.applyAsDouble(target));
+    }
+  }
+
+  @Test
   void piercingDamageIsCreditedToTheShooter() {
     var target = mock(LivingEntity.class);
     ProjectileShooter.applyDamage(player, target, 10, 20);
@@ -732,7 +770,7 @@ class ProjectileShooterTest {
         .thenReturn(List.of(near, far, otherPlayer, player, mock(Entity.class)));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+        new Class<?>[] {Player.class, Location.class, double.class, double.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         10.0,
@@ -767,7 +805,7 @@ class ProjectileShooterTest {
       // fired at the ground at one's feet: others take a tenth, the shooter all of it
       call(
           "explode",
-          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          new Class<?>[] {Player.class, Location.class, double.class, double.class, int.class, double.class},
           player,
           new Location(world, 0, 0, 0),
           10.0,
@@ -779,7 +817,7 @@ class ProjectileShooterTest {
       // a long shot hits in full, however fast the rocket flew
       call(
           "explode",
-          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          new Class<?>[] {Player.class, Location.class, double.class, double.class, int.class, double.class},
           player,
           new Location(world, 0, 0, 0),
           10.0,
@@ -805,7 +843,7 @@ class ProjectileShooterTest {
     for (int ticks : new int[] {0, 10, 30}) {
       call(
           "explode",
-          new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+          new Class<?>[] {Player.class, Location.class, double.class, double.class, int.class, double.class},
           player,
           new Location(world, 0, 0, 0),
           10.0,
@@ -816,7 +854,7 @@ class ProjectileShooterTest {
     verify(player, times(3)).damage(eq(10.0), any(org.bukkit.damage.DamageSource.class));
     call(
         "explode",
-        new Class<?>[] {Player.class, Location.class, double.class, int.class, int.class, double.class},
+        new Class<?>[] {Player.class, Location.class, double.class, double.class, int.class, double.class},
         player,
         new Location(world, 0, 0, 0),
         20.0,
@@ -839,7 +877,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
-          int.class,
+          double.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class,
           Color.class
@@ -915,7 +953,7 @@ class ProjectileShooterTest {
           double.class,
           double.class,
           double.class,
-          int.class,
+          double.class,
           net.tfminecraft.vehicleframework.vehicles.ActiveVehicle.class,
           java.util.function.DoubleSupplier.class,
           Color.class

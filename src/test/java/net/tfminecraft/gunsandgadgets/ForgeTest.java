@@ -153,8 +153,8 @@ heavy:
     ConfigurationSection iron = variants.get("heavy@iron");
     assertEquals("§7Iron §7Heavy Barrel", iron.getString("name"));
     assertEquals(1, iron.getInt("tier"));
-    // accuracy (4 + 1) * 0.8 = 4, speed 10 * 0.8 = 8, reload -2 * 1.25 = -2.5 rounds away from zero.
-    assertEquals(List.of("accuracy 4", "speed 8", "reload -3", "capacity 1"), iron.getStringList("stats"));
+    // accuracy (4 + 1) * 0.8 = 4, speed 10 * 0.8 = 8, reload -2 * 1.25 = -2.5 (one decimal, half away from zero).
+    assertEquals(List.of("accuracy 4", "speed 8", "reload -2.5", "capacity 1"), iron.getStringList("stats"));
     assertEquals(List.of("capacity 1"), iron.getStringList("forge.fixed"));
     assertEquals(List.of("v.iron_ingot(6)", "v.leather(2)"), iron.getStringList("cost"));
     assertEquals(List.of(), iron.getStringList("permissions"));
@@ -166,7 +166,7 @@ heavy:
     assertFalse(iron.contains("tendencies"));
 
     ConfigurationSection mythril = variants.get("heavy@mythril");
-    assertEquals(List.of("accuracy 6", "speed 16", "reload -1", "capacity 4"), mythril.getStringList("stats"));
+    assertEquals(List.of("accuracy 6.3", "speed 16", "reload -1", "capacity 4"), mythril.getStringList("stats"));
     // the material's own extras show in its lore (the multi-tube's rockets per material)
     assertEquals(List.of("capacity 1", "capacity 3"), mythril.getStringList("forge.fixed"));
     assertEquals(List.of("extra", "ironshot", "ironshot_powered", "mythrilshot"), mythril.getStringList("caliber"));
@@ -236,14 +236,14 @@ stock:
     // The plain variant keeps the old stats (for guns forged before fittings) and is hidden.
     ConfigurationSection plain = variants.get("stock@iron");
     assertTrue(plain.getBoolean("forge.legacy"));
-    assertEquals(List.of("accuracy 2", "moving 16", "reload -3"), plain.getStringList("stats"));
+    assertEquals(List.of("accuracy 1.6", "moving 16", "reload -2.5"), plain.getStringList("stats"));
     assertEquals(List.of("v.iron_ingot(2)", "v.string(1)"), plain.getStringList("cost"));
     assertFalse(plain.contains("forge.fitting"));
     // A fitting scales only its stats, after the material, and costs its item.
     ConfigurationSection leather = variants.get("stock@iron+leather");
     assertEquals("§7Iron §7Stock §7(§fLeather§7)", leather.getString("name"));
     assertFalse(leather.contains("forge.legacy"));
-    assertEquals(List.of("accuracy 2", "moving 12", "reload -3"), leather.getStringList("stats"));
+    assertEquals(List.of("accuracy 1.6", "moving 12", "reload -2.5"), leather.getStringList("stats"));
     assertEquals(
         List.of("v.iron_ingot(2)", "v.string(1)", "m.materials.leather(3)"), leather.getStringList("cost"));
     assertEquals("leather", leather.getString("forge.fitting"));
@@ -254,7 +254,7 @@ stock:
     assertEquals(List.of("moving 16"), variants.get("stock@iron+rare_leather").getStringList("stats").subList(1, 2));
     // A fitting without a cost adds none.
     ConfigurationSection feather = variants.get("stock@iron+feather");
-    assertEquals(List.of("accuracy 2", "moving 24", "reload -3"), feather.getStringList("stats"));
+    assertEquals(List.of("accuracy 1.6", "moving 24", "reload -2.5"), feather.getStringList("stats"));
     assertEquals(List.of("v.iron_ingot(2)", "v.string(1)"), feather.getStringList("cost"));
 
     // 'materials' limits the fittings; the amount is at least one; no match leaves the plain variant.
@@ -273,7 +273,7 @@ stock:
     assertEquals(List.of("b@iron", "b@iron+leather"), new ArrayList<>(PartForge.expand("b", both).keySet()));
     // a fitting stat the part doesn't have still loads (with a warning) and scales nothing
     var typo = yaml("y: {metals: [iron], fitting: {stats: [firerate, MOVING]}, tendencies: [moving 4]}").getConfigurationSection("y");
-    assertEquals(List.of("moving 2"), PartForge.expand("y", typo).get("y@iron+leather").getStringList("stats"));
+    assertEquals(List.of("moving 2.4"), PartForge.expand("y", typo).get("y@iron+leather").getStringList("stats"));
     var none = yaml("n: {metals: [iron], fitting: {materials: [silk]}, tendencies: [moving 1]}").getConfigurationSection("n");
     assertEquals(List.of("n@iron"), new ArrayList<>(PartForge.expand("n", none).keySet()));
 
@@ -289,13 +289,11 @@ stock:
     assertTrue(legacy.isLegacy());
     assertFalse(legacy.isDisabled());
     assertFalse(legacy.isEnabledForCrafting());
-    // Its lore arrows follow the fitting too: feather 24 shows two, leather 12 one.
-    assertTrue(strip(ForgeLore.lines(fitted)).contains("■ Steady on the Move: ▲▲"));
-    assertTrue(strip(ForgeLore.lines(PartLoader.getByString("stock@iron+leather"))).contains("■ Steady on the Move: ▲"));
-    assertTrue(strip(ForgeLore.lines(fitted, false)).contains("■ Steady on the Move: ▲"));
-    // A fitting missing from metals.yml (removed after the gun was made) scales nothing.
-    loadMetals();
-    assertTrue(strip(ForgeLore.lines(fitted)).contains("■ Steady on the Move: ▲"));
+    // Its stats follow the fitting: feather 24, leather 12, the plain iron part 16.
+    assertEquals(24.0, fitted.getStats().get(Stats.MOVING));
+    assertEquals(12.0, PartLoader.getByString("stock@iron+leather").getStats().get(Stats.MOVING));
+    assertEquals(16.0, legacy.getStats().get(Stats.MOVING));
+    assertEquals(List.of(), ForgeLore.facts(fitted));
   }
 
   @Test
@@ -376,45 +374,28 @@ tight:
   fixed: [spread 7, spread -7, capacity 0]
 """)
                 .toFile());
-    List<String> wide = strip(ForgeLore.lines(PartLoader.getByString("wide@iron")));
+    // The lore says what a part always is; how much it changes a gun is the gunsmith's comparison.
+    List<String> wide = strip(ForgeLore.facts(PartLoader.getByString("wide@iron")));
     assertEquals(
         List.of(
             "■ Holds 6 shots",
             "■ Pellet Spread: Wide",
-            // in iron: smaller upsides, harsher downsides
-            "■ Accuracy: ▲",
-            "■ Speed: ▼▼▼",
-            "■ Pierce: ▲",
-            "■ Reload: ▲",
-            "■ Fire Rate: ▼▼",
-            "■ Range: ▲▲",
-            "■ Full Damage Range: ▲",
-            "■ Damage %: ▼▼",
-            "■ Steady on the Move: ▲",
-            "■ Steady Mounted: ▼▼▼",
-            "■ Steady Crouched: ▲▲",
-            "■ Capacity: ▲▲",
-            "■ Reload: ▼▼▼",
             "■ Loads powered shot only",
             "■ Silent: no smoke or muzzle flash"),
         wide);
-    List<String> medium = strip(ForgeLore.lines(PartLoader.getByString("medium@iron")));
-    assertEquals(
-        List.of("■ Pellet Spread: Medium", "■ Accuracy: ▲", "■ Loads plain shot only"), medium);
+    List<String> medium = strip(ForgeLore.facts(PartLoader.getByString("medium@iron")));
+    assertEquals(List.of("■ Pellet Spread: Medium", "■ Loads plain shot only"), medium);
     // A cone that sums to nothing and an empty magazine show neither line.
-    List<String> tight = strip(ForgeLore.lines(PartLoader.getByString("tight@iron")));
-    assertEquals(List.of("■ Accuracy: ▲"), tight);
+    assertEquals(List.of(), strip(ForgeLore.facts(PartLoader.getByString("tight@iron"))));
     new PartLoader().load(file("tight.yml", "t: {tendencies: [], fixed: [spread 7]}").toFile());
-    assertEquals(List.of("■ Pellet Spread: Tight"), strip(ForgeLore.lines(PartLoader.getByString("t@iron"))));
+    assertEquals(List.of("■ Pellet Spread: Tight"), strip(ForgeLore.facts(PartLoader.getByString("t@iron"))));
   }
 
   @Test
   void eachMaterialCanHaveItsOwnLoreAndStatNotesStartWithACapital() throws Exception {
     loadMetals();
     GunPart part = org.mockito.Mockito.mock(GunPart.class);
-    org.mockito.Mockito.when(part.getTendencies())
-        .thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of(Stats.ACCURACY, 2.0)));
-    assertEquals(1, ForgeLore.lines(part).stream().filter(l -> l.contains("Accuracy")).count());
+    assertTrue(ForgeLore.facts(part).isEmpty());
     assertEquals("", MetalLoader.getByString("mythril").getColor());
     for (Stats stat : Stats.values()) {
       assertTrue(Character.isUpperCase(stat.getHint().charAt(0)), stat.name());
@@ -499,9 +480,9 @@ handling:
     assertTrue(saddle.isLegacy());
     assertEquals(saddle.getStats(), PartLoader.getByString("saddle_stock@maplewood+rare_leather").getStats());
     // maplewood mounted 40 x 1.3 = 52, then the fitting
-    assertEquals(52, saddle.getStats().get(Stats.MOUNTED));
-    assertEquals(78, PartLoader.getByString("saddle_stock@maplewood+legendary_leather").getStats().get(Stats.MOUNTED));
-    assertEquals(39, PartLoader.getByString("saddle_stock@maplewood+leather").getStats().get(Stats.MOUNTED));
+    assertEquals(52.0, saddle.getStats().get(Stats.MOUNTED));
+    assertEquals(78.0, PartLoader.getByString("saddle_stock@maplewood+legendary_leather").getStats().get(Stats.MOUNTED));
+    assertEquals(39.0, PartLoader.getByString("saddle_stock@maplewood+leather").getStats().get(Stats.MOUNTED));
     assertEquals(saddle.getStats().get(Stats.ACCURACY),
         PartLoader.getByString("saddle_stock@maplewood+leather").getStats().get(Stats.ACCURACY));
     // Every stock and grip takes one type: leather 3, wool 3, feather 2.
@@ -520,19 +501,19 @@ handling:
     // the standard stock's quality scales its accuracy; good quality keeps it
     GunPart standard = PartLoader.getByString("standard_stock@maplewood");
     assertEquals(standard.getStats(), PartLoader.getByString("standard_stock@maplewood+rare_wool").getStats());
-    assertEquals(6, PartLoader.getByString("standard_stock@maplewood+legendary_wool").getStats().get(Stats.ACCURACY));
+    assertEquals(6.0, PartLoader.getByString("standard_stock@maplewood+legendary_wool").getStats().get(Stats.ACCURACY));
     // Give and take (fran 11-11): at every wood and quality the plain Standard stock and grip stay below
     // the Cheek-rest and Pommel, which pay for their accuracy (Cheek-rest 7, Standard grip 2).
     for (String wood : List.of("barkwood", "maplewood", "elderwood", "demonwood")) {
-      int cheek = PartLoader.getByString("cheek_rest_stock@" + wood + "+leather").getStats().get(Stats.ACCURACY);
-      int pommel = PartLoader.getByString("pommel_grip@" + wood + "+wool").getStats().get(Stats.ACCURACY);
+      double cheek = PartLoader.getByString("cheek_rest_stock@" + wood + "+leather").getStats().get(Stats.ACCURACY);
+      double pommel = PartLoader.getByString("pommel_grip@" + wood + "+wool").getStats().get(Stats.ACCURACY);
       for (String quality : List.of("", "rare_", "epic_", "legendary_")) {
         assertTrue(PartLoader.getByString("standard_stock@" + wood + "+" + quality + "wool").getStats().get(Stats.ACCURACY) < cheek, wood + quality);
         assertTrue(PartLoader.getByString("standard_grip@" + wood + "+" + quality + "leather").getStats().get(Stats.ACCURACY) < pommel, wood + quality);
       }
     }
-    assertEquals(7, PartLoader.getByString("cheek_rest_stock@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
-    assertEquals(3, PartLoader.getByString("standard_grip@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
+    assertEquals(7.0, PartLoader.getByString("cheek_rest_stock@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
+    assertEquals(3.0, PartLoader.getByString("standard_grip@maplewood+legendary_leather").getStats().get(Stats.ACCURACY));
     assertEquals(Map.of("m.materials.refined_barkwood", 2, "v.copper_ingot", 1, "v.white_wool", 2),
         PartLoader.getByString("pommel_grip@barkwood+wool").getCost());
     assertEquals(Map.of("m.materials.refined_maplewood", 2, "m.materials.epic_leather", 2),
@@ -548,21 +529,21 @@ handling:
     }
     // A steel heavy barrel matches the calibrated numbers and loads iron and steel shot only.
     GunPart heavy = PartLoader.getByString("heavy_barrel@steel");
-    assertEquals(11, heavy.getStats().get(Stats.SPEED));
-    assertEquals(20, heavy.getStats().get(Stats.FALLOFF));
+    assertEquals(11.0, heavy.getStats().get(Stats.SPEED));
+    assertEquals(20.0, heavy.getStats().get(Stats.FALLOFF));
     assertEquals(
         List.of("ironshot", "steelshot", "ironshot_powered", "steelshot_powered"), heavy.getCalibers());
     assertEquals(
         8, PartLoader.getByString("heavy_barrel@mythril").getCalibers().size());
     // The multi-tube holds more rockets the better the metal, and has no iron version.
     assertNull(PartLoader.getByString("multi_tube_chamber@iron"));
-    assertEquals(2, PartLoader.getByString("multi_tube_chamber@steel").getStats().get(Stats.CAPACITY));
-    assertEquals(4, PartLoader.getByString("multi_tube_chamber@mythril").getStats().get(Stats.CAPACITY));
+    assertEquals(2.0, PartLoader.getByString("multi_tube_chamber@steel").getStats().get(Stats.CAPACITY));
+    assertEquals(4.0, PartLoader.getByString("multi_tube_chamber@mythril").getStats().get(Stats.CAPACITY));
     assertEquals(GunPart.AmmoFilter.POWERED, PartLoader.getByString("proof_chamber@iron").getAmmoFilter());
     // Shotgun barrels set their pellet cone (the spread stat) whatever the metal.
-    assertEquals(14, PartLoader.getByString("spread_barrel@iron").getStats().get(Stats.SPREAD));
-    assertEquals(22, PartLoader.getByString("sawn_off_barrel@mythril").getStats().get(Stats.SPREAD));
-    assertEquals(7, PartLoader.getByString("fowling_barrel@steel").getStats().get(Stats.SPREAD));
+    assertEquals(14.0, PartLoader.getByString("spread_barrel@iron").getStats().get(Stats.SPREAD));
+    assertEquals(22.0, PartLoader.getByString("sawn_off_barrel@mythril").getStats().get(Stats.SPREAD));
+    assertEquals(7.0, PartLoader.getByString("fowling_barrel@steel").getStats().get(Stats.SPREAD));
     assertEquals("demonwood", PartLoader.getByString("cheek_rest_stock@demonwood").getMetalId());
     for (GunPart part : PartLoader.getOrdered()) {
       assertTrue(part.isForged(), part.getId());
@@ -571,10 +552,20 @@ handling:
     }
     // 37 parts (4 pistol grips), no iron multi-tube, and 8 stocks and grips fitted 4 ways in each of 4 woods
     assertEquals(37 * 4 - 1 + 8 * 4 * 4, PartLoader.getOrdered().size());
-    // The part list shows the steel reference arrows, whichever material a player sees first.
+    // Every material of a part differs from every other (one decimal keeps small stats apart).
     GunPart ironHeavy = PartLoader.getByString("heavy_barrel@iron");
-    assertEquals(ForgeLore.lines(heavy), ForgeLore.lines(ironHeavy, false));
-    assertNotEquals(ForgeLore.lines(ironHeavy), ForgeLore.lines(ironHeavy, false));
+    assertNotEquals(heavy.getStats(), ironHeavy.getStats());
+    for (GunPart part : PartLoader.getOrdered()) {
+      for (GunPart other : PartLoader.getOrdered()) {
+        if (part != other && part.getBaseId().equals(other.getBaseId()) && !part.isLegacy() && !other.isLegacy()
+            && java.util.Objects.equals(part.getFittingId(), other.getFittingId())) {
+          assertNotEquals(part.getStats(), other.getStats(), part.getId() + " = " + other.getId());
+        }
+      }
+    }
+    // The flintlock was the same in iron, steel and abyssalite with whole numbers.
+    assertEquals(-1.3, PartLoader.getByString("flintlock@iron").getStats().get(Stats.ACCURACY));
+    assertEquals(2.3, PartLoader.getByString("flintlock@abyssalite").getStats().get(Stats.FIRE_RATE));
     // The bundled retired parts (the pre-forging defaults) load disabled beside the forged ones.
     new PartLoader().loadRetired(resource("/retired-parts.yml"));
     for (String old : List.of("flintlock", "matchlock", "rifled_barrel_long", "revolver", "quad_shot")) {
@@ -600,7 +591,7 @@ handling:
     assertFalse(old.isForged());
     assertFalse(PartLoader.getByString("matchlock@iron").isDisabled());
     // parts.yml wins over a retired part with the same id.
-    assertEquals(1, PartLoader.getByString("kept").getStats().get(Stats.DAMAGE));
+    assertEquals(1.0, PartLoader.getByString("kept").getStats().get(Stats.DAMAGE));
     assertFalse(PartLoader.getByString("kept").isDisabled());
     assertNull(PartLoader.getByString("loose"));
     int count = PartLoader.getOrdered().size();
