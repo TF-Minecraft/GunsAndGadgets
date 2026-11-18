@@ -23,8 +23,12 @@ import org.junit.jupiter.api.*;
 
 class GunSheetTest extends GunsTestSupport {
 
+  double oldSneaking = Cache.spreadSneaking, oldCap = Cache.maxSpreadDegrees;
+
   @AfterEach
   void resetHandling() {
+    Cache.spreadSneaking = oldSneaking;
+    Cache.maxSpreadDegrees = oldCap;
     Cache.falloffMinMultiplier = 1.0;
     Cache.falloffStartDistance = 0.0;
     Cache.aimingEnabled = false;
@@ -53,6 +57,8 @@ class GunSheetTest extends GunsTestSupport {
   @Test
   void aGunListsWhatItDoesInRealUnits() throws Exception {
     Cache.smoothAccuracy = false;
+    Cache.spreadSneaking = 0.8;
+    Cache.maxSpreadDegrees = Double.POSITIVE_INFINITY;
     Cache.falloffMinMultiplier = 0.5;
     Cache.falloffStartDistance = 24;
     Cache.drawBaseTicks.put(GunType.PISTOL, 12);
@@ -64,9 +70,9 @@ class GunSheetTest extends GunsTestSupport {
     assertEquals(
         List.of(
             "Gun:",
-            "■ Damage: 4.5 per hit (50% of Steel Powered Shot)",
+            "■ Damage: 4.5 per hit (Steel Powered Shot, -50%)",
             "■ Armour pierce: 0%",
-            "■ Spread: 2.15° aimed",
+            "■ Spread: 1.72° aimed", // aiming is crouching: 2.15° × 0.8
             "■ Reload: 3.75 s",
             "■ Holds: 6 shots",
             "■ Between shots: 0.95 s",
@@ -81,12 +87,16 @@ class GunSheetTest extends GunsTestSupport {
 
   @Test
   void singleShotGunsLeaveOutTheMagazineAndCountFireRateInTheReload() throws Exception {
+    Cache.maxSpreadDegrees = Double.POSITIVE_INFINITY;
     Cache.singleShotFireRatePerReload = 4;
     var plain = strip(GunSheet.of(GunType.RIFLE, stats(Stats.FIRE_RATE, 10), null, null).lines());
     assertTrue(plain.contains("■ Damage: 100% of the shot"));
     // fire rate 10 / 4 = 2.5, capped at 1: 60 × 0.95 = 57 ticks
     assertTrue(plain.contains("■ Reload: 2.85 s"));
     assertTrue(plain.contains("■ Spread: 25°")); // no aiming: no "aimed"
+    Cache.maxSpreadDegrees = 10; // the spread cap the shot uses
+    assertTrue(strip(GunSheet.of(GunType.RIFLE, stats(), null, null).lines()).contains("■ Spread: 10°"));
+    Cache.maxSpreadDegrees = Double.POSITIVE_INFINITY;
     assertTrue(plain.contains("■ Range: 100 blocks")); // no speed stat: the shot's default 10
     assertFalse(plain.stream().anyMatch(l -> l.startsWith("■ Holds") || l.startsWith("■ Between") || l.startsWith("■ Draw")
         || l.startsWith("■ Full damage") || l.startsWith("■ Steady") || l.startsWith("Reload and spread")));
@@ -104,7 +114,14 @@ class GunSheetTest extends GunsTestSupport {
   void shotgunsCountPelletsAndTheirConeAndRocketsTheirBlast() throws Exception {
     var spread = shot("amount: 10\nstats: [damage 1, range 20]");
     var shotgun = strip(GunSheet.of(GunType.SHOTGUN, stats(Stats.SPREAD, 14, Stats.ACCURACY, 4, Stats.RANGE, 2), spread, "Shot").lines());
-    assertTrue(shotgun.contains("■ Damage: 1 per pellet × 10 (100% of Shot)"));
+    assertTrue(shotgun.contains("■ Damage: 1 per pellet × 10 (Shot)"));
+    assertTrue(strip(GunSheet.of(GunType.SHOTGUN, stats(Stats.DAMAGE_PERCENT, 8), spread, "Shot").lines())
+        .contains("■ Damage: 1.1 per pellet × 10 (Shot, +8%)"));
+    // full damage never reaches past the range, and rockets have no bullet falloff
+    Cache.falloffMinMultiplier = 0.5;
+    Cache.falloffStartDistance = 24;
+    assertTrue(strip(GunSheet.of(GunType.SHOTGUN, stats(Stats.RANGE, -15), spread, "Shot").lines())
+        .contains("■ Full damage to: 10 blocks"));
     assertTrue(shotgun.contains("■ Pellet cone: 12.32°"));
     assertTrue(shotgun.contains("■ Range: 44 blocks"));
     // a single ball has no cone, whatever the barrel
@@ -112,7 +129,8 @@ class GunSheetTest extends GunsTestSupport {
         .stream().anyMatch(l -> l.startsWith("■ Pellet cone")));
     var rocket = shot("options: [rocket]\nstats: [damage 10, pierce 25]");
     var launcher = strip(GunSheet.of(GunType.LAUNCHER, stats(), rocket, "Rocket").lines());
-    assertTrue(launcher.contains("■ Damage: 20 at the centre (100% of Rocket)"));
+    assertTrue(launcher.contains("■ Damage: 20 at the centre (Rocket)"));
+    assertFalse(launcher.stream().anyMatch(l -> l.startsWith("■ Full damage")));
     assertTrue(launcher.contains("■ Range: 160 blocks"));
     assertTrue(launcher.contains("■ Bullet speed: 60 blocks/s"));
     assertTrue(launcher.contains("■ Armour pierce: 100%"));

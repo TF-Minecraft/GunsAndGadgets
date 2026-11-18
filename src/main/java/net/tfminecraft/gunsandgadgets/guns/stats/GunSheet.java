@@ -59,9 +59,13 @@ public final class GunSheet {
             String brief = rocket ? decimal(perHit * 2) + " at the centre"
                     : pellets > 1 ? decimal(perHit) + " per pellet × " + pellets
                     : decimal(perHit) + " per hit";
-            metrics.add(new Metric("damage", "Damage", brief + " §8(" + percent(factor) + " of " + shotName + ")",
-                    brief, perHit * pellets, 1, true));
+            // the gun's damage modifier on gun plus shot damage, not a share of the shot alone
+            long modifier = Math.round((factor - 1.0) * 100);
+            String note = modifier == 0 ? shotName : shotName + "§8, " + (modifier > 0 ? "+" : "") + modifier + "%";
+            metrics.add(new Metric("damage", "Damage", brief + " §8(" + note + "§8)", brief, perHit * pellets, 1, true));
         }
+        Handling.Steadiness steadiness = Handling.Steadiness.of(
+                stat(totals, Stats.MOVING), stat(totals, Stats.MOUNTED), stat(totals, Stats.SNEAKING));
 
         double pierce = stat(totals, Stats.PIERCE) + shotStats.getOrDefault("pierce", 0);
         double share = Math.max(0.0, Math.min(1.0, pierce / 20.0));
@@ -75,7 +79,9 @@ public final class GunSheet {
         metrics.add(new Metric("pierce", "Armour pierce", pierceText, pierceText, pierceValue, 1, true));
 
         double accuracy = stat(totals, Stats.ACCURACY) + shotStats.getOrDefault("accuracy", 0);
-        double spread = Math.max(0.02, StatCalculator.calculateAccuracy(accuracy));
+        // aiming means crouching, so an aimed shot takes the crouch multiplier; both within the spread cap
+        double spread = Handling.clampSpread(StatCalculator.calculateAccuracy(accuracy)
+                * (Cache.aimingEnabled ? steadiness.sneaking(Cache.spreadSneaking) : 1.0));
         String spreadText = degrees(spread) + (Cache.aimingEnabled ? " aimed" : "");
         metrics.add(new Metric("spread", "Spread", spreadText, spreadText, spread, -1, true));
 
@@ -95,14 +101,14 @@ public final class GunSheet {
         double between = StatCalculator.calculateFireRate(stat(totals, Stats.FIRE_RATE));
         metrics.add(new Metric("between", "Between shots", seconds(between), seconds(between), between, -1, capacity > 1));
 
-        if (Cache.falloffMinMultiplier < 1.0) {
-            double full = Handling.falloffStart(stat(totals, Stats.FALLOFF));
-            metrics.add(new Metric("falloff", "Full damage to", blocks(full), blocks(full), full, 1, true));
-        }
-
         double speed = totals.getOrDefault(Stats.SPEED, 10.0);
         double range = (stat(totals, Stats.RANGE) + shotStats.getOrDefault("range", 0)) * 2;
         double maxDistance = range > 0 ? range : rocket ? 160 : Math.max(96, Math.min(192, speed * 10));
+        // bullet falloff (rockets build up to full damage instead), never past the shot's reach
+        if (Cache.falloffMinMultiplier < 1.0 && !rocket) {
+            double full = Math.min(maxDistance, Handling.falloffStart(stat(totals, Stats.FALLOFF)));
+            metrics.add(new Metric("falloff", "Full damage to", blocks(full), blocks(full), full, 1, true));
+        }
         metrics.add(new Metric("range", "Range", blocks(maxDistance), blocks(maxDistance), maxDistance, 1, true));
         double velocity = speed * (rocket ? 0.3 : 0.7) * 20;
         String velocityText = Math.round(velocity) + " blocks/s";
@@ -115,8 +121,6 @@ public final class GunSheet {
         }
 
         // As much of each stance as the gun takes off (or adds), after Handling's limits.
-        Handling.Steadiness steadiness = Handling.Steadiness.of(
-                stat(totals, Stats.MOVING), stat(totals, Stats.MOUNTED), stat(totals, Stats.SNEAKING));
         steady(metrics, "moving", "Steady on the move", (1.0 - steadiness.moving()) * 100.0);
         steady(metrics, "mounted", "Steady mounted", (1.0 - steadiness.mounted()) * 100.0);
         steady(metrics, "sneaking", "Steady crouched", (steadiness.sneaking() - 1.0) * 100.0);

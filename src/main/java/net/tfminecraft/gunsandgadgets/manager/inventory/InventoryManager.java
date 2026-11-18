@@ -283,7 +283,11 @@ public class InventoryManager implements Listener {
             lore.add("");
         }
         // Good quality keeps the part's written values: the gun with it in this material.
-        lore.addAll(changeOnGun(player, chosen, goodQuality(fitted), "§7On your gun, good quality:"));
+        GunPart shown = goodQuality(fitted);
+        Metal quality = MetalLoader.getByString(shown.getFittingId());
+        String label = quality == null ? shown.getFittingId()
+                : quality.getTier() == 2 ? "good quality" : StringFormatter.formatHex(quality.getName()) + "§7";
+        lore.addAll(changeOnGun(player, chosen, shown, "§7On your gun, " + label + ":"));
         lore.add("");
         String types = fittingTypes(fitted);
         lore.add("§7Fitted with " + types + ":");
@@ -703,7 +707,7 @@ public class InventoryManager implements Listener {
             base.setItemMeta(meta);
 
             // Apply stats afterwards (so lore & stat PDCs get written)
-            Ammunition shot = strongestShot(calibers);
+            Ammunition shot = strongestShot(calibers, StatApplier.combineStats(parts).getOrDefault(Stats.DAMAGE, 0.0));
             base = StatApplier.apply(base, parts, gui, type, shot, shotName(shot));
             int majority = MajorityTierResolver.resolve(parts);
             if (majority > 0) {
@@ -916,13 +920,14 @@ public class InventoryManager implements Listener {
             lines.add("§aOn your gun now");
             return lines;
         }
+        // The candidate takes its slot's place (the gun has one part per slot, and the candidate's
+        // slot has one since the candidate is offered), so the last caliber override stays the same part's.
         List<GunPart> swapped = new ArrayList<>();
         for (GunPart part : current) {
-            if (!part.getPartType().getId().equalsIgnoreCase(candidate.getPartType().getId())) swapped.add(part);
+            swapped.add(part.getPartType().getId().equalsIgnoreCase(candidate.getPartType().getId()) ? candidate : part);
         }
-        swapped.add(candidate);
         lines.add(heading);
-        if (resolveCalibers(swapped).isEmpty() && declaresShot(swapped)) {
+        if (strongestShot(resolveCalibers(swapped), 0) == null && declaresShot(swapped)) {
             lines.add("§cNo shot fits it with your other parts");
             return lines;
         }
@@ -931,21 +936,25 @@ public class InventoryManager implements Listener {
     }
 
     private GunSheet sheet(GunType type, Collection<GunPart> parts) {
-        Ammunition shot = strongestShot(resolveCalibers(parts));
-        return GunSheet.of(type, StatApplier.combineStats(parts), shot, shotName(shot));
+        Map<Stats, Double> totals = StatApplier.combineStats(parts);
+        Ammunition shot = strongestShot(resolveCalibers(parts), totals.getOrDefault(Stats.DAMAGE, 0.0));
+        return GunSheet.of(type, totals, shot, shotName(shot));
     }
 
-    /** The shot that hits hardest of those a gun loads (all pellets together), or null. */
-    static Ammunition strongestShot(List<String> calibers) {
+    /**
+     * The shot that hits hardest of those a gun loads, all pellets together, each with the gun's
+     * flat {@code damage}; null when none of them is known.
+     */
+    static Ammunition strongestShot(List<String> calibers, double damage) {
         Ammunition best = null;
         double bestDamage = -1;
         for (String key : calibers) {
             Ammunition ammo = AmmunitionLoader.getByString(key);
             if (ammo == null) continue;
-            double damage = ammo.getStats().getOrDefault("damage", 0) * (double) Math.max(1, ammo.getAmount());
-            if (damage > bestDamage) {
+            double total = (damage + ammo.getStats().getOrDefault("damage", 0)) * Math.max(1, ammo.getAmount());
+            if (total > bestDamage) {
                 best = ammo;
-                bestDamage = damage;
+                bestDamage = total;
             }
         }
         return best;

@@ -817,8 +817,16 @@ class InventoryManagerTest {
     assertTrue(steel.contains("■ Loads powered shot only"));
     assertTrue(steel.contains("No shot fits it with your other parts"));
     // the strongest shot hits hardest with its pellets together; unknown keys are skipped
-    assertNull(InventoryManager.strongestShot(List.of("missing")));
-    assertEquals("plain", InventoryManager.strongestShot(List.of("weak", "missing", "plain", "weak")).getKey());
+    assertNull(InventoryManager.strongestShot(List.of("missing"), 0));
+    assertEquals("plain", InventoryManager.strongestShot(List.of("weak", "missing", "plain", "weak"), 0).getKey());
+    // the gun's flat damage lands on every pellet: 2 × (5 + 1) beats 5 + 5
+    assertEquals("weak", InventoryManager.strongestShot(List.of("plain", "weak"), 5).getKey());
+    // a barrel whose shot is unknown loads nothing
+    var odd = forged("odd", "steel", "barrel");
+    when(odd.getCalibers()).thenReturn(List.of("missing"));
+    manager.openPartSelection(player, "barrel");
+    var barrels = player.getOpenInventory().getTopInventory();
+    assertTrue(plainLore(barrels.getItem(1)).contains("No shot fits it with your other parts"), plainLore(barrels.getItem(1)).toString());
   }
 
   @Test
@@ -851,7 +859,7 @@ class InventoryManagerTest {
     manager.openMetalSelection(player, "stock", "pad");
     var oak = plainLore(player.getOpenInventory().getTopInventory().getItem(0));
     assertTrue(oak.contains("■ Loads plain shot only"), oak.toString());
-    assertTrue(oak.contains("On your gun, good quality:"));
+    assertTrue(oak.contains("On your gun, wool:"), oak.toString()); // no metals.yml: the fitting is named by its id
   }
 
   GunPart fitted(String base, String metal, String fitting, String category) {
@@ -919,7 +927,9 @@ fur: {kind: animal, tier: 1}
       // without a plain variant the amount is left out
       assertTrue(ash.getItemMeta().getLore().contains("§7- §fLeather or fur"));
       assertEquals("Base saddle", ash.getItemMeta().getDisplayName()); // no plain ash variant
-      assertEquals("§7On your gun, good quality:", ash.getItemMeta().getLore().getFirst());
+      // no good quality in ash: the heading names the fitting it shows
+      assertTrue(ash.getItemMeta().getLore().getFirst().startsWith("§7On your gun, "));
+      assertFalse(ash.getItemMeta().getLore().getFirst().contains("good quality"));
       assertTrue(ash.getItemMeta().getLore().contains("§7Fitted with leather or fur:"));
       // one type alone needs no "or"
       assertEquals("leather", InventoryManager.fittingTypes(List.of(PartLoader.getByString("saddle@birch+leather"))));

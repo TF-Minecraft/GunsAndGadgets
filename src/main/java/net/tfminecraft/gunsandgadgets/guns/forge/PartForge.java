@@ -107,7 +107,7 @@ public final class PartForge {
                     + variant.getValue().getStringList("stats"), variant.getKey());
             if (other != null) {
                 System.out.println("Forged part " + key + ": " + other + " and " + variant.getKey()
-                        + " have the same stats, so choosing between them changes nothing");
+                        + " have the same stats");
             }
         }
     }
@@ -234,7 +234,7 @@ public final class PartForge {
             if (fitting != null && fitted.contains(stat)) {
                 value = fitting.scale(stat, value);
             }
-            totals.merge(stat, round(value), Double::sum);
+            totals.merge(stat, value, Double::sum);
         }
         addFixed(totals, definition.getStringList("fixed"));
         ConfigurationSection byMetal = definition.getConfigurationSection("by-metal");
@@ -248,7 +248,7 @@ public final class PartForge {
 
     private static void addFixed(Map<String, Double> totals, List<String> lines) {
         for (Map.Entry<Stats, Double> fixed : parse(lines).entrySet()) {
-            totals.merge(fixed.getKey().getKey(), round(fixed.getValue()), Double::sum);
+            totals.merge(fixed.getKey().getKey(), fixed.getValue(), Double::sum);
         }
     }
 
