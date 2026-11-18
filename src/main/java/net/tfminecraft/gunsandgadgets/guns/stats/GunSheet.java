@@ -160,8 +160,10 @@ public final class GunSheet {
             if (was != null && (was.brief().equals(metric.brief()) || !(was.listed() || metric.listed()))) {
                 continue;
             }
+            // a share of the shot (no shot fits) and damage per hit can't say which is better
+            boolean comparable = was != null && was.brief().endsWith("%") == metric.brief().endsWith("%");
             lines.add(change(metric, was == null ? "—" : was.brief(), metric.brief(),
-                    was == null ? 0 : Math.signum(metric.value() - was.value()) * metric.better()));
+                    comparable ? Math.signum(metric.value() - was.value()) * metric.better() : 0));
         }
         for (Metric gone : old.values()) {
             lines.add(change(gone, gone.brief(), "—", 0));

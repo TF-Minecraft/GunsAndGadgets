@@ -143,6 +143,9 @@ class GunSheetTest extends GunsTestSupport {
     assertTrue(lines.get(0).endsWith(StringFormatter.formatHex("#76de91") + "11 per hit"), lines.get(0));
     assertTrue(lines.get(1).endsWith(StringFormatter.formatHex("#FF5555") + "3.3 s"), lines.get(1));
     assertEquals(List.of("§7No change to this gun"), GunSheet.compare(before, before));
+    // a gun with no shot against one with a shot: neither is called better
+    var noShot = GunSheet.compare(GunSheet.of(GunType.RIFLE, stats(), null, null), before);
+    assertTrue(noShot.get(0).endsWith("§e10 per hit"), noShot.get(0));
     // fire rate on a single-shot gun changes nothing it lists (with the reload rule off)
     assertEquals(List.of("§7No change to this gun"), GunSheet.compare(
         GunSheet.of(GunType.RIFLE, stats(), null, null), GunSheet.of(GunType.RIFLE, stats(Stats.FIRE_RATE, 10), null, null)));
