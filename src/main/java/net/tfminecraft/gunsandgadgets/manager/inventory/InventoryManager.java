@@ -947,7 +947,7 @@ public class InventoryManager implements Listener {
      */
     static Ammunition strongestShot(List<String> calibers, double damage) {
         Ammunition best = null;
-        double bestDamage = -1;
+        double bestDamage = Double.NEGATIVE_INFINITY;
         for (String key : calibers) {
             Ammunition ammo = AmmunitionLoader.getByString(key);
             if (ammo == null) continue;
