@@ -80,6 +80,18 @@ handling:
             airborne: 2.0
             mounted: 1.5
             sneaking: 0.8
+    # On a single-shot gun the time between shots is the reload, so its fire rate
+    # counts there: one reload point per per-reload fire rate, at most max either
+    # way (a padded stock reloads a little quicker; an arclock a little slower).
+    # Left out (or per-reload 0), fire rate does nothing on single-shot guns.
+    single-shot-fire-rate:
+        per-reload: 4
+        max: 1
+    # Pierce stops making a shot pierce more at 20 (all of it ignores armour). Each
+    # point past 20 then ignores a share of the target's damage reduction instead,
+    # all of it at full-at points over. Left out (or 0), pierce past 20 does nothing.
+    pierce-overflow:
+        full-at: 20
 
 # Crouch with a loaded, drawn gun to aim it: the gun shows its sights-up pose and
 # the player walks slower, which narrows the field of view (the zoom; players who

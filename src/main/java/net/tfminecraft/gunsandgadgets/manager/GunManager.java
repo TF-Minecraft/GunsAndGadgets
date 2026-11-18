@@ -16,6 +16,7 @@ import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.skins.ForgedLook;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinData;
 import net.tfminecraft.gunsandgadgets.guns.skins.SkinState;
+import net.tfminecraft.gunsandgadgets.guns.stats.GunStats;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
 import net.tfminecraft.gunsandgadgets.loader.AmmunitionLoader;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
@@ -387,8 +388,7 @@ public class GunManager implements Listener {
                 return;
             }
             long now = System.currentTimeMillis();
-            int fireRateStat = meta.getPersistentDataContainer()
-                    .getOrDefault(fireRateKey, PersistentDataType.INTEGER, 0);
+            double fireRateStat = GunStats.get(meta.getPersistentDataContainer(), "fire_rate", 0);
 
             // Convert fireRateStat to a cooldown in ms
             long cooldown = (long) (StatCalculator.calculateFireRate(fireRateStat) * 1000);
@@ -469,9 +469,9 @@ public class GunManager implements Listener {
         player.getInventory().setItemInMainHand(applyModel(item, skin, SkinState.RELOAD));
 
 
-        int reloadStat = meta.getPersistentDataContainer()
-                .getOrDefault(new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_reload"),
-                        PersistentDataType.INTEGER, 0);
+        // A single-shot gun's fire rate counts in its reload (handling.single-shot-fire-rate).
+        double reloadStat = GunStats.effectiveReload(GunStats.get(meta.getPersistentDataContainer(), "reload", 0),
+                GunStats.get(meta.getPersistentDataContainer(), "fire_rate", 0), capacity);
 
         int reloadTicks = (int) Math.round(StatCalculator.calculateReloadTicks(reloadStat)*AttributeReader.getReloadReductionMultFromAttributes(player));
 

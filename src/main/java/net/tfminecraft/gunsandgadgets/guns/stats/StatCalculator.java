@@ -4,9 +4,9 @@ import net.tfminecraft.gunsandgadgets.cache.Cache;
 
 public class StatCalculator {
 
-    public static int calculateReloadTicks(int reloadStat) {
+    public static int calculateReloadTicks(double reloadStat) {
         int base = 60; // 3 seconds
-        int modifier = Math.max(-20, Math.min(20, reloadStat));
+        double modifier = Math.max(-20, Math.min(20, reloadStat));
 
         double factor = 1.0 - (modifier * 0.05);
         int ticks = (int) Math.round(base * factor);
@@ -14,11 +14,11 @@ public class StatCalculator {
         return Math.max(10, Math.min(200, ticks)); // clamp
     }
 
-    public static double calculateAccuracy(int accuracyStat) {
+    public static double calculateAccuracy(double accuracyStat) {
         if (accuracyStat <= 0) {
             // Bad accuracy → exponential penalty
             double maxSpread = 25.0;
-            double penaltyFactor = Math.pow(1.1, -(double) accuracyStat); // grows fast as negative
+            double penaltyFactor = Math.pow(1.1, -accuracyStat); // grows fast as negative
             return Math.min(maxSpread * penaltyFactor, 40.0);    // hard cap
         }
 
@@ -37,7 +37,7 @@ public class StatCalculator {
         }
     }
 
-    public static double calculateFireRate(int fireRateStat) {
+    public static double calculateFireRate(double fireRateStat) {
         if (fireRateStat <= 0) {
             return lerp(fireRateStat, -30, 0, 4.0, 1.0); // -30 → 4s, 0 → 2s
         } else if (fireRateStat <= 10) {

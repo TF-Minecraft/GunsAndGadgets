@@ -13,6 +13,7 @@ import net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart.PartOption;
+import net.tfminecraft.gunsandgadgets.guns.stats.GunStats;
 import net.tfminecraft.gunsandgadgets.guns.stats.Handling;
 import net.tfminecraft.gunsandgadgets.guns.stats.StatCalculator;
 import net.tfminecraft.gunsandgadgets.loader.PartLoader;
@@ -35,6 +36,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.BoundingBox;
@@ -44,6 +46,7 @@ import org.bukkit.util.Vector;
 import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.api.player.EquipmentSlot;
 import io.lumine.mythic.lib.api.stat.provider.StatProvider;
+import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.damage.AttackMetadata;
 import io.lumine.mythic.lib.damage.DamageMetadata;
 import io.lumine.mythic.lib.damage.DamageType;
@@ -51,8 +54,6 @@ import io.lumine.mythic.lib.manager.DamageManager;
 
 public class ProjectileShooter {
 
-    private static final NamespacedKey SPEED_KEY =
-            new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_speed");
 
         public static void shoot(Player player, ItemStack gun, Ammunition ammo) {
         if (gun == null || !gun.hasItemMeta()) return;
@@ -180,25 +181,21 @@ public class ProjectileShooter {
         Vector forward = start.getDirection().normalize();
         start.add(forward.multiply(1.0));
 
-        int speed = meta.getPersistentDataContainer()
-                .getOrDefault(SPEED_KEY, PersistentDataType.INTEGER, 10);
+        PersistentDataContainer stats = meta.getPersistentDataContainer();
+        double speed = GunStats.get(stats, "speed", 10);
 
         // 📏 Range stat (gun + ammo)
-        int gunRange = meta.getPersistentDataContainer().getOrDefault(
-                new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_range"),
-                PersistentDataType.INTEGER, 0);
+        double gunRange = GunStats.get(stats, "range", 0);
         int ammoRange = ammo.getStats().getOrDefault("range", 0);
 
-        int totalRange = (gunRange + ammoRange)*2;
+        double totalRange = (gunRange + ammoRange)*2;
         double maxDistance = (totalRange > 0 ? totalRange : ammo.hasOption(AmmoOption.ROCKET) ? 160 : Math.max(96, Math.min(192, speed*10)));
 
         // 🎯 Accuracy stat (gun + ammo)
-        int gunAcc = meta.getPersistentDataContainer().getOrDefault(
-                new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_accuracy"),
-                PersistentDataType.INTEGER, 0);
+        double gunAcc = GunStats.get(stats, "accuracy", 0);
         int ammoAcc = ammo.getStats().getOrDefault("accuracy", 0);
 
-        int totalAcc = gunAcc + ammoAcc;
+        double totalAcc = gunAcc + ammoAcc;
         double baseSpread = Math.max(0.02, StatCalculator.calculateAccuracy(totalAcc)*AttributeReader.getAccuracyMultFromAttributes(player));
         // Stance widens only the launch cone; rocket wobble in flight keeps the gun's own spread.
         // The shooter's VehicleFramework seat sets the stance and is skipped by their own bullets:
@@ -219,7 +216,7 @@ public class ProjectileShooter {
 
         // A shotgun barrel's spread stat is its pellet cone: the aim wanders by the gun's accuracy
         // and stance, then the pellets fan out around it, tighter the more accurate the gun.
-        int cone = gunStat(meta, "spread");
+        double cone = gunStat(meta, "spread");
         boolean pelletCone = cone > 0 && projectiles > 1;
         Vector aim = pelletCone ? applySpread(forward.clone(), spreadDegrees, rand) : forward;
         double coneDegrees = Handling.clampSpread(
@@ -229,7 +226,7 @@ public class ProjectileShooter {
         int ammoDamage = ammo.getStats().getOrDefault("damage", 0);
         double totalDamage = Math.max(0.0,
                 (gunStat(meta, "damage") + ammoDamage) * (1.0 + gunStat(meta, "damage_percent") / 100.0));
-        int pierceStat = ammo.getStats().getOrDefault("pierce", 0) + gunStat(meta, "pierce");
+        double pierceStat = ammo.getStats().getOrDefault("pierce", 0) + gunStat(meta, "pierce");
         double falloffStart = Handling.falloffStart(gunStat(meta, "falloff"));
 
         for (int i = 0; i < projectiles; i++) {
@@ -240,14 +237,12 @@ public class ProjectileShooter {
         }
     }
 
-    /** A crafted gun's stat (stat_value_ PDC), 0 when its parts never set it. */
-    private static int gunStat(ItemMeta meta, String key) {
-        return meta.getPersistentDataContainer().getOrDefault(
-                new NamespacedKey(GunsAndGadgets.getInstance(), "stat_value_" + key),
-                PersistentDataType.INTEGER, 0);
+    /** A crafted gun's stat (see {@link GunStats}), 0 when its parts never set it. */
+    private static double gunStat(ItemMeta meta, String key) {
+        return GunStats.get(meta.getPersistentDataContainer(), key, 0);
     }
 
-    private static void explode(Player shooter, Location loc, double damage, int pierceStat, int ticks, double flown) {
+    private static void explode(Player shooter, Location loc, double damage, double pierceStat, int ticks, double flown) {
         loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 10, 0, 0, 0, 0, null, true);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 8f, 1f);
         double timeScale = Handling.rocketMultiplier(ticks, flown);
@@ -326,7 +321,7 @@ public class ProjectileShooter {
         v.setZ(z);
     }
 
-    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double falloffStart, double damage, int pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random, Color trail) {
+    private static void startProjectileTask(Player player, Ammunition ammo, Location start, Vector velocity, double spreadDegrees, double maxDistance, double falloffStart, double damage, double pierceStat, ActiveVehicle ownVehicle, java.util.function.DoubleSupplier random, Color trail) {
         new BukkitRunnable() {
             Location loc = start.clone();
             Vector vel = velocity.clone();
@@ -422,7 +417,7 @@ public class ProjectileShooter {
     }
 
 
-    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, double falloffStart, ActiveVehicle ownVehicle, Location from, Location to, double damage, int pierceStat, int ticks) {
+    private static boolean handleHits(Player player, Ammunition ammo, Location muzzle, double maxDistance, double falloffStart, ActiveVehicle ownVehicle, Location from, Location to, double damage, double pierceStat, int ticks) {
         Vector direction = to.toVector().subtract(from.toVector()).normalize();
         double distance = from.distance(to);
 
@@ -592,7 +587,7 @@ public class ProjectileShooter {
         return false;
     }
 
-    public static void applyDamage(Player attacker, LivingEntity target, double baseDamage, int pierceStat) {
+    public static void applyDamage(Player attacker, LivingEntity target, double baseDamage, double pierceStat) {
         // --- Step 1: Calculate piercing portion ---
         double piercePercent = Math.max(0.0, Math.min(1.0, pierceStat / 20.0)); // 0 → 0%, 20 → 100%
         double pierceDamage = baseDamage * piercePercent;
@@ -600,7 +595,7 @@ public class ProjectileShooter {
 
         // --- Step 2: Apply pierce directly (ignores armour) ---
         if (pierceDamage > 0) {
-            applyPiercing(attacker, target, pierceDamage);
+            applyPiercing(attacker, target, pierceDamage * overflowFactor(target, pierceStat));
         }
 
         // --- Step 3: Apply remaining damage via MythicLib/MMOCore ---
@@ -609,6 +604,26 @@ public class ProjectileShooter {
             AttackMetadata attackMeta = new AttackMetadata(dmgMeta, target, StatProvider.get(attacker, EquipmentSlot.MAIN_HAND, true));
             MythicLib.inst().getDamage().registerAttack(attackMeta, false, true);
         }
+    }
+
+    /** The target's DAMAGE_REDUCTION stat (percent), 0 for anything MythicLib doesn't track. */
+    static java.util.function.ToDoubleFunction<LivingEntity> damageReduction = target -> {
+        MMOPlayerData data = MMOPlayerData.getOrNull(target);
+        return data == null ? 0.0 : data.getStatMap().getStat("DAMAGE_REDUCTION");
+    };
+
+    /**
+     * Pierce past 20 (handling.pierce-overflow): every point over ignores a share of the target's
+     * damage reduction, all of it at {@code full-at} points over. MythicLib takes that reduction off
+     * the piercing hit afterwards, so the hit grows by what the ignored share would have taken.
+     */
+    static double overflowFactor(LivingEntity target, double pierceStat) {
+        if (pierceStat <= 20 || Cache.pierceOverflowFullAt <= 0) {
+            return 1.0;
+        }
+        double reduction = Math.max(0.0, Math.min(0.95, damageReduction.applyAsDouble(target) / 100.0));
+        double ignored = Math.min(1.0, (pierceStat - 20) / Cache.pierceOverflowFullAt);
+        return (1.0 - reduction * (1.0 - ignored)) / (1.0 - reduction);
     }
 
 

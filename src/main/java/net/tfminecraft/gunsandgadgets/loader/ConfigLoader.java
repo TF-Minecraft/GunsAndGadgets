@@ -102,6 +102,10 @@ public class ConfigLoader {
         Cache.rocketMinMultiplier =
                 Math.max(0.0, Math.min(1.0, finite(config, "handling.rockets.min-multiplier", 0.1)));
         Cache.rocketFullDistance = Math.max(0.0, finite(config, "handling.rockets.full-damage-distance", 0.0));
+        Cache.singleShotFireRatePerReload =
+                Math.max(0.0, finite(config, "handling.single-shot-fire-rate.per-reload", 0.0));
+        Cache.singleShotFireRateMax = Math.max(0.0, finite(config, "handling.single-shot-fire-rate.max", 1.0));
+        Cache.pierceOverflowFullAt = Math.max(0.0, finite(config, "handling.pierce-overflow.full-at", 0.0));
         Cache.typeIconPrefix = config.getString("type-icons", "").trim();
 
         section = config.getConfigurationSection("required-parts");

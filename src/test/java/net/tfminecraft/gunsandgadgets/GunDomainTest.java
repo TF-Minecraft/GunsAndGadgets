@@ -67,7 +67,7 @@ sound-overrides: ['shoot override(pistol)']
     assertEquals("Test Barrel", part.getName());
     assertSame(type, part.getPartType());
     assertEquals("v.iron_ingot", part.getItemKey());
-    assertEquals(Map.of(Stats.DAMAGE, 3, Stats.ACCURACY, -1), part.getStats());
+    assertEquals(Map.of(Stats.DAMAGE, 3.0, Stats.ACCURACY, -1.0), part.getStats());
     assertEquals(Set.of(GunType.RIFLE, GunType.PISTOL), part.getGunTypes());
     assertEquals(4, part.getCost().get("v.iron_ingot"));
     assertEquals(1, part.getCost().get("v.stick"));
@@ -123,7 +123,7 @@ sound-overrides: ['shoot override(pistol)']
   @Test
   void malformedStatDoesNotDiscardOtherValidPartStats() throws Exception {
     GunPart part = assertDoesNotThrow(() -> part("bad", "stats: ['damage invalid', 'reload 2']"));
-    assertEquals(Map.of(Stats.RELOAD, 2), part.getStats());
+    assertEquals(Map.of(Stats.RELOAD, 2.0), part.getStats());
   }
 
   @Test
@@ -348,7 +348,7 @@ sound-overrides: ['shoot override(pistol)']
     ItemStack item = item();
     StatApplier.apply(item, List.of(part), false);
     assertEquals(
-        1, item.getItemMeta().getLore().stream().filter(line -> line.contains("Stats:")).count());
+        1, item.getItemMeta().getLore().stream().filter(line -> line.contains("Gun:")).count());
     assertEquals(
         8,
         item.getItemMeta()
@@ -356,7 +356,7 @@ sound-overrides: ['shoot override(pistol)']
             .get(new NamespacedKey(plugin, "stat_value_damage"), PersistentDataType.INTEGER));
     StatApplier.apply(item, List.of(part), false);
     assertEquals(
-        1, item.getItemMeta().getLore().stream().filter(line -> line.contains("Stats:")).count());
+        1, item.getItemMeta().getLore().stream().filter(line -> line.contains("Gun:")).count());
     ItemStack noMeta = mock(ItemStack.class);
     assertSame(noMeta, StatApplier.apply(noMeta, List.of(), false));
   }

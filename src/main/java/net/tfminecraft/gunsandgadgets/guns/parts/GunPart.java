@@ -17,7 +17,7 @@ public class GunPart {
     private PartData partType;
     private Set<GunType> gunTypes = new HashSet<>();
     private final String itemKey;
-    private final Map<Stats, Integer> stats;
+    private final Map<Stats, Double> stats;
     private final List<String> calibers;
     private List<String> caliberOverrides;
     private final EnumSet<PartOption> options = EnumSet.noneOf(PartOption.class);
@@ -99,7 +99,9 @@ public class GunPart {
                 Stats stat = Stats.fromKey(split[0]);
                 if (stat != null) {
                     try {
-                        stats.put(stat, Integer.parseInt(split[1]));
+                        double value = Double.parseDouble(split[1]);
+                        if (!Double.isFinite(value)) throw new NumberFormatException();
+                        stats.put(stat, value);
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid stat value for part " + id + ": " + s);
                     }
@@ -219,7 +221,7 @@ public class GunPart {
     public String getName() { return name; }
     public PartData getPartType() { return partType; }
     public String getItemKey() { return itemKey; }
-    public Map<Stats, Integer> getStats() { return stats; }
+    public Map<Stats, Double> getStats() { return stats; }
     public List<String> getCalibers() { return calibers; }
     public boolean hasCaliberOverrides() { return caliberOverrides != null; }
     public List<String> getCaliberOverrides() { return caliberOverrides; }
@@ -321,7 +323,9 @@ public class GunPart {
                 .map(e -> e.getKey().getKey() + "(" + e.getValue() + ")")
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
-        sb.append("stats=").append(String.join(",", statParts)).append(';');
+        // "sheet" (2026-11-18): decimal stats and the gun sheet lore; new in every part's content,
+        // so every crafted gun is rebuilt once on its next refresh and shows the sheet.
+        sb.append("stats=").append(String.join(",", statParts)).append(";sheet;");
 
         List<String> costParts = cost.entrySet().stream()
                 .map(e -> e.getKey() + "(" + e.getValue() + ")")
