@@ -14,6 +14,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
+import net.tfminecraft.gunsandgadgets.api.DungeonGuns;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftInputs;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
@@ -43,8 +44,8 @@ public final class GunRefunder {
      * from metals.yml or a part's metals list), so their guns stay broken until it is fixed.
      */
     public static boolean isOld(ItemStack item) {
-        if (!GunStatRefresher.isGun(item)) {
-            return false;
+        if (!GunStatRefresher.isGun(item) || DungeonGuns.isDungeonGun(item)) {
+            return false; // (nobody crafted a dungeon gun: there is nothing to give back)
         }
         GunCraftProvenance provenance = GunCraftProvenance.readFrom(item);
         if (provenance == null) {

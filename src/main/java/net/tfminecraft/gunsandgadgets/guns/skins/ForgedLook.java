@@ -15,6 +15,7 @@ import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
 import net.tfminecraft.gunsandgadgets.loader.MetalLoader;
+import net.tfminecraft.gunsandgadgets.guns.data.DungeonStamp;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 
@@ -27,13 +28,19 @@ import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
  * 6 action, 7 its material, 8 stock, 9 wood (the stock's, or barkwood without one)
  * </pre>
  * A missing slot is "none". Part items in the menus show the pack's icon for the part (and material).
+ *
+ * <p>A dungeon gun's material strings (1, 3, 5, 7, 9) are all "dungeon", the pack's neutral material, and
+ * its custom_model_data colors tint it, one per slot: 0 barrel, 1 loader, 2 chamber, 3 action, 4 stock
+ * (which also colours the frame's wood). Other guns have no colors.
  */
 public final class ForgedLook {
 
-    static final String[] SLOTS = {"barrel", "loader", "chamber", "action", "stock"};
+    public static final List<String> SLOTS = List.of("barrel", "loader", "chamber", "action", "stock");
     public static final String NONE = "none";
     /** The wood string when a gun has no stock or grip (launchers). */
     public static final String DEFAULT_WOOD = "barkwood";
+    /** The material of every part of a dungeon gun, coloured by its tints. */
+    public static final String DUNGEON = "dungeon";
 
     private ForgedLook() {}
 
@@ -68,8 +75,15 @@ public final class ForgedLook {
         CustomModelDataComponent component = meta.getCustomModelDataComponent();
         component.setFloats(List.of());
         component.setFlags(List.of());
-        component.setColors(List.of());
-        component.setStrings(modelStrings(parts));
+        List<String> strings = modelStrings(parts);
+        DungeonStamp dungeon = DungeonStamp.readFrom(meta.getPersistentDataContainer());
+        if (dungeon != null) {
+            for (int material = 1; material < strings.size(); material += 2) {
+                strings.set(material, DUNGEON);
+            }
+        }
+        component.setColors(dungeon == null ? List.of() : dungeon.tints());
+        component.setStrings(strings);
         meta.setCustomModelDataComponent(component);
     }
 

@@ -266,6 +266,8 @@ old: {part-type: barrel, type: [rifle], smoke: .nan}
     var meta = mock(org.bukkit.inventory.meta.ItemMeta.class);
     var cmd = mock(org.bukkit.inventory.meta.components.CustomModelDataComponent.class);
     when(meta.getCustomModelDataComponent()).thenReturn(cmd);
+    var pdc = new ItemStack(Material.STICK).getItemMeta().getPersistentDataContainer();
+    when(meta.getPersistentDataContainer()).thenReturn(pdc);
     ForgedLook.stamp(meta, old, SkinState.CARRY, gun("barrel@steel"));
     verify(meta, never()).setItemModel(any());
     ForgedLook.stamp(meta, forged, SkinState.RELOAD, null);
@@ -274,6 +276,7 @@ old: {part-type: barrel, type: [rifle], smoke: .nan}
     ForgedLook.stamp(meta, forged, SkinState.CARRY, gun("barrel@steel"));
     verify(meta).setItemModel(NamespacedKey.fromString("tfmc_guns:rifle_carry"));
     verify(cmd).setFloats(List.of());
+    verify(cmd).setColors(List.of());
     verify(cmd).setStrings(ForgedLook.modelStrings(gun("barrel@steel")));
     verify(meta).setCustomModelDataComponent(cmd);
 

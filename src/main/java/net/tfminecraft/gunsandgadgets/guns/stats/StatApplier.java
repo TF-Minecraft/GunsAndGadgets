@@ -19,20 +19,21 @@ import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
 import net.tfminecraft.gunsandgadgets.util.CostFormatter;
 
 public class StatApplier {
-    /** As {@link #apply(ItemStack, Collection, boolean, GunType, Ammunition, String)} for a gun of unknown type and shot. */
+    /** As {@link #apply(ItemStack, Collection, boolean, GunType, Ammunition, String, double)} for a gun of unknown type and shot. */
     public static ItemStack apply(ItemStack item, Collection<GunPart> parts, boolean gui) {
-        return apply(item, parts, gui, null, null, null);
+        return apply(item, parts, gui, null, null, null, 1.0);
     }
 
     /**
      * Stamps the parts' combined stats on the item (exact and whole, see {@link GunStats}) and
-     * lists what they do ({@link GunSheet}), firing {@code shot}, the gun's strongest shot.
+     * lists what they do ({@link GunSheet}), firing {@code shot}, the gun's strongest shot. A dungeon
+     * gun hits {@code power} times as hard (1 = as crafted).
      */
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     public static ItemStack apply(ItemStack item, Collection<GunPart> parts, boolean gui, GunType type,
-            Ammunition shot, String shotName) {
-        Map<Stats, Double> totals = combineStats(parts);
+            Ammunition shot, String shotName, double power) {
+        Map<Stats, Double> totals = combineStats(parts, power);
 
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
@@ -72,6 +73,20 @@ public class StatApplier {
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
+    }
+
+    /**
+     * As {@link #combineStats(Collection)}, hitting {@code power} times as hard: the damage percent is
+     * the one stat that scales the whole hit (gun plus shot) and nothing else.
+     */
+    static Map<Stats, Double> combineStats(Collection<GunPart> parts, double power) {
+        Map<Stats, Double> totals = combineStats(parts);
+        if (power != 1.0) {
+            double percent = GunStats.combinePercent(List.of(
+                    totals.getOrDefault(Stats.DAMAGE_PERCENT, 0.0), (power - 1.0) * 100.0));
+            totals.put(Stats.DAMAGE_PERCENT, Math.round(percent * 1e6) / 1e6);
+        }
+        return totals;
     }
 
     /**

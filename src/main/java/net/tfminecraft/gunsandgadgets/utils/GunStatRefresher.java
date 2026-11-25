@@ -11,6 +11,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
+import net.tfminecraft.gunsandgadgets.api.DungeonGuns;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.data.GGCraftPart;
@@ -73,7 +74,7 @@ public final class GunStatRefresher {
         provenance.applyTo(rebuilt);
         GunCraftInputs.copy(item, rebuilt);
 
-        return RefreshResult.updated(rebuilt, outdatedBefore);
+        return RefreshResult.updated(DungeonGuns.refreshed(item, rebuilt), outdatedBefore);
     }
 
     public static RefreshResult refreshIfOutdated(ItemStack item) {
