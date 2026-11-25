@@ -15,6 +15,7 @@ GunsAndGadgets brings together weapon assembly and gun combat. Players build fir
 - **Shot handling** — spread grows while moving, sprinting, airborne or mounted and tightens while crouched; bullet damage can fall off with distance; the headshot bonus is configurable.
 - **Weapon appearances** — skin support keeps custom gun designs connected to their firing and reload states.
 - **Maintained weapons** — existing guns pick up changed part stats when players join, open world storage, or handle their inventory.
+- **Dungeon guns** — other plugins can build forged guns with a colour per part that hit harder and never break (`api/DungeonGuns`).
 - **Staff provisioning** — give completed weapons using the same part and design validation as normal assembly.
 
 ## From workbench to combat

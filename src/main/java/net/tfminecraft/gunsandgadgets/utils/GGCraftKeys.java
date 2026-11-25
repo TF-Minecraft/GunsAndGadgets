@@ -36,6 +36,23 @@ public final class GGCraftKeys {
         return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_tier_lore_start");
     }
 
+    /** Dungeon guns only: how many times as hard the gun hits (marks the gun as one). */
+    public static NamespacedKey dungeonPower() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_dungeon_power");
+    }
+
+    public static NamespacedKey dungeonColors() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_dungeon_colors");
+    }
+
+    public static NamespacedKey dungeonMarker() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "gg_dungeon_marker");
+    }
+
+    public static NamespacedKey gunType() {
+        return new NamespacedKey(GunsAndGadgets.getInstance(), "gun_type");
+    }
+
     public static final PersistentDataType<String, String> STRING = PersistentDataType.STRING;
     public static final PersistentDataType<Integer, Integer> INTEGER = PersistentDataType.INTEGER;
     public static final PersistentDataType<Byte, Boolean> BOOLEAN = PersistentDataType.BOOLEAN;

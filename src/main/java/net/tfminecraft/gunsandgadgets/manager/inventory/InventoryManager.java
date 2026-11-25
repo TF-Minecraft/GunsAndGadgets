@@ -43,6 +43,7 @@ import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.SoundType;
 import net.tfminecraft.gunsandgadgets.guns.ammunition.Ammunition;
+import net.tfminecraft.gunsandgadgets.guns.data.DungeonStamp;
 import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
 import net.tfminecraft.gunsandgadgets.guns.forge.ForgeLore;
 import net.tfminecraft.gunsandgadgets.guns.forge.Metal;
@@ -480,7 +481,7 @@ public class InventoryManager implements Listener {
      * Returns an empty set if no parts have restrictions (no class lock).
      * Returns null if there is a conflict (intersection became empty but at least one part had requirements).
      */
-    private Set<String> resolveClasses(Collection<GunPart> parts) {
+    public static Set<String> resolveClasses(Collection<GunPart> parts) {
         Set<String> intersection = null;
         for (GunPart part : parts) {
             List<String> reqs = part.getClassRequirements();
@@ -563,9 +564,15 @@ public class InventoryManager implements Listener {
         return createOutputItem(type, parts, false, existing);
     }
 
+    /** A rebuilt dungeon gun stays one. */
+    public ItemStack createOutputItem(GunType type, Collection<GunPart> parts, boolean gui, ItemStack preserveRuntime) {
+        return createOutputItem(type, parts, gui, preserveRuntime, DungeonStamp.readFrom(preserveRuntime));
+    }
+
     // Keep the existing legacy text representation, formatting, and exact-string comparisons. This path mutates the existing ItemStack; replacing it would change aliases held by callers.
     @SuppressWarnings("deprecation")
-    public ItemStack createOutputItem(GunType type, Collection<GunPart> parts, boolean gui, ItemStack preserveRuntime) {
+    public ItemStack createOutputItem(GunType type, Collection<GunPart> parts, boolean gui, ItemStack preserveRuntime,
+            DungeonStamp dungeon) {
         for (GunPart part : parts) {
             if (part.isDisabled()) {
                 ItemStack barrier = new ItemStack(Material.BARRIER);
@@ -635,6 +642,10 @@ public class InventoryManager implements Listener {
             if (!ItemSkinPreserver.hasSkinData(skinItem)
                     && LegacyModelData.has(skinItem.getItemMeta())) {
                 LegacyModelData.set(meta, LegacyModelData.get(skinItem.getItemMeta()));
+            }
+            if (dungeon != null) {
+                dungeon.applyTo(meta.getPersistentDataContainer());
+                meta.setUnbreakable(true);
             }
             ForgedLook.stamp(meta, skin, SkinState.CARRY, parts);
             meta.setDisplayName(buildName(parts));
@@ -708,7 +719,8 @@ public class InventoryManager implements Listener {
 
             // Apply stats afterwards (so lore & stat PDCs get written)
             Ammunition shot = strongestShot(calibers, StatApplier.combineStats(parts).getOrDefault(Stats.DAMAGE, 0.0));
-            base = StatApplier.apply(base, parts, gui, type, shot, shotName(shot));
+            base = StatApplier.apply(base, parts, gui, type, shot, shotName(shot),
+                    dungeon == null ? 1.0 : dungeon.power());
             int majority = MajorityTierResolver.resolve(parts);
             if (majority > 0) {
                 TierLore.applyTo(base, majority);
@@ -989,7 +1001,7 @@ public class InventoryManager implements Listener {
     }
 
     /** Of one material's fitted variants, the good quality (tier 2) one: the part's written values. */
-    private static GunPart goodQuality(List<GunPart> fitted) {
+    public static GunPart goodQuality(List<GunPart> fitted) {
         for (GunPart variant : fitted) {
             Metal fitting = MetalLoader.getByString(variant.getFittingId());
             if (fitting != null && fitting.getTier() == 2) return variant;
