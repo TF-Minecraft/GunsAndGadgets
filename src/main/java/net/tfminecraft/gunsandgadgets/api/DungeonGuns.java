@@ -7,11 +7,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
+import java.util.logging.Level;
 
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
+import net.tfminecraft.gunsandgadgets.GunsAndGadgets;
 import net.tfminecraft.gunsandgadgets.cache.Cache;
 import net.tfminecraft.gunsandgadgets.guns.GunType;
 import net.tfminecraft.gunsandgadgets.guns.data.DungeonStamp;
@@ -144,7 +146,12 @@ public final class DungeonGuns {
             return rebuilt;
         }
         DungeonStamp.carryOver(old, rebuilt);
-        return finisher == null ? rebuilt : finisher.apply(old, rebuilt);
+        try {
+            return finisher == null ? rebuilt : finisher.apply(old, rebuilt);
+        } catch (RuntimeException e) { // one bad gun never stops the others' refresh
+            GunsAndGadgets.getInstance().getLogger().log(Level.WARNING, "Finishing a dungeon gun failed", e);
+            return rebuilt;
+        }
     }
 
     private static boolean fits(GunPart part, GunType type, String slot) {

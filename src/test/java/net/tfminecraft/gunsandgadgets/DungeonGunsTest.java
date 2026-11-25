@@ -285,6 +285,13 @@ stock:
     ItemStack finished = new ItemStack(Material.CROSSBOW);
     DungeonGuns.onRefresh((old, rebuilt) -> old.isSimilar(gun) && DungeonGuns.isDungeonGun(rebuilt) ? finished : null);
     assertSame(finished, GunStatRefresher.refresh(gun, true).getItem());
+    // a finish that fails keeps the plain gun
+    DungeonGuns.onRefresh((old, rebuilt) -> {
+      throw new IllegalStateException("broken");
+    });
+    assertEquals(DungeonGuns.read(gun), DungeonGuns.read(GunStatRefresher.refresh(gun, true).getItem()));
+    // nobody crafted it: never taken apart, whatever became of its parts
+    assertFalse(GunRefunder.isOld(gun));
     // a normal gun is refreshed as before
     ItemStack crafted = crafted(IDS);
     assertEquals(data(crafted), data(GunStatRefresher.refresh(crafted, true).getItem()));
